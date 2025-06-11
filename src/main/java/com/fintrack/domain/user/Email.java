@@ -1,9 +1,12 @@
 package com.fintrack.domain.user;
 
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Column;
 import java.util.Objects;
-import java.util.regex.Pattern;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import org.apache.commons.validator.routines.EmailValidator;
+import org.apache.commons.lang3.Validate;
 
 /**
  * Represents an Email as a Value Object in the User domain.
@@ -16,42 +19,41 @@ import java.util.regex.Pattern;
 @Embeddable
 public class Email {
 
-    private static final Pattern EMAIL_PATTERN =
-      Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final EmailValidator validator =
+      EmailValidator.getInstance();
 
-    @Column(nullable = false, unique = true)
-    private String value;
+    @Column(name="email", nullable = false, unique = true)
+    private String email;
 
     protected Email() {}
 
     /**
      * Creates a new Email value object after validating the format.
      *
-     * @param value the email address as a string. Cannot be blank.
+     * @param emailValue the email address as a string. Cannot be blank.
      *
      * @throws IllegalArgumentException if the email is null, blank, or invalid.
      */
-    private Email(String value) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Email must not be null or blank");
-        }
-        if (!EMAIL_PATTERN.matcher(value).matches()) {
-            throw new IllegalArgumentException("Invalid email format: " + value);
-        }
-        this.value = value;
+    private Email(String emailValue) {
+        String trimmed = emailValue == null ? null : emailValue.trim();
+        Validate.notBlank(trimmed, "Email cannot be null or blank");
+        Validate.isTrue(validator.isValid(trimmed), "Invalid email format");
+
+        email = trimmed.toLowerCase();
     }
 
     /**
-     * Factory method to create a new Email value object.
+     * Static factory method to create an Email instance.
+     * This method validates the email format and creates an immutable Email object.
      *
-     * @param value the email address as a string. Cannot be blank.
+     * @param email the email string to validate and wrap
      *
-     * @return a validated Email object, Never null if the email is valid.
+     * @return a validated Email instance. Never null.
      *
-     * @throws IllegalArgumentException if the email is invalid.
+     * @throws IllegalArgumentException if the email is invalid
      */
-    public static Email of(String value) {
-        return new Email(value);
+    public static Email of(final String email) {
+        return new Email(email);
     }
 
     /**
@@ -59,22 +61,27 @@ public class Email {
      *
      * @return the email value, Never null or blank.
      */
-    public String getValue() { return value; }
+    public String getEmail() { return email; }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Email email)) return false;
-        return value.equalsIgnoreCase(email.value);
+    public boolean equals(final Object theO) {
+        if (this == theO) {
+            return true;
+        }
+        if (theO == null || getClass() != theO.getClass()) {
+            return false;
+        }
+        Email email1 = (Email) theO;
+        return Objects.equals(getEmail(), email1.getEmail());
     }
 
     @Override
     public int hashCode() {
-        return value.toLowerCase().hashCode();
+        return Objects.hashCode(getEmail());
     }
 
     @Override
     public String toString() {
-        return value;
+        return email;
     }
 }

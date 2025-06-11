@@ -2,12 +2,15 @@ package com.fintrack.domain.user;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
 
 /**
  * Entity representing a system user.
+ * Contains user information and business rules.
  */
 @Entity
 @Table(name = "users")
@@ -32,6 +35,12 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private Set<Role> roles = new HashSet<>();
+
     /**
      * Protected constructor for JPA only.
      */
@@ -41,21 +50,27 @@ public class User {
      * Private constructor for User. Use the static factory method to create
      * instances.
      *
-     * @param theEmail the user's name. Must not be null or blank.
+     * @param theName the user's name. Must not be null or blank.
      *
      * @param theEmail the user's email. Must be a valid Email.
      *
      * @param thePassword the user's password. Must not be null or blank.
+     *
+     * @param theRoles the user's roles. Must not be null or empty.
      */
-    private User(String theName, Email theEmail, String thePassword) {
-        Validate.notBlank(name, "Name must not be null or blank");
-        Validate.notNull(email, "Email must not be null");
-        Validate.notBlank(password, "Password must not be null or blank");
+    private User(final String theName, final Email theEmail,
+                 final String thePassword, final Set<Role> theRoles) {
+        Validate.notBlank(theName, "Name must not be null or blank.");
+        Validate.notNull(theEmail, "Email must not be null.");
+        Validate.notBlank(thePassword, "Password must not be null or blank.");
+        Validate.notNull(theRoles, "Roles must not be null.");
+
         name = theName;
         email = theEmail;
         password = thePassword;
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        roles = theRoles;
     }
 
     /**
@@ -67,10 +82,13 @@ public class User {
      *
      * @param password the user's password. Cannot be null or blank.
      *
+     * @param roles the user's roles. Must not be null or empty.
+     *
      * @return a validated User entity. Never null.
      */
-    public static User of(String name, String email, String password) {
-        return new User(name, Email.of(email), password);
+    public static User of(final String name, final String email,
+                          final String password, final Set<Role> roles) {
+        return new User(name, Email.of(email), password, roles);
     }
 
     public Long getId() { return id; }
@@ -78,6 +96,8 @@ public class User {
     public Email getEmail() { return email; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public String getPassword() { return password; }
+    public Set<Role> getRoles() { return roles; }
 
     @Override
     public boolean equals(Object o) {
