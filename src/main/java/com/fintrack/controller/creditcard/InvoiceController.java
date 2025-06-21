@@ -118,6 +118,7 @@ public class InvoiceController {
                 "creditCardName", invoice.getCreditCard().getName(),
                 "dueDate", invoice.getDueDate(),
                 "totalAmount", invoice.getTotalAmount(),
+                "paidAmount", invoice.getPaidAmount(),
                 "status", invoice.getStatus().name(),
                 "createdAt", invoice.getCreatedAt()
             ));

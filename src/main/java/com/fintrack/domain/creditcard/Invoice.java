@@ -171,15 +171,11 @@ public class Invoice {
 
     /**
      * Gets the total amount of this invoice.
-     * Calculates dynamically based on items to ensure accuracy.
      *
      * @return the total amount.
      */
     public BigDecimal getTotalAmount() {
-        // Calculate dynamically to ensure accuracy
-        return items.stream()
-                .map(InvoiceItem::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return totalAmount;
     }
 
     public Long getId() { return id; }

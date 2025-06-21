@@ -7,6 +7,17 @@ import {
   CreateCreditCardResponse,
   Bank 
 } from '../types/creditCard';
+import {
+  Invoice,
+  InvoiceItem,
+  CreateInvoiceRequest,
+  CreateInvoiceItemRequest,
+  InvoiceResponse,
+  InvoiceDetailResponse,
+  InvoiceItemsResponse,
+  CreateInvoiceResponse,
+  CreateInvoiceItemResponse
+} from '../types/invoice';
 
 class ApiService {
   private api: AxiosInstance;
@@ -103,6 +114,42 @@ class ApiService {
   async getBanks(): Promise<Bank[]> {
     const response = await this.api.get<{ banks: Bank[] }>('/banks');
     return response.data.banks;
+  }
+
+  // Invoice endpoints
+  async getInvoices(): Promise<InvoiceResponse> {
+    const response = await this.api.get<InvoiceResponse>('/invoices');
+    return response.data;
+  }
+
+  async getInvoice(id: number): Promise<InvoiceDetailResponse> {
+    const response = await this.api.get<InvoiceDetailResponse>(`/invoices/${id}`);
+    return response.data;
+  }
+
+  async getInvoicesByCreditCard(creditCardId: number): Promise<InvoiceResponse> {
+    const response = await this.api.get<InvoiceResponse>(`/invoices/credit-card/${creditCardId}`);
+    return response.data;
+  }
+
+  async createInvoice(data: CreateInvoiceRequest): Promise<CreateInvoiceResponse> {
+    const response = await this.api.post<CreateInvoiceResponse>('/invoices', data);
+    return response.data;
+  }
+
+  async getInvoiceItems(invoiceId: number): Promise<InvoiceItemsResponse> {
+    const response = await this.api.get<InvoiceItemsResponse>(`/invoices/${invoiceId}/items`);
+    return response.data;
+  }
+
+  async createInvoiceItem(invoiceId: number, data: CreateInvoiceItemRequest): Promise<CreateInvoiceItemResponse> {
+    const response = await this.api.post<CreateInvoiceItemResponse>(`/invoices/${invoiceId}/items`, data);
+    return response.data;
+  }
+
+  async deleteInvoiceItem(invoiceId: number, itemId: number): Promise<{ message: string; deletedItemId: number; invoiceId: number }> {
+    const response = await this.api.delete(`/invoices/${invoiceId}/items/${itemId}`);
+    return response.data;
   }
 }
 

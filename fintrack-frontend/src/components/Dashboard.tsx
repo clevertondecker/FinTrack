@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import CreditCards from './CreditCards';
+import Invoices from './Invoices';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const [activeView, setActiveView] = useState<'main' | 'creditCards'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices'>('main');
 
   const handleLogout = () => {
     logout();
   };
 
-  const handleViewChange = (view: 'main' | 'creditCards') => {
+  const handleViewChange = (view: 'main' | 'creditCards' | 'invoices') => {
     setActiveView(view);
   };
 
@@ -35,6 +36,30 @@ const Dashboard: React.FC = () => {
           </div>
         </header>
         <CreditCards />
+      </div>
+    );
+  }
+
+  if (activeView === 'invoices') {
+    return (
+      <div className="dashboard-container">
+        <header className="dashboard-header">
+          <div className="header-content">
+            <button 
+              onClick={() => setActiveView('main')} 
+              className="back-button"
+            >
+              ← Back to Dashboard
+            </button>
+            <div className="user-info">
+              <span>Welcome, {user?.name}!</span>
+              <button onClick={handleLogout} className="logout-button">
+                Logout
+              </button>
+            </div>
+          </div>
+        </header>
+        <Invoices />
       </div>
     );
   }
@@ -69,7 +94,12 @@ const Dashboard: React.FC = () => {
           <div className="dashboard-card">
             <h3>Invoices</h3>
             <p>Track your monthly invoices and payments</p>
-            <button className="card-button">View Invoices</button>
+            <button 
+              className="card-button"
+              onClick={() => handleViewChange('invoices')}
+            >
+              View Invoices
+            </button>
           </div>
 
           <div className="dashboard-card">
