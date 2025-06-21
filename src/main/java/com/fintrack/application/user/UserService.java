@@ -5,7 +5,7 @@ import java.util.Set;
 import com.fintrack.infrastructure.security.PasswordService;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.infrastructure.user.UserRepository;
+import com.fintrack.domain.user.UserRepository;
 
 import org.apache.commons.lang3.Validate;
 import org.springframework.stereotype.Service;

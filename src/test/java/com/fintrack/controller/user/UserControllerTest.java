@@ -22,8 +22,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.user.UserService;
-import com.fintrack.controller.user.dtos.RegisterRequest;
 import com.fintrack.domain.user.Role;
+import com.fintrack.dto.user.RegisterRequest;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController Tests")

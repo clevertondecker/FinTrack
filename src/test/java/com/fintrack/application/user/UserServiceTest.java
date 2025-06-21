@@ -18,11 +18,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
+import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.security.PasswordService;
-import com.fintrack.infrastructure.user.UserRepository;
 
 /**
  * Unit tests for the UserService application service.

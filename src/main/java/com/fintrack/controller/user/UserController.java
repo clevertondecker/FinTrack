@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.Role;
-import com.fintrack.controller.user.dtos.RegisterRequest;
-import com.fintrack.controller.user.dtos.RegisterResponse;
+import com.fintrack.dto.user.RegisterRequest;
+import com.fintrack.dto.user.RegisterResponse;
+import com.fintrack.domain.user.UserRepository;
+import com.fintrack.infrastructure.persistence.user.UserJpaRepository;
 
 import jakarta.validation.Valid;
 
