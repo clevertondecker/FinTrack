@@ -188,6 +188,7 @@ const CreditCards: React.FC = () => {
                   maxLength={4}
                   pattern="[0-9]{4}"
                   required
+                  disabled={!!editingCard}
                 />
               </div>
 

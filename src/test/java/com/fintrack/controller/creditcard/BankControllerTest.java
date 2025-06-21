@@ -15,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -26,6 +27,7 @@ import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 
 @WebMvcTest(BankController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @DisplayName("BankController Tests")
 class BankControllerTest {
@@ -124,7 +126,6 @@ class BankControllerTest {
                 }
                 """;
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
@@ -147,7 +148,6 @@ class BankControllerTest {
                 }
                 """;
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
@@ -196,7 +196,6 @@ class BankControllerTest {
             List<Bank> banks = Arrays.asList(nubank, itau, santander);
             when(bankRepository.findAll()).thenReturn(banks);
 
-            // When & Then
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Banks retrieved successfully"))
@@ -216,7 +215,6 @@ class BankControllerTest {
             // Given
             when(bankRepository.findAll()).thenReturn(Arrays.asList());
 
-            // When & Then
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Banks retrieved successfully"))
@@ -232,7 +230,6 @@ class BankControllerTest {
             List<Bank> banks = Arrays.asList(nubank);
             when(bankRepository.findAll()).thenReturn(banks);
 
-            // When & Then
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Banks retrieved successfully"))
@@ -254,7 +251,6 @@ class BankControllerTest {
             Long bankId = 1L;
             when(bankRepository.findById(bankId)).thenReturn(Optional.of(nubank));
 
-            // When & Then
             mockMvc.perform(get("/api/banks/{id}", bankId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Bank retrieved successfully"))
@@ -269,7 +265,6 @@ class BankControllerTest {
             Long bankId = 999L;
             when(bankRepository.findById(bankId)).thenReturn(Optional.empty());
 
-            // When & Then
             mockMvc.perform(get("/api/banks/{id}", bankId))
                     .andExpect(status().isNotFound());
         }
@@ -326,7 +321,6 @@ class BankControllerTest {
                 }
                 """;
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
@@ -354,7 +348,6 @@ class BankControllerTest {
                 }
                 """, longName);
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
@@ -377,7 +370,6 @@ class BankControllerTest {
                 }
                 """;
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
@@ -400,7 +392,6 @@ class BankControllerTest {
                 }
                 """;
 
-            // When & Then
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))

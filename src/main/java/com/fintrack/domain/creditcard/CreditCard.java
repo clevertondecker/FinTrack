@@ -134,6 +134,18 @@ public class CreditCard {
         updatedAt = LocalDateTime.now();
     }
 
+    public void updateName(final String newName) {
+        Validate.notBlank(newName, "Credit card name must not be null or blank.");
+        name = newName;
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void updateBank(final Bank newBank) {
+        Validate.notNull(newBank, "Bank must not be null.");
+        bank = newBank;
+        updatedAt = LocalDateTime.now();
+    }
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getLastFourDigits() { return lastFourDigits; }

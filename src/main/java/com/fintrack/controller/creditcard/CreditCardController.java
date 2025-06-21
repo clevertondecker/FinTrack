@@ -16,7 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -274,6 +273,60 @@ public class CreditCardController {
         return ResponseEntity.ok(Map.of(
             "message", "Credit card deactivated successfully",
             "id", creditCard.getId()
+        ));
+    }
+
+    /**
+     * Updates an existing credit card for the authenticated user.
+     *
+     * @param id the credit card ID. Cannot be null.
+     * @param request the credit card update request. Must be valid.
+     * @param authentication the authenticated user details. Cannot be null.
+     *
+     * @return a response with the updated credit card information.
+     *
+     * @throws IllegalArgumentException if the request is invalid.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> updateCreditCard(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCreditCardRequest request,
+            Authentication authentication) {
+
+        Optional<User> userOpt = getUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        }
+        User user = userOpt.get();
+
+        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
+        if (creditCardOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        CreditCard creditCard = creditCardOpt.get();
+
+        // Note: The last four digits cannot be updated, so we do not set it here.
+        creditCard.updateName(request.name());
+        creditCard.updateLimit(request.limit());
+
+        Optional<Bank> bankOpt = bankRepository.findById(request.bankId());
+        if (bankOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Bank not found"));
+        }
+        creditCard.updateBank(bankOpt.get());
+
+        CreditCard updatedCard = creditCardRepository.save(creditCard);
+
+        return ResponseEntity.ok(Map.of(
+            "message", "Credit card updated successfully",
+            "id", updatedCard.getId(),
+            "name", updatedCard.getName(),
+            "lastFourDigits", updatedCard.getLastFourDigits(),
+            "limit", updatedCard.getLimit(),
+            "bankName", updatedCard.getBank().getName(),
+            "active", updatedCard.isActive(),
+            "createdAt", updatedCard.getCreatedAt(),
+            "updatedAt", updatedCard.getUpdatedAt()
         ));
     }
 }
