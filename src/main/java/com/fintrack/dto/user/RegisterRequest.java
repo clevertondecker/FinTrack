@@ -1,4 +1,4 @@
-package com.fintrack.controller.user.dtos;
+package com.fintrack.dto.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

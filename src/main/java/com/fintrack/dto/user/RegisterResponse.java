@@ -1,4 +1,4 @@
-package com.fintrack.controller.user.dtos;
+package com.fintrack.dto.user;
 
 /**
  * DTO for user registration response.

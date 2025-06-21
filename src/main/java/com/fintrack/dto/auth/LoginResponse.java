@@ -1,4 +1,4 @@
-package com.fintrack.controller.auth.dtos;
+package com.fintrack.dto.auth;
 
 /**
  * DTO for user login response.
