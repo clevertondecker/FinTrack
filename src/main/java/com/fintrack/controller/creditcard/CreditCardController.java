@@ -62,7 +62,8 @@ public class CreditCardController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+        Optional<User> userOpt = getUser(
+          userDetails);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -107,8 +108,7 @@ public class CreditCardController {
     public ResponseEntity<Map<String, Object>> getUserCreditCards(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+        Optional<User> userOpt = getUser(userDetails);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -151,7 +151,8 @@ public class CreditCardController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+        Optional<User> userOpt = getUser(
+          userDetails);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -180,6 +181,12 @@ public class CreditCardController {
         ));
     }
 
+    private Optional<User> getUser(final UserDetails userDetails) {
+        Optional<User> userOpt = userRepository.findByEmail(Email.of(
+          userDetails.getUsername()));
+        return userOpt;
+    }
+
     /**
      * Updates a credit card for the authenticated user.
      *
@@ -195,7 +202,7 @@ public class CreditCardController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+        Optional<User> userOpt = getUser(userDetails);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -250,7 +257,7 @@ public class CreditCardController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+        Optional<User> userOpt = getUser(userDetails);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }

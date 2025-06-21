@@ -1,7 +1,10 @@
 package com.fintrack.controller.user;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -23,6 +26,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.Role;
+import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.user.RegisterRequest;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +35,9 @@ class UserControllerTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private UserController userController;
@@ -63,19 +70,14 @@ class UserControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("User registered successfully"));
 
-            verify(userService).registerUser(
-                "John Doe",
-                "john@example.com",
-                "password123",
-                Set.of(Role.USER)
-            );
+            verify(userService).registerUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         }
 
         @Test
         @DisplayName("Should return 400 when name is too short")
         void shouldReturn400WhenNameIsTooShort() throws Exception {
             RegisterRequest request = new RegisterRequest(
-                "A",
+                "J",
                 "john@example.com",
                 "password123"
             );
@@ -180,7 +182,8 @@ class UserControllerTest {
             RegisterRequest request = new RegisterRequest(
                 "John Doe",
                 "john@example.com",
-                "");
+                ""
+            );
 
             mockMvc.perform(post("/api/users/register")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -206,9 +209,9 @@ class UserControllerTest {
     class ConstructorTests {
 
         @Test
-        @DisplayName("Should create UserController with valid UserService")
-        void shouldCreateUserControllerWithValidUserService() {
-            UserController controller = new UserController(userService);
+        @DisplayName("Should create UserController with valid dependencies")
+        void shouldCreateUserControllerWithValidDependencies() {
+            UserController controller = new UserController(userService, userRepository);
 
             assert controller != null;
         }
@@ -217,10 +220,21 @@ class UserControllerTest {
         @DisplayName("Should throw exception when UserService is null")
         void shouldThrowExceptionWhenUserServiceIsNull() {
             try {
-                new UserController(null);
+                new UserController(null, userRepository);
                 assert false : "Should have thrown exception";
             } catch (NullPointerException e) {
                 assert e.getMessage().contains("userService cannot be null");
+            }
+        }
+
+        @Test
+        @DisplayName("Should throw exception when UserRepository is null")
+        void shouldThrowExceptionWhenUserRepositoryIsNull() {
+            try {
+                new UserController(userService, null);
+                assert false : "Should have thrown exception";
+            } catch (NullPointerException e) {
+                assert e.getMessage().contains("userRepository cannot be null");
             }
         }
     }

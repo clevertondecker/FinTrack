@@ -45,7 +45,8 @@ public class Invoice {
     @Column(nullable = false)
     private InvoiceStatus status = InvoiceStatus.OPEN;
 
-    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL,
+      orphanRemoval = true, fetch = FetchType.EAGER)
     private List<InvoiceItem> items = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
@@ -98,7 +99,7 @@ public class Invoice {
      */
     public void addItem(final InvoiceItem item) {
         Validate.notNull(item, "Item must not be null.");
-        
+
         items.add(item);
         item.setInvoice(this);
         recalculateTotal();
@@ -112,7 +113,7 @@ public class Invoice {
      */
     public void removeItem(final InvoiceItem item) {
         Validate.notNull(item, "Item must not be null.");
-        
+
         items.remove(item);
         item.setInvoice(null);
         recalculateTotal();
@@ -218,4 +219,4 @@ public class Invoice {
                 ", updatedAt=" + updatedAt +
                 '}';
     }
-} 
+}

@@ -7,11 +7,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -44,6 +47,30 @@ public class GlobalExceptionHandler {
 
     return ResponseEntity.badRequest()
       .body(Map.of("error", "Invalid data"));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<Map<String, String>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+    logger.warn("HTTP Message Not Readable: {}", e.getMessage());
+
+    return ResponseEntity.badRequest()
+      .body(Map.of("error", "Invalid JSON format"));
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<Map<String, String>> handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+    logger.warn("HTTP Media Type Not Supported: {}", e.getMessage());
+
+    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+      .body(Map.of("error", "Unsupported media type"));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<Map<String, String>> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException e) {
+    logger.warn("Method Argument Type Mismatch: {}", e.getMessage());
+
+    return ResponseEntity.badRequest()
+      .body(Map.of("error", "Invalid parameter format"));
   }
 
   @ExceptionHandler(Exception.class)

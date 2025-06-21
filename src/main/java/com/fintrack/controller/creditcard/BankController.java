@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * REST controller for managing banks.
@@ -46,12 +47,13 @@ public class BankController {
         Bank bank = Bank.of(code, name);
         Bank savedBank = bankRepository.save(bank);
 
-        return ResponseEntity.ok(Map.of(
-            "message", "Bank created successfully",
-            "id", savedBank.getId(),
-            "code", savedBank.getCode(),
-            "name", savedBank.getName()
-        ));
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Bank created successfully");
+        response.put("id", savedBank.getId());
+        response.put("code", savedBank.getCode());
+        response.put("name", savedBank.getName());
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -65,18 +67,19 @@ public class BankController {
 
         List<Map<String, Object>> bankDtos = new ArrayList<>();
         for (Bank bank : banks) {
-            bankDtos.add(Map.of(
-                "id", bank.getId(),
-                "code", bank.getCode(),
-                "name", bank.getName()
-            ));
+            Map<String, Object> bankDto = new HashMap<>();
+            bankDto.put("id", bank.getId());
+            bankDto.put("code", bank.getCode());
+            bankDto.put("name", bank.getName());
+            bankDtos.add(bankDto);
         }
 
-        return ResponseEntity.ok(Map.of(
-            "message", "Banks retrieved successfully",
-            "banks", bankDtos,
-            "count", bankDtos.size()
-        ));
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Banks retrieved successfully");
+        response.put("banks", bankDtos);
+        response.put("count", bankDtos.size());
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -88,14 +91,18 @@ public class BankController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getBank(@PathVariable Long id) {
         return bankRepository.findById(id)
-            .map(bank -> ResponseEntity.ok(Map.of(
-                "message", "Bank retrieved successfully",
-                "bank", Map.of(
-                    "id", bank.getId(),
-                    "code", bank.getCode(),
-                    "name", bank.getName()
-                )
-            )))
+            .map(bank -> {
+                Map<String, Object> bankInfo = new HashMap<>();
+                bankInfo.put("id", bank.getId());
+                bankInfo.put("code", bank.getCode());
+                bankInfo.put("name", bank.getName());
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "Bank retrieved successfully");
+                response.put("bank", bankInfo);
+
+                return ResponseEntity.ok(response);
+            })
             .orElse(ResponseEntity.notFound().build());
     }
 } 
