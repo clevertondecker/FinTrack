@@ -30,6 +30,8 @@ export interface CreateInvoiceRequest {
 export interface CreateInvoiceItemRequest {
   description: string;
   amount: number;
+  categoryId?: number;
+  purchaseDate: string;
 }
 
 export interface InvoiceResponse {
@@ -82,4 +84,10 @@ export const InvoiceStatusDisplay = {
   [InvoiceStatus.PAID]: 'Paga',
   [InvoiceStatus.OVERDUE]: 'Vencida',
   [InvoiceStatus.PARTIAL]: 'Parcial'
-}; 
+};
+
+export interface Category {
+  id: number;
+  name: string;
+  color?: string;
+} 

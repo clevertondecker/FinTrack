@@ -315,4 +315,214 @@
   .form-actions {
     flex-direction: column;
   }
+
+  .modal-container {
+    width: 95%;
+    max-width: 95%;
+    padding: 20px 15px;
+  }
+
+  .invoice-items-table {
+    font-size: 0.9rem;
+  }
+
+  .invoice-items-table th, 
+  .invoice-items-table td {
+    padding: 6px 8px;
+  }
+
+  .remove-item-btn {
+    padding: 3px 8px;
+    font-size: 0.85rem;
+  }
+
+  .add-item-form {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal Container */
+.modal-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 28px 24px 28px;
+  min-width: 350px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: relative;
+  animation: modalIn 0.2s;
+}
+
+@keyframes modalIn {
+  from { transform: translateY(40px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.close-modal {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.close-modal:hover { color: #d32f2f; }
+
+.invoice-summary {
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  background: #f3f6fa;
+  border-radius: 8px;
+  padding: 12px 10px;
+  font-size: 1rem;
+  color: #222;
+}
+
+.invoice-summary b {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.invoice-summary div {
+  margin-bottom: 2px;
+}
+
+.add-item-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+  margin-top: 8px;
+}
+
+.add-item-form input[type="text"],
+.add-item-form input[type="number"],
+.add-item-form input[type="date"],
+.add-item-form select {
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.add-item-form button {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  grid-column: 1 / -1;
+}
+.add-item-form button:disabled { background: #90caf9; cursor: not-allowed; }
+.add-item-form button:hover:not(:disabled) { background: #1565c0; }
+
+.invoice-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.98rem;
+  background: #fff;
+  table-layout: fixed;
+  max-width: 100%;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.invoice-items-table th, .invoice-items-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: left;
+  color: #333;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 80px;
+}
+
+.invoice-items-table th {
+  background: #f0f4f8;
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.invoice-items-table td {
+  background: #fff;
+  color: #333;
+}
+
+.invoice-items-table tr:hover td {
+  background: #f5f5f5;
+}
+
+/* Definir larguras específicas para as colunas */
+.invoice-items-table th:nth-child(1), 
+.invoice-items-table td:nth-child(1) {
+  width: 30%; /* Descrição */
+}
+
+.invoice-items-table th:nth-child(2), 
+.invoice-items-table td:nth-child(2) {
+  width: 15%; /* Valor */
+}
+
+.invoice-items-table th:nth-child(3), 
+.invoice-items-table td:nth-child(3) {
+  width: 20%; /* Categoria */
+}
+
+.invoice-items-table th:nth-child(4), 
+.invoice-items-table td:nth-child(4) {
+  width: 20%; /* Data de Compra */
+}
+
+.invoice-items-table th:nth-child(5), 
+.invoice-items-table td:nth-child(5) {
+  width: 15%; /* Ações */
+}
+
+.remove-item-btn {
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin: 6px 0 0 0;
+  font-size: 0.97rem;
 } 

@@ -16,7 +16,8 @@ import {
   InvoiceDetailResponse,
   InvoiceItemsResponse,
   CreateInvoiceResponse,
-  CreateInvoiceItemResponse
+  CreateInvoiceItemResponse,
+  Category
 } from '../types/invoice';
 
 class ApiService {
@@ -149,6 +150,11 @@ class ApiService {
 
   async deleteInvoiceItem(invoiceId: number, itemId: number): Promise<{ message: string; deletedItemId: number; invoiceId: number }> {
     const response = await this.api.delete(`/invoices/${invoiceId}/items/${itemId}`);
+    return response.data;
+  }
+
+  async getCategories(): Promise<{ message: string; categories: Category[]; count: number }> {
+    const response = await this.api.get<{ message: string; categories: Category[]; count: number }>('/categories');
     return response.data;
   }
 }

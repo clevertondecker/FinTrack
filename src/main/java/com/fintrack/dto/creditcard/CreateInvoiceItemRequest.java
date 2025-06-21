@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * DTO for creating a new invoice item.
@@ -19,5 +20,10 @@ public record CreateInvoiceItemRequest(
     
     @NotNull(message = "Item amount is required.")
     @Positive(message = "Item amount must be positive.")
-    BigDecimal amount
+    BigDecimal amount,
+    
+    Long categoryId,
+    
+    @NotNull(message = "Purchase date is required.")
+    LocalDate purchaseDate
 ) {} 

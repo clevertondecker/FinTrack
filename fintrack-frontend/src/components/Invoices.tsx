@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
-import { Invoice, CreateInvoiceRequest } from '../types/invoice';
+import { Invoice, CreateInvoiceRequest, InvoiceItem, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
 import './Invoices.css';
 
@@ -11,15 +11,30 @@ const Invoices: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const [formData, setFormData] = useState<CreateInvoiceRequest>({
     creditCardId: 0,
     dueDate: ''
   });
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [itemForm, setItemForm] = useState({ 
+    description: '', 
+    amount: '', 
+    categoryId: '', 
+    purchaseDate: '' 
+  });
+  const [itemError, setItemError] = useState<string | null>(null);
+  const [addingItem, setAddingItem] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<number | null>(null);
+
   useEffect(() => {
     loadInvoices();
     loadCreditCards();
+    loadCategories();
     
     const token = localStorage.getItem('token');
     if (!token) {
@@ -47,6 +62,15 @@ const Invoices: React.FC = () => {
       setCreditCards(response.creditCards);
     } catch (err) {
       console.error('Error loading credit cards:', err);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const response = await apiService.getCategories();
+      setCategories(response.categories);
+    } catch (err) {
+      console.error('Error loading categories:', err);
     }
   };
 
@@ -99,7 +123,18 @@ const Invoices: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '-';
+    try {
+      // Tenta diferentes formatos de data
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        // Se não conseguir parsear, retorna a string original
+        return dateString;
+      }
+      return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -125,6 +160,84 @@ const Invoices: React.FC = () => {
         return 'Parcial';
       default:
         return 'Aberta';
+    }
+  };
+
+  const handleViewDetails = async (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowDetailsModal(true);
+    setLoadingItems(true);
+    try {
+      const response = await apiService.getInvoiceItems(invoice.id);
+      setInvoiceItems(response.items);
+    } catch (err) {
+      setInvoiceItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetailsModal(false);
+    setSelectedInvoice(null);
+    setInvoiceItems([]);
+  };
+
+  const handleItemInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setItemForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!itemForm.description || !itemForm.amount || !itemForm.purchaseDate || isNaN(Number(itemForm.amount))) {
+      setItemError('Preencha todos os campos obrigatórios corretamente');
+      return;
+    }
+    if (!selectedInvoice) return;
+    setAddingItem(true);
+    setItemError(null);
+    try {
+      await apiService.createInvoiceItem(selectedInvoice.id, {
+        description: itemForm.description,
+        amount: Number(itemForm.amount),
+        categoryId: itemForm.categoryId ? Number(itemForm.categoryId) : undefined,
+        purchaseDate: itemForm.purchaseDate
+      });
+      // Atualiza lista de itens e dados da fatura
+      const [itemsResponse, invoiceResponse] = await Promise.all([
+        apiService.getInvoiceItems(selectedInvoice.id),
+        apiService.getInvoice(selectedInvoice.id)
+      ]);
+      setInvoiceItems(itemsResponse.items);
+      setSelectedInvoice(invoiceResponse.invoice);
+      setItemForm({ description: '', amount: '', categoryId: '', purchaseDate: '' });
+    } catch (err: any) {
+      // Tenta extrair a mensagem de erro específica do backend
+      const errorMessage = err.response?.data?.error || err.message || 'Erro ao adicionar item';
+      setItemError(errorMessage);
+      console.error('Error adding invoice item:', err);
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  const handleRemoveItem = async (itemId: number) => {
+    if (!selectedInvoice) return;
+    setRemovingItemId(itemId);
+    try {
+      await apiService.deleteInvoiceItem(selectedInvoice.id, itemId);
+      // Atualiza lista de itens e dados da fatura
+      const [itemsResponse, invoiceResponse] = await Promise.all([
+        apiService.getInvoiceItems(selectedInvoice.id),
+        apiService.getInvoice(selectedInvoice.id)
+      ]);
+      setInvoiceItems(itemsResponse.items);
+      setSelectedInvoice(invoiceResponse.invoice);
+    } catch (err) {
+      // Pode exibir erro se quiser
+    } finally {
+      setRemovingItemId(null);
     }
   };
 
@@ -238,7 +351,7 @@ const Invoices: React.FC = () => {
 
               <div className="invoice-actions">
                 <button 
-                  onClick={() => setSelectedInvoice(invoice)}
+                  onClick={() => handleViewDetails(invoice)}
                   className="view-button"
                 >
                   View Details
@@ -248,6 +361,106 @@ const Invoices: React.FC = () => {
           ))
         )}
       </div>
+
+      {showDetailsModal && selectedInvoice && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <button className="close-modal" onClick={handleCloseDetails}>&times;</button>
+            <h2>Detalhes da Fatura</h2>
+            <div className="invoice-summary">
+              <div><b>Cartão:</b> {selectedInvoice.creditCardName}</div>
+              <div><b>Vencimento:</b> {formatDate(selectedInvoice.dueDate)}</div>
+              <div><b>Status:</b> {getStatusText(selectedInvoice.status)}</div>
+              <div><b>Total:</b> {formatCurrency(selectedInvoice.totalAmount)}</div>
+              <div><b>Pago:</b> {formatCurrency(selectedInvoice.paidAmount)}</div>
+              <div><b>Restante:</b> {formatCurrency((selectedInvoice.totalAmount || 0) - (selectedInvoice.paidAmount || 0))}</div>
+            </div>
+            <h3>Itens da Fatura</h3>
+            <form className="add-item-form" onSubmit={handleAddItem}>
+              <input
+                type="text"
+                name="description"
+                placeholder="Descrição"
+                value={itemForm.description}
+                onChange={handleItemInputChange}
+                required
+              />
+              <input
+                type="number"
+                name="amount"
+                placeholder="Valor"
+                value={itemForm.amount}
+                onChange={handleItemInputChange}
+                min="0.01"
+                step="0.01"
+                required
+              />
+              <select
+                name="categoryId"
+                value={itemForm.categoryId}
+                onChange={handleItemInputChange}
+              >
+                <option value="">Selecione uma categoria</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                name="purchaseDate"
+                value={itemForm.purchaseDate}
+                onChange={handleItemInputChange}
+                required
+              />
+              <button type="submit" disabled={addingItem}>
+                {addingItem ? 'Adicionando...' : 'Adicionar'}
+              </button>
+            </form>
+            {itemError && <div className="error-message">{itemError}</div>}
+            {loadingItems ? (
+              <div>Carregando itens...</div>
+            ) : invoiceItems.length === 0 ? (
+              <div>Nenhum item nesta fatura.</div>
+            ) : (
+              <div className="table-wrapper">
+                <table className="invoice-items-table">
+                  <thead>
+                    <tr>
+                      <th>Descrição</th>
+                      <th>Valor</th>
+                      <th>Categoria</th>
+                      <th>Data de Compra</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceItems.map(item => (
+                      <tr key={item.id}>
+                        <td>{item.description}</td>
+                        <td>{formatCurrency(item.amount)}</td>
+                        <td>{item.category || '-'}</td>
+                        <td>{formatDate(item.purchaseDate)}</td>
+                        <td>
+                          <button
+                            className="remove-item-btn"
+                            onClick={() => handleRemoveItem(item.id)}
+                            disabled={removingItemId === item.id}
+                            title="Remover item"
+                          >
+                            {removingItemId === item.id ? 'Removendo...' : 'Remover'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
