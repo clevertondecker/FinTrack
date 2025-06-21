@@ -269,6 +269,16 @@
   transform: translateY(-1px);
 }
 
+.activate-button {
+  background: #28a745;
+  color: white;
+}
+
+.activate-button:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
 .delete-button {
   background: #dc3545;
   color: white;

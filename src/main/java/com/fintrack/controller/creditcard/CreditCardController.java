@@ -12,7 +12,7 @@ import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepositor
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,17 +53,15 @@ public class CreditCardController {
      * Creates a new credit card for the authenticated user.
      *
      * @param request the credit card creation request. Must be valid.
-     * @param userDetails the authenticated user details.
+     * @param authentication the authenticated user details.
      * @return a response with the created credit card information.
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createCreditCard(
             @Valid @RequestBody CreateCreditCardRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication authentication) {
 
-        // Find the user
-        Optional<User> userOpt = getUser(
-          userDetails);
+        Optional<User> userOpt = getUser(authentication);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -101,14 +99,14 @@ public class CreditCardController {
     /**
      * Gets all credit cards for the authenticated user.
      *
-     * @param userDetails the authenticated user details.
+     * @param authentication the authenticated user details.
      * @return a response with the user's credit cards.
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getUserCreditCards(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication authentication) {
 
-        Optional<User> userOpt = getUser(userDetails);
+        Optional<User> userOpt = getUser(authentication);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -142,17 +140,15 @@ public class CreditCardController {
      * Gets a specific credit card by ID for the authenticated user.
      *
      * @param id the credit card ID.
-     * @param userDetails the authenticated user details.
+     * @param authentication the authenticated user details.
      * @return a response with the credit card information.
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getCreditCard(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication authentication) {
 
-        // Find the user
-        Optional<User> userOpt = getUser(
-          userDetails);
+        Optional<User> userOpt = getUser(authentication);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
@@ -181,66 +177,67 @@ public class CreditCardController {
         ));
     }
 
-    private Optional<User> getUser(final UserDetails userDetails) {
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(
-          userDetails.getUsername()));
-        return userOpt;
+    private Optional<User> getUser(final Authentication authentication) {
+        if (authentication == null) {
+            return Optional.empty();
+        }
+
+        String username = null;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserDetails) {
+            username = ((UserDetails) principal).getUsername();
+        } else if (principal instanceof String) {
+            username = (String) principal;
+        }
+
+        if (username == null) {
+            return Optional.empty();
+        }
+
+        try {
+            Email email = Email.of(username);
+            return userRepository.findByEmail(email);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     /**
-     * Updates a credit card for the authenticated user.
+     * Activates a credit card for the authenticated user.
      *
-     * @param id the credit card ID.
-     * @param request the credit card update request. Must be valid.
-     * @param userDetails the authenticated user details.
-     * @return a response with the updated credit card information.
+     * @param id the credit card ID. Cannot be null.
+     * @param authentication the authenticated user details. Cannot be null.
+     *
+     * @return a response confirming the activation. Never null.
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateCreditCard(
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<Map<String, Object>> activateCreditCard(
             @PathVariable Long id,
-            @Valid @RequestBody CreateCreditCardRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication authentication) {
 
-        // Find the user
-        Optional<User> userOpt = getUser(userDetails);
+        if (authentication == null || authentication.getName() == null || authentication.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        }
+
+        Optional<User> userOpt = userRepository.findByEmail(Email.of(authentication.getName()));
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
         User user = userOpt.get();
 
-        // Find the credit card
         Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
         if (creditCardOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         CreditCard creditCard = creditCardOpt.get();
 
-        // Find the bank
-        Optional<Bank> bankOpt = bankRepository.findById(request.bankId());
-        if (bankOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Bank not found"));
-        }
-        Bank bank = bankOpt.get();
-
-        // Update the credit card
-        // Note: Since CreditCard is immutable, we need to create a new one
-        // In a real application, you might want to add update methods to the entity
-        CreditCard updatedCreditCard = CreditCard.of(
-            request.name(),
-            request.lastFourDigits(),
-            request.limit(),
-            user,
-            bank
-        );
-        updatedCreditCard = creditCardRepository.save(updatedCreditCard);
+        creditCard.activate();
+        creditCardRepository.save(creditCard);
 
         return ResponseEntity.ok(Map.of(
-            "message", "Credit card updated successfully",
-            "id", updatedCreditCard.getId(),
-            "name", updatedCreditCard.getName(),
-            "lastFourDigits", updatedCreditCard.getLastFourDigits(),
-            "limit", updatedCreditCard.getLimit(),
-            "bankName", updatedCreditCard.getBank().getName()
+            "message", "Credit card activated successfully",
+            "id", creditCard.getId()
         ));
     }
 
@@ -248,16 +245,16 @@ public class CreditCardController {
      * Deactivates a credit card for the authenticated user.
      *
      * @param id the credit card ID.
-     * @param userDetails the authenticated user details.
+     * @param authentication the authenticated user details.
+     *
      * @return a response confirming the deactivation.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deactivateCreditCard(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            Authentication authentication) {
 
-        // Find the user
-        Optional<User> userOpt = getUser(userDetails);
+        Optional<User> userOpt = getUser(authentication);
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }

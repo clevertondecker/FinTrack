@@ -12,6 +12,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.context.annotation.Profile;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import com.fintrack.infrastructure.security.CustomUserDetailsService;
 import com.fintrack.infrastructure.security.JwtFilter;
@@ -21,6 +23,7 @@ import com.fintrack.infrastructure.security.JwtUtil;
  * Security configuration for the application.
  * Configures authentication, authorization, and JWT-based security.
  */
+@Profile("!test")
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -44,6 +47,8 @@ public class SecurityConfig {
    *
    * @param uds the user details service. Configures user details retrieval.
    *
+   * @param corsConfigurationSource the CORS configuration source. Configures CORS settings.
+   *
    * @return the configured SecurityFilterChain. Configures security settings
    * for the application and applies JWT authentication.
    *
@@ -52,8 +57,10 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(final HttpSecurity http,
                                          final JwtUtil jwtUtil,
-                                         final CustomUserDetailsService uds) throws Exception {
+                                         final CustomUserDetailsService uds,
+                                         final CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
+      .cors(cors -> cors.configurationSource(corsConfigurationSource))
       .sessionManagement(sm ->
         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth

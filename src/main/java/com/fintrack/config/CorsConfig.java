@@ -32,7 +32,7 @@ public class CorsConfig {
         
         // Allow common HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
-            "GET", "POST", "PUT", "DELETE", "OPTIONS"
+            "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
         
         // Allow all headers

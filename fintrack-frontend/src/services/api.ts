@@ -35,7 +35,9 @@ class ApiService {
 
     // Interceptor para tratar erros de resposta
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        return response;
+      },
       (error) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
@@ -86,6 +88,11 @@ class ApiService {
 
   async deleteCreditCard(id: number): Promise<{ message: string; id: number }> {
     const response = await this.api.delete(`/credit-cards/${id}`);
+    return response.data;
+  }
+
+  async activateCreditCard(id: number): Promise<{ message: string; id: number }> {
+    const response = await this.api.patch(`/credit-cards/${id}/activate`);
     return response.data;
   }
 

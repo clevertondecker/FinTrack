@@ -21,6 +21,11 @@ const CreditCards: React.FC = () => {
   useEffect(() => {
     loadCreditCards();
     loadBanks();
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('No authentication token found. Please login again.');
+    }
   }, []);
 
   const loadCreditCards = async () => {
@@ -100,6 +105,19 @@ const CreditCards: React.FC = () => {
       } catch (err) {
         setError('Failed to deactivate credit card');
         console.error('Error deleting credit card:', err);
+      }
+    }
+  };
+
+  const handleActivate = async (id: number) => {
+    if (window.confirm('Are you sure you want to activate this credit card?')) {
+      try {
+        await apiService.activateCreditCard(id);
+        await loadCreditCards();
+        setError(null);
+      } catch (err) {
+        setError('Failed to activate credit card');
+        console.error('Error activating credit card:', err);
       }
     }
   };
@@ -263,12 +281,21 @@ const CreditCards: React.FC = () => {
                 >
                   Edit
                 </button>
-                <button 
-                  onClick={() => handleDelete(card.id)}
-                  className="delete-button"
-                >
-                  {card.active ? 'Deactivate' : 'Delete'}
-                </button>
+                {card.active ? (
+                  <button 
+                    onClick={() => handleDelete(card.id)}
+                    className="delete-button"
+                  >
+                    Deactivate
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleActivate(card.id)}
+                    className="activate-button"
+                  >
+                    Activate
+                  </button>
+                )}
               </div>
             </div>
           ))
