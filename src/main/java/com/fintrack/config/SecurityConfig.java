@@ -66,6 +66,7 @@ public class SecurityConfig {
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/api/users/register").permitAll()
         .requestMatchers("/api/auth/login").permitAll()
+        .requestMatchers("/api/banks").permitAll()
         .anyRequest().authenticated());
 
     http.addFilterBefore(

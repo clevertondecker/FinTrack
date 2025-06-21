@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -71,6 +72,23 @@ public class GlobalExceptionHandler {
 
     return ResponseEntity.badRequest()
       .body(Map.of("error", "Invalid parameter format"));
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+    logger.warn("Data Integrity Violation: {}", e.getMessage());
+
+    String errorMessage = "Erro de integridade de dados";
+    
+    // Check if it's a duplicate email error
+    if (e.getMessage() != null && e.getMessage().contains("Duplicate entry") && e.getMessage().contains("users.UK6dotkott2kjsp8vw4d0m25fb7")) {
+      errorMessage = "Este e-mail já está cadastrado. Tente outro e-mail.";
+    } else if (e.getMessage() != null && e.getMessage().contains("Duplicate entry") && e.getMessage().contains("email")) {
+      errorMessage = "Este e-mail já está cadastrado. Tente outro e-mail.";
+    }
+
+    return ResponseEntity.badRequest()
+      .body(Map.of("error", errorMessage));
   }
 
   @ExceptionHandler(Exception.class)

@@ -50,8 +50,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Fetch user data
       const userData = await apiService.getCurrentUser();
       setUser(userData);
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (error: any) {
+      if (error.response && error.response.status === 401) {
+        throw { response: { data: { error: 'E-mail ou senha incorretos.' } } };
+      }
       throw error;
     }
   };

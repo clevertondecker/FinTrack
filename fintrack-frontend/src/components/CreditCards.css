@@ -248,7 +248,8 @@
 }
 
 .edit-button,
-.delete-button {
+.delete-button,
+.activate-button {
   flex: 1;
   padding: 10px;
   border: none;
