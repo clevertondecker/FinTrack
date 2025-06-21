@@ -14,6 +14,8 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
+import com.fintrack.dto.auth.LoginRequest;
+
 @DisplayName("LoginRequest Tests")
 class LoginRequestTest {
 

@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fintrack.controller.auth.dtos.LoginRequest;
-import com.fintrack.controller.auth.dtos.LoginResponse;
+import com.fintrack.dto.auth.LoginRequest;
+import com.fintrack.dto.auth.LoginResponse;
 import com.fintrack.infrastructure.security.JwtUtil;
 
 import jakarta.validation.Valid;

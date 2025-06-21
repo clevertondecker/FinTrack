@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.infrastructure.user.UserRepository;
+import com.fintrack.domain.user.UserRepository;
 
 /**
  * Custom implementation of UserDetailsService for Spring Security.

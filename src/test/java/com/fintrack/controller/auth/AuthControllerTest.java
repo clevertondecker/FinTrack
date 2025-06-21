@@ -18,13 +18,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fintrack.controller.auth.dtos.LoginRequest;
+import com.fintrack.dto.auth.LoginRequest;
 import com.fintrack.infrastructure.security.JwtUtil;
 
 @ExtendWith(MockitoExtension.class)
