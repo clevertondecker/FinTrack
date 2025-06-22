@@ -332,8 +332,19 @@
   }
 
   .remove-item-btn {
-    padding: 3px 8px;
-    font-size: 0.85rem;
+    padding: 6px 10px;
+    font-size: 10px;
+    min-width: 50px;
+  }
+
+  .share-item-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+    min-width: 50px;
+  }
+
+  .item-actions {
+    gap: 4px;
   }
 
   .add-item-form {
@@ -486,7 +497,7 @@
 /* Definir larguras específicas para as colunas */
 .invoice-items-table th:nth-child(1), 
 .invoice-items-table td:nth-child(1) {
-  width: 30%; /* Descrição */
+  width: 25%; /* Descrição */
 }
 
 .invoice-items-table th:nth-child(2), 
@@ -506,25 +517,29 @@
 
 .invoice-items-table th:nth-child(5), 
 .invoice-items-table td:nth-child(5) {
-  width: 15%; /* Ações */
+  width: 20%; /* Ações - aumentado de 15% para 20% */
 }
 
 .item-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-start;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .share-item-btn {
   background: #667eea;
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
   transition: background-color 0.2s;
+  white-space: nowrap;
+  min-width: 60px;
 }
 
 .share-item-btn:hover {
@@ -535,11 +550,14 @@
   background: #dc3545;
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
   transition: background-color 0.2s;
+  white-space: nowrap;
+  min-width: 60px;
 }
 
 .remove-item-btn:hover:not(:disabled) {

@@ -173,7 +173,7 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
   };
 
   const handleRemoveShares = async () => {
-    if (!confirm('Are you sure you want to remove all shares for this item?')) {
+    if (!window.confirm('Are you sure you want to remove all shares for this item?')) {
       return;
     }
 
@@ -227,7 +227,7 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="users-list">
-            {users.map(user => (
+            {users.map((user: User) => (
               <div key={user.id} className="user-share-item">
                 <div className="user-select">
                   <input
@@ -251,7 +251,7 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
                         min="0"
                         max="100"
                         step="0.1"
-                        value={userShares.find(s => s.userId === user.id)?.percentage * 100 || 0}
+                        value={(userShares.find(s => s.userId === user.id)?.percentage || 0) * 100}
                         onChange={(e) => handlePercentageChange(user.id, parseFloat(e.target.value) / 100)}
                         placeholder="0.0"
                       />
