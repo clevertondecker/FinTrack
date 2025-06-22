@@ -9,6 +9,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  pointer-events: auto;
 }
 
 .share-modal-container {
@@ -21,6 +22,8 @@
   overflow-y: auto;
   position: relative;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  pointer-events: auto;
 }
 
 .close-modal {
@@ -65,7 +68,9 @@
 }
 
 .share-controls {
-  margin-bottom: 20px;
+  margin: 20px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .equal-shares-btn {
@@ -77,6 +82,8 @@
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
+  position: relative;
+  z-index: 1;
 }
 
 .equal-shares-btn:hover {
@@ -85,6 +92,9 @@
 
 .users-list {
   margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .user-share-item {
@@ -92,6 +102,9 @@
   border-radius: 6px;
   margin-bottom: 12px;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .user-select {
@@ -134,12 +147,18 @@
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: center;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .percentage-input {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .percentage-input label {
@@ -154,10 +173,39 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.percentage-input input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.percentage-input input:invalid {
+  border-color: #dc3545;
 }
 
 .percentage-input span {
   color: #666;
+  font-weight: 500;
+}
+
+.percentage-input small {
+  color: #666;
+  font-size: 12px;
+  margin-top: 2px;
+  display: block;
+}
+
+.percentage-input small.complete {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.percentage-input small.exceeded {
+  color: #dc3545;
   font-weight: 500;
 }
 
@@ -263,8 +311,74 @@
   color: #721c24;
   padding: 12px;
   border-radius: 6px;
-  margin-bottom: 16px;
+  margin: 12px 0;
   border: 1px solid #f5c6cb;
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+  border: 1px solid #c3e6cb;
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+}
+
+.distribution-status {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-info {
+  background: #e8f4fd;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+  padding: 12px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.status-info .remaining {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.status-complete {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.status-exceeded {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.share-modal-container form {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {
@@ -278,11 +392,38 @@
     gap: 12px;
   }
 
+  .percentage-input {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .percentage-input input {
+    width: 100%;
+    max-width: 120px;
+  }
+
   .modal-actions {
     flex-direction: column;
   }
 
   .modal-actions button {
     width: 100%;
+  }
+
+  .error-message {
+    margin: 12px 0;
+    font-size: 14px;
+  }
+
+  .distribution-status {
+    margin: 12px 0;
+    font-size: 13px;
+  }
+
+  .status-info {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
   }
 } 

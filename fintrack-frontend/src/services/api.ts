@@ -78,6 +78,11 @@ class ApiService {
     return response.data;
   }
 
+  async getUsers(): Promise<{ message: string; users: any[]; count: number }> {
+    const response = await this.api.get<{ message: string; users: any[]; count: number }>('/users');
+    return response.data;
+  }
+
   // Credit Card endpoints
   async getCreditCards(): Promise<{ message: string; creditCards: any[]; count: number }> {
     const response = await this.api.get<{ message: string; creditCards: any[]; count: number }>('/credit-cards');

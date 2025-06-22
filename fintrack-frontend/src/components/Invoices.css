@@ -317,8 +317,9 @@
   }
 
   .modal-container {
-    width: 95%;
-    max-width: 95%;
+    width: 98%;
+    max-width: 98%;
+    min-width: 320px;
     padding: 20px 15px;
   }
 
@@ -332,24 +333,61 @@
   }
 
   .remove-item-btn {
-    padding: 6px 10px;
-    font-size: 10px;
-    min-width: 50px;
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 90px;
   }
 
   .share-item-btn {
-    padding: 6px 10px;
-    font-size: 10px;
-    min-width: 50px;
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 90px;
   }
 
   .item-actions {
-    gap: 4px;
+    gap: 6px;
+    flex-direction: column;
+    align-items: center;
+    min-height: 60px;
+    padding: 8px 4px;
+  }
+
+  .item-actions button {
+    width: 100%;
+    max-width: 90px;
+    margin: 2px 0;
   }
 
   .add-item-form {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  /* Ajustes específicos para larguras das colunas em mobile */
+  .invoice-items-table th:nth-child(1), 
+  .invoice-items-table td:nth-child(1) {
+    width: 20%; /* Descrição - reduzido para mobile */
+  }
+
+  .invoice-items-table th:nth-child(2), 
+  .invoice-items-table td:nth-child(2) {
+    width: 15%; /* Valor */
+  }
+
+  .invoice-items-table th:nth-child(3), 
+  .invoice-items-table td:nth-child(3) {
+    width: 20%; /* Categoria */
+  }
+
+  .invoice-items-table th:nth-child(4), 
+  .invoice-items-table td:nth-child(4) {
+    width: 20%; /* Data de Compra */
+  }
+
+  .invoice-items-table th:nth-child(5), 
+  .invoice-items-table td:nth-child(5) {
+    width: 25%; /* Ações - aumentado para mobile */
+    min-width: 120px;
   }
 }
 
@@ -369,9 +407,9 @@
   background: #fff;
   border-radius: 12px;
   padding: 32px 28px 24px 28px;
-  min-width: 350px;
-  max-width: 800px;
-  width: 90%;
+  min-width: 600px;
+  max-width: 900px;
+  width: 95%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
@@ -458,6 +496,7 @@
   background: #fff;
   table-layout: fixed;
   max-width: 100%;
+  word-wrap: break-word;
 }
 
 .table-wrapper {
@@ -466,6 +505,26 @@
   margin-top: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  min-width: 100%;
+  position: relative;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .invoice-items-table th, .invoice-items-table td {
@@ -474,9 +533,10 @@
   text-align: left;
   color: #333;
   word-wrap: break-word;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   min-width: 80px;
+  vertical-align: middle;
 }
 
 .invoice-items-table th {
@@ -497,7 +557,7 @@
 /* Definir larguras específicas para as colunas */
 .invoice-items-table th:nth-child(1), 
 .invoice-items-table td:nth-child(1) {
-  width: 25%; /* Descrição */
+  width: 25%; /* Descrição - reduzido de 30% */
 }
 
 .invoice-items-table th:nth-child(2), 
@@ -518,28 +578,41 @@
 .invoice-items-table th:nth-child(5), 
 .invoice-items-table td:nth-child(5) {
   width: 20%; /* Ações - aumentado de 15% para 20% */
+  text-align: center;
+  overflow: visible;
+  white-space: nowrap;
+  min-width: 140px;
+  padding: 8px 4px;
+  vertical-align: middle;
 }
 
 .item-actions {
   display: flex;
   gap: 6px;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   flex-wrap: wrap;
+  min-height: 32px;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 .share-item-btn {
   background: #667eea;
   color: white;
   border: none;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 500;
   transition: background-color 0.2s;
   white-space: nowrap;
-  min-width: 60px;
+  min-width: 80px;
+  text-align: center;
+  line-height: 1.2;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .share-item-btn:hover {
@@ -550,14 +623,18 @@
   background: #dc3545;
   color: white;
   border: none;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 500;
   transition: background-color 0.2s;
   white-space: nowrap;
-  min-width: 60px;
+  min-width: 80px;
+  text-align: center;
+  line-height: 1.2;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .remove-item-btn:hover:not(:disabled) {
@@ -573,4 +650,20 @@
   color: #d32f2f;
   margin: 6px 0 0 0;
   font-size: 0.97rem;
+}
+
+/* Garantir que os botões sejam exibidos corretamente */
+.item-actions button {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 28px;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+/* Ajuste específico para evitar corte de texto */
+.invoice-items-table td:nth-child(5) {
+  position: relative;
+  z-index: 1;
 } 

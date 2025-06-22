@@ -471,17 +471,17 @@ const Invoices: React.FC = () => {
                           <button
                             className="share-item-btn"
                             onClick={() => handleShareItem(item)}
-                            title="Dividir item"
+                            title="Dividir item entre usuários"
                           >
-                            Dividir
+                            Compartilhar
                           </button>
                           <button
                             className="remove-item-btn"
                             onClick={() => handleRemoveItem(item.id)}
                             disabled={removingItemId === item.id}
-                            title="Remover item"
+                            title="Remover item da fatura"
                           >
-                            {removingItemId === item.id ? 'Removendo...' : 'Remover'}
+                            {removingItemId === item.id ? 'Removendo...' : 'Excluir'}
                           </button>
                         </td>
                       </tr>

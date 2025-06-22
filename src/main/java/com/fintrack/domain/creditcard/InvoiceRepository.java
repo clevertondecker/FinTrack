@@ -1,5 +1,7 @@
 package com.fintrack.domain.creditcard;
 
+import com.fintrack.domain.user.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -8,15 +10,7 @@ import java.util.Optional;
  * Repository interface for Invoice entities.
  * Provides methods to persist and retrieve invoice data.
  */
-public interface InvoiceRepository {
-
-    /**
-     * Saves an invoice entity.
-     *
-     * @param invoice the invoice to save. Must not be null.
-     * @return the saved invoice entity. Never null.
-     */
-    Invoice save(Invoice invoice);
+public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     /**
      * Finds an invoice by its ID and credit card.
@@ -26,6 +20,15 @@ public interface InvoiceRepository {
      * @return an Optional containing the invoice if found, empty otherwise.
      */
     Optional<Invoice> findByIdAndCreditCard(Long id, CreditCard creditCard);
+
+    /**
+     * Finds an invoice by its ID and credit card owner.
+     *
+     * @param id the invoice ID. Must not be null.
+     * @param user the owner of the credit card. Must not be null.
+     * @return an Optional containing the invoice if found, empty otherwise.
+     */
+    Optional<Invoice> findByIdAndCreditCardOwner(Long id, User user);
 
     /**
      * Finds all invoices for a specific credit card and month.
@@ -43,6 +46,14 @@ public interface InvoiceRepository {
      * @return a list of invoices for the credit card. Never null, may be empty.
      */
     List<Invoice> findByCreditCard(CreditCard creditCard);
+
+    /**
+     * Finds all invoices for credit cards owned by a specific user.
+     *
+     * @param user the owner of the credit cards. Must not be null.
+     * @return a list of invoices for the user's credit cards. Never null, may be empty.
+     */
+    List<Invoice> findByCreditCardOwner(User user);
 
     /**
      * Finds all invoices for a specific month across all credit cards.

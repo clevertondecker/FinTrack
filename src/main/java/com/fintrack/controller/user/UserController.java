@@ -1,5 +1,6 @@
 package com.fintrack.controller.user;
 
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
@@ -22,6 +23,8 @@ import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.RegisterRequest;
 import com.fintrack.dto.user.RegisterResponse;
 import com.fintrack.dto.user.CurrentUserResponse;
+import com.fintrack.dto.user.UserListResponse;
+import com.fintrack.dto.user.UserResponse;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.persistence.user.UserJpaRepository;
 
@@ -85,7 +88,7 @@ public class UserController {
             if (userOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            
+
             User user = userOpt.get();
             CurrentUserResponse response = new CurrentUserResponse(
                 user.getId(),
@@ -95,10 +98,41 @@ public class UserController {
                 user.getCreatedAt(),
                 user.getUpdatedAt()
             );
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting current user: ", e);
+            throw e; // Let GlobalExceptionHandler handle it
+        }
+    }
+
+    /**
+     * Gets all users in the system.
+     *
+     * @return a response with all users' information
+     */
+    @GetMapping
+    public ResponseEntity<UserListResponse> getAllUsers() {
+        try {
+            List<User> users = userRepository.findAll();
+            List<UserResponse> userResponses = users.stream()
+                .map(user -> new UserResponse(
+                    user.getId(),
+                    user.getName(),
+                    user.getEmail().getEmail(),
+                    user.getRoles().stream().map(Role::name).toArray(String[]::new),
+                    user.getCreatedAt(),
+                    user.getUpdatedAt()
+                ))
+                .toList();
+
+            UserListResponse response = new UserListResponse(
+                "Users retrieved successfully",
+                userResponses, userResponses.size());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error getting all users: ", e);
             throw e; // Let GlobalExceptionHandler handle it
         }
     }

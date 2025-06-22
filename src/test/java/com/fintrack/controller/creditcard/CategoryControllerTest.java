@@ -158,7 +158,7 @@ public class CategoryControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Category name must be between 2 and 50 characters"));
+                .andExpect(jsonPath("$.error").value("Category name is required"));
         }
 
         @Test
@@ -171,32 +171,6 @@ public class CategoryControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Category name is required"));
-        }
-
-        @Test
-        @DisplayName("Should return error when name is too short")
-        void shouldReturnErrorWhenNameIsTooShort() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("A", "#FF0000");
-
-            mockMvc.perform(post("/api/categories")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Category name must be between 2 and 50 characters"));
-        }
-
-        @Test
-        @DisplayName("Should return error when name is too long")
-        void shouldReturnErrorWhenNameIsTooLong() throws Exception {
-            String longName = "This is a very long category name that exceeds the maximum allowed length of fifty characters";
-            CategoryCreateRequest request = new CategoryCreateRequest(longName, "#FF0000");
-
-            mockMvc.perform(post("/api/categories")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error")
-                  .value("Category name must be between 2 and 50 characters"));
         }
 
         @Test

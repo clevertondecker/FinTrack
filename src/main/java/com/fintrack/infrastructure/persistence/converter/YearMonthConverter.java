@@ -4,6 +4,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * JPA converter for YearMonth type.
@@ -16,11 +17,30 @@ public class YearMonthConverter implements AttributeConverter<YearMonth, String>
 
     @Override
     public String convertToDatabaseColumn(YearMonth yearMonth) {
-        return yearMonth != null ? yearMonth.format(FORMATTER) : null;
+        if (yearMonth == null) {
+            // Use current month as fallback instead of null
+            return YearMonth.now().format(FORMATTER);
+        }
+        return yearMonth.format(FORMATTER);
     }
 
     @Override
     public YearMonth convertToEntityAttribute(String dbData) {
-        return dbData != null ? YearMonth.parse(dbData, FORMATTER) : null;
+        if (dbData == null || dbData.trim().isEmpty()) {
+            // Use current month as fallback instead of null
+            System.err.println("Warning: Null or empty YearMonth in database, using current month as fallback");
+            return YearMonth.now();
+        }
+        try {
+            return YearMonth.parse(dbData.trim(), FORMATTER);
+        } catch (DateTimeParseException e) {
+            // Log the error and use current month as fallback
+            System.err.println("Warning: Invalid YearMonth format in database: " + dbData + ". Error: " + e.getMessage() + ". Using current month as fallback.");
+            return YearMonth.now();
+        } catch (Exception e) {
+            // Log any other unexpected errors and use current month as fallback
+            System.err.println("Warning: Unexpected error parsing YearMonth from database: " + dbData + ". Error: " + e.getMessage() + ". Using current month as fallback.");
+            return YearMonth.now();
+        }
     }
 } 

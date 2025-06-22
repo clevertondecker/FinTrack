@@ -2,6 +2,7 @@ package com.fintrack.infrastructure.persistence.creditcard;
 
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceRepository;
 import com.fintrack.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +19,7 @@ import java.util.Optional;
  * Provides database operations for invoice persistence.
  */
 @Repository
-public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long> {
+public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, InvoiceRepository {
 
     /**
      * Finds an invoice by its ID and credit card owner.
@@ -34,6 +36,7 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long> {
      * @param creditCard the credit card. Cannot be null.
      * @return a list of invoices for the credit card. Never null, may be empty.
      */
+    @Override
     List<Invoice> findByCreditCard(CreditCard creditCard);
 
     /**
@@ -87,4 +90,37 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long> {
     @Modifying
     @Query("UPDATE Invoice i SET i.totalAmount = (SELECT COALESCE(SUM(ii.amount), 0) FROM InvoiceItem ii WHERE ii.invoice.id = :invoiceId) WHERE i.id = :invoiceId")
     void updateTotalAmount(@Param("invoiceId") Long invoiceId);
+
+    // Implementações dos métodos da interface InvoiceRepository
+
+    @Override
+    default Optional<Invoice> findByIdAndCreditCard(Long id, CreditCard creditCard) {
+        return findByCreditCard(creditCard).stream()
+                .filter(invoice -> invoice.getId().equals(id))
+                .findFirst();
+    }
+
+    @Override
+    default List<Invoice> findByCreditCardAndMonth(CreditCard creditCard, YearMonth month) {
+        return findByCreditCard(creditCard).stream()
+                .filter(invoice -> invoice.getMonth().equals(month))
+                .toList();
+    }
+
+    @Override
+    default List<Invoice> findByMonth(YearMonth month) {
+        return findAll().stream()
+                .filter(invoice -> invoice.getMonth().equals(month))
+                .toList();
+    }
+
+    @Override
+    default boolean existsByIdAndCreditCard(Long id, CreditCard creditCard) {
+        return findByIdAndCreditCard(id, creditCard).isPresent();
+    }
+
+    @Override
+    default void deleteByIdAndCreditCard(Long id, CreditCard creditCard) {
+        findByIdAndCreditCard(id, creditCard).ifPresent(this::delete);
+    }
 } 

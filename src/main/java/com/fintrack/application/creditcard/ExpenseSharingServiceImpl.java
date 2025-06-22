@@ -77,7 +77,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         List<ItemShare> existingShares = itemShareRepository.findByInvoiceItem(item);
         for (ItemShare share : existingShares) {
             item.removeShare(share);
-            itemShareRepository.deleteByInvoiceItem(item);
+            itemShareRepository.delete(share);
         }
     }
 
@@ -88,6 +88,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
 
     @Override
     public List<ItemShare> getSharesForItem(InvoiceItem item) {
+        // Use the repository method to ensure shares are loaded from the database
         return itemShareRepository.findByInvoiceItem(item);
     }
 

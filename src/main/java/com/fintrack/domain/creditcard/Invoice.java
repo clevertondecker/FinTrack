@@ -28,7 +28,7 @@ public class Invoice {
     @JoinColumn(name = "credit_card_id", nullable = false)
     private CreditCard creditCard;
 
-    @Column(nullable = false)
+    @Column(name = "invoice_month", nullable = false)
     @Convert(converter = YearMonthConverter.class)
     private YearMonth month;
 

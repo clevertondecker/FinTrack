@@ -45,7 +45,7 @@ public class InvoiceItem {
     @Column(nullable = false)
     private Integer totalInstallments = 1;
 
-    @OneToMany(mappedBy = "invoiceItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "invoiceItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ItemShare> shares = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
@@ -256,7 +256,11 @@ public class InvoiceItem {
      *
      * @return a defensive copy of the shares list. Never null, may be empty.
      */
-    public List<ItemShare> getShares() { return new ArrayList<>(shares); }
+    public List<ItemShare> getShares() { 
+        // Return a defensive copy of the shares list
+        // Note: This relies on the shares being properly loaded by the repository
+        return new ArrayList<>(shares); 
+    }
 
     /**
      * Gets the invoice item's creation timestamp.

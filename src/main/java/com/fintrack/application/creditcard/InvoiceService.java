@@ -9,6 +9,7 @@ import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.dto.creditcard.InvoiceItemResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,14 +28,14 @@ import java.util.HashMap;
 @Transactional
 public class InvoiceService {
 
-    private final InvoiceJpaRepository invoiceRepository;
-    private final InvoiceItemJpaRepository invoiceItemRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
     private final CreditCardJpaRepository creditCardRepository;
     private final CategoryJpaRepository categoryRepository;
     private final UserRepository userRepository;
 
-    public InvoiceService(final InvoiceJpaRepository theInvoiceRepository,
-                         final InvoiceItemJpaRepository theInvoiceItemRepository,
+    public InvoiceService(@Qualifier("invoiceJpaRepository") final InvoiceRepository theInvoiceRepository,
+                         @Qualifier("invoiceItemJpaRepository") final InvoiceItemRepository theInvoiceItemRepository,
                          final CreditCardJpaRepository theCreditCardRepository,
                          final CategoryJpaRepository theCategoryRepository,
                          final UserRepository theUserRepository) {
