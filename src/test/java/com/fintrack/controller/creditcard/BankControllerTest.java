@@ -1,5 +1,7 @@
 package com.fintrack.controller.creditcard;
 
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -64,12 +66,7 @@ class BankControllerTest {
             when(bankRepository.existsByCode("NU")).thenReturn(false);
             when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
 
-            String requestBody = """
-                {
-                    "code": "NU",
-                    "name": "Nubank"
-                }
-                """;
+            String requestBody = "{\"code\": \"NU\", \"name\": \"Nubank\"}";
 
             // When & Then
             mockMvc.perform(post("/api/banks")
@@ -84,33 +81,25 @@ class BankControllerTest {
         @Test
         @DisplayName("Should return bad request when code is missing")
         void shouldReturnBadRequestWhenCodeIsMissing() throws Exception {
-            String requestBody = """
-                {
-                    "name": "Nubank"
-                }
-                """;
+            String requestBody = "{\"name\": \"Nubank\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Code and name are required"));
+                    .andExpect(jsonPath("$.error").value("Bank code is required"));
         }
 
         @Test
         @DisplayName("Should return bad request when name is missing")
         void shouldReturnBadRequestWhenNameIsMissing() throws Exception {
-            String requestBody = """
-                {
-                    "code": "NU"
-                }
-                """;
+            String requestBody = "{\"code\": \"NU\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Code and name are required"));
+                    .andExpect(jsonPath("$.error").value("Bank name is required"));
         }
 
         @Test
@@ -119,12 +108,7 @@ class BankControllerTest {
             // Given
             when(bankRepository.existsByCode("NU")).thenReturn(true);
 
-            String requestBody = """
-                {
-                    "code": "NU",
-                    "name": "Nubank"
-                }
-                """;
+            String requestBody = "{\"code\": \"NU\", \"name\": \"Nubank\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -134,54 +118,43 @@ class BankControllerTest {
         }
 
         @Test
-        @DisplayName("Should handle special characters in bank name")
-        void shouldHandleSpecialCharactersInBankName() throws Exception {
-            // Given
-            Bank savedBank = Bank.of("ITAU", "Itaú Unibanco S.A.");
-            when(bankRepository.existsByCode("ITAU")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
-
-            String requestBody = """
-                {
-                    "code": "ITAU",
-                    "name": "Itaú Unibanco S.A."
-                }
-                """;
-
-            mockMvc.perform(post("/api/banks")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(requestBody))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.message").value("Bank created successfully"))
-                    .andExpect(jsonPath("$.code").value("ITAU"))
-                    .andExpect(jsonPath("$.name").value("Itaú Unibanco S.A."));
-        }
-
-        @Test
         @DisplayName("Should handle empty request body")
         void shouldHandleEmptyRequestBody() throws Exception {
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{}"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Code and name are required"));
+                    .andExpect(jsonPath("$.error").value(anyOf(
+                        equalTo("Bank code is required"),
+                        equalTo("Bank name is required")
+                    )));
         }
 
         @Test
         @DisplayName("Should handle null values in request")
         void shouldHandleNullValuesInRequest() throws Exception {
-            String requestBody = """
-                {
-                    "code": null,
-                    "name": null
-                }
-                """;
+            String requestBody = "{\"code\": null, \"name\": null}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Code and name are required"));
+                    .andExpect(jsonPath("$.error").value(anyOf(
+                        equalTo("Bank code is required"),
+                        equalTo("Bank name is required")
+                    )));
+        }
+
+        @Test
+        @DisplayName("Should not allow special characters in bank name")
+        void shouldNotAllowSpecialCharactersInBankName() throws Exception {
+            String requestBody = "{\"code\": \"ITAU\", \"name\": \"Itaú Unibanco S.A.\"}";
+
+            mockMvc.perform(post("/api/banks")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("Bank name must contain only letters, numbers and spaces"));
         }
     }
 
@@ -341,62 +314,37 @@ class BankControllerTest {
             when(bankRepository.existsByCode("LONG")).thenReturn(false);
             when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
 
-            String requestBody = String.format("""
-                {
-                    "code": "LONG",
-                    "name": "%s"
-                }
-                """, longName);
+            String requestBody = "{\"code\": \"LONG\", \"name\": \"" + longName + "\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value(longName));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("Bank name must be between 2 and 100 characters"));
         }
 
         @Test
         @DisplayName("Should handle special characters in code")
         void shouldHandleSpecialCharactersInCode() throws Exception {
-            // Given
-            Bank savedBank = Bank.of("ITAU-银行", "Itaú Bank");
-            when(bankRepository.existsByCode("ITAU-银行")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
-
-            String requestBody = """
-                {
-                    "code": "ITAU-银行",
-                    "name": "Itaú Bank"
-                }
-                """;
+            String requestBody = "{\"code\": \"NU@\", \"name\": \"Nubank\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("ITAU-银行"));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("Bank code must contain only uppercase letters and numbers"));
         }
 
         @Test
-        @DisplayName("Should handle emoji in bank name")
-        void shouldHandleEmojiInBankName() throws Exception {
-            // Given
-            Bank savedBank = Bank.of("DIGI", "Digital Bank 🏦");
-            when(bankRepository.existsByCode("DIGI")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
-
-            String requestBody = """
-                {
-                    "code": "DIGI",
-                    "name": "Digital Bank 🏦"
-                }
-                """;
+        @DisplayName("Should not allow emoji in bank name")
+        void shouldNotAllowEmojiInBankName() throws Exception {
+            String requestBody = "{\"code\": \"EMOJI\", \"name\": \"🏦 Bank\"}";
 
             mockMvc.perform(post("/api/banks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(requestBody))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("Digital Bank 🏦"));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("Bank name must contain only letters, numbers and spaces"));
         }
     }
 } 

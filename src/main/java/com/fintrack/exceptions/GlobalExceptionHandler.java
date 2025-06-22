@@ -91,6 +91,12 @@ public class GlobalExceptionHandler {
       .body(Map.of("error", errorMessage));
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException e) {
+    logger.warn("Illegal argument: {}", e.getMessage());
+    return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, String>> handleGenericException(Exception e) {
     logger.error("Internal Server Error: ", e);

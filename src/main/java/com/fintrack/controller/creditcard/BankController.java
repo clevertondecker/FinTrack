@@ -2,13 +2,17 @@ package com.fintrack.controller.creditcard;
 
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
+import com.fintrack.dto.creditcard.BankCreateRequest;
+import com.fintrack.dto.creditcard.BankCreateResponse;
+import com.fintrack.dto.creditcard.BankListResponse;
+import com.fintrack.dto.creditcard.BankDetailResponse;
+import com.fintrack.dto.creditcard.BankResponse;
+
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  * REST controller for managing banks.
@@ -31,27 +35,21 @@ public class BankController {
      * @return a response with the created bank information.
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createBank(@RequestBody Map<String, String> request) {
-        String code = request.get("code");
-        String name = request.get("name");
-
-        if (code == null || name == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Code and name are required"));
-        }
-
+    public ResponseEntity<BankCreateResponse> createBank(@Valid @RequestBody BankCreateRequest request) {
         // Check if bank already exists
-        if (bankRepository.existsByCode(code)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Bank with this code already exists"));
+        if (bankRepository.existsByCode(request.code())) {
+            throw new IllegalArgumentException("Bank with this code already exists");
         }
 
-        Bank bank = Bank.of(code, name);
+        Bank bank = Bank.of(request.code(), request.name());
         Bank savedBank = bankRepository.save(bank);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Bank created successfully");
-        response.put("id", savedBank.getId());
-        response.put("code", savedBank.getCode());
-        response.put("name", savedBank.getName());
+        BankCreateResponse response = new BankCreateResponse(
+            "Bank created successfully",
+            savedBank.getId(),
+            savedBank.getCode(),
+            savedBank.getName()
+        );
 
         return ResponseEntity.ok(response);
     }
@@ -62,22 +60,18 @@ public class BankController {
      * @return a response with all banks.
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllBanks() {
+    public ResponseEntity<BankListResponse> getAllBanks() {
         List<Bank> banks = bankRepository.findAll();
 
-        List<Map<String, Object>> bankDtos = new ArrayList<>();
-        for (Bank bank : banks) {
-            Map<String, Object> bankDto = new HashMap<>();
-            bankDto.put("id", bank.getId());
-            bankDto.put("code", bank.getCode());
-            bankDto.put("name", bank.getName());
-            bankDtos.add(bankDto);
-        }
+        List<BankResponse> bankResponses = banks.stream()
+            .map(bank -> new BankResponse(bank.getId(), bank.getCode(), bank.getName()))
+            .toList();
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Banks retrieved successfully");
-        response.put("banks", bankDtos);
-        response.put("count", bankDtos.size());
+        BankListResponse response = new BankListResponse(
+            "Banks retrieved successfully",
+            bankResponses,
+            bankResponses.size()
+        );
 
         return ResponseEntity.ok(response);
     }
@@ -89,18 +83,11 @@ public class BankController {
      * @return a response with the bank information.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getBank(@PathVariable Long id) {
+    public ResponseEntity<BankDetailResponse> getBank(@PathVariable Long id) {
         return bankRepository.findById(id)
             .map(bank -> {
-                Map<String, Object> bankInfo = new HashMap<>();
-                bankInfo.put("id", bank.getId());
-                bankInfo.put("code", bank.getCode());
-                bankInfo.put("name", bank.getName());
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("message", "Bank retrieved successfully");
-                response.put("bank", bankInfo);
-
+                BankResponse bankResponse = new BankResponse(bank.getId(), bank.getCode(), bank.getName());
+                BankDetailResponse response = new BankDetailResponse("Bank retrieved successfully", bankResponse);
                 return ResponseEntity.ok(response);
             })
             .orElse(ResponseEntity.notFound().build());
