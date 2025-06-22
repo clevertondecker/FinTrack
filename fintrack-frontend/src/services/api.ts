@@ -1,20 +1,13 @@
 import axios, { AxiosInstance } from 'axios';
 import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '../types/auth';
 import { 
-  CreditCard, 
   CreateCreditCardRequest, 
-  CreditCardResponse, 
   CreateCreditCardResponse,
   Bank 
 } from '../types/creditCard';
 import {
-  Invoice,
-  InvoiceItem,
   CreateInvoiceRequest,
   CreateInvoiceItemRequest,
-  InvoiceResponse,
-  InvoiceDetailResponse,
-  InvoiceItemsResponse,
   CreateInvoiceResponse,
   CreateInvoiceItemResponse,
   Category
@@ -81,13 +74,13 @@ class ApiService {
   }
 
   // Credit Card endpoints
-  async getCreditCards(): Promise<CreditCardResponse> {
-    const response = await this.api.get<CreditCardResponse>('/credit-cards');
+  async getCreditCards(): Promise<{ message: string; creditCards: any[]; count: number }> {
+    const response = await this.api.get<{ message: string; creditCards: any[]; count: number }>('/credit-cards');
     return response.data;
   }
 
-  async getCreditCard(id: number): Promise<{ message: string; creditCard: CreditCard }> {
-    const response = await this.api.get(`/credit-cards/${id}`);
+  async getCreditCard(id: number): Promise<{ message: string; creditCard: any }> {
+    const response = await this.api.get<{ message: string; creditCard: any }>(`/credit-cards/${id}`);
     return response.data;
   }
 
@@ -113,23 +106,23 @@ class ApiService {
 
   // Bank endpoints
   async getBanks(): Promise<Bank[]> {
-    const response = await this.api.get<{ banks: Bank[] }>('/banks');
+    const response = await this.api.get<{ message: string; banks: Bank[]; count: number }>('/banks');
     return response.data.banks;
   }
 
   // Invoice endpoints
-  async getInvoices(): Promise<InvoiceResponse> {
-    const response = await this.api.get<InvoiceResponse>('/invoices');
+  async getInvoices(): Promise<{ message: string; invoices: any[]; count: number }> {
+    const response = await this.api.get<{ message: string; invoices: any[]; count: number }>('/invoices');
     return response.data;
   }
 
-  async getInvoice(id: number): Promise<InvoiceDetailResponse> {
-    const response = await this.api.get<InvoiceDetailResponse>(`/invoices/${id}`);
+  async getInvoice(id: number): Promise<{ message: string; invoice: any }> {
+    const response = await this.api.get<{ message: string; invoice: any }>(`/invoices/${id}`);
     return response.data;
   }
 
-  async getInvoicesByCreditCard(creditCardId: number): Promise<InvoiceResponse> {
-    const response = await this.api.get<InvoiceResponse>(`/invoices/credit-card/${creditCardId}`);
+  async getInvoicesByCreditCard(creditCardId: number): Promise<{ message: string; creditCardId: number; creditCardName: string; invoices: any[]; count: number }> {
+    const response = await this.api.get<{ message: string; creditCardId: number; creditCardName: string; invoices: any[]; count: number }>(`/invoices/credit-card/${creditCardId}`);
     return response.data;
   }
 
@@ -138,8 +131,8 @@ class ApiService {
     return response.data;
   }
 
-  async getInvoiceItems(invoiceId: number): Promise<InvoiceItemsResponse> {
-    const response = await this.api.get<InvoiceItemsResponse>(`/invoices/${invoiceId}/items`);
+  async getInvoiceItems(invoiceId: number): Promise<{ message: string; invoiceId: number; items: any[]; count: number; totalAmount: number }> {
+    const response = await this.api.get<{ message: string; invoiceId: number; items: any[]; count: number; totalAmount: number }>(`/invoices/${invoiceId}/items`);
     return response.data;
   }
 

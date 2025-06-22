@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
     } catch (error: any) {
       if (error.response && error.response.status === 401) {
-        throw { response: { data: { error: 'E-mail ou senha incorretos.' } } };
+        throw new Error('E-mail ou senha incorretos.');
       }
       throw error;
     }
