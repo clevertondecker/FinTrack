@@ -96,7 +96,8 @@ public class CreditCardControllerTest {
         // When & Then
         mockMvc.perform(patch("/api/credit-cards/{id}/activate", creditCardId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Credit card not found"));
     }
 
     @Test
@@ -150,7 +151,17 @@ public class CreditCardControllerTest {
                 .andExpect(jsonPath("$.message").value("Credit cards retrieved successfully"))
                 .andExpect(jsonPath("$.count").value(2))
                 .andExpect(jsonPath("$.creditCards").isArray())
-                .andExpect(jsonPath("$.creditCards.length()").value(2));
+                .andExpect(jsonPath("$.creditCards.length()").value(2))
+                .andExpect(jsonPath("$.creditCards[0].id").value(1))
+                .andExpect(jsonPath("$.creditCards[0].name").value("Test Card"))
+                .andExpect(jsonPath("$.creditCards[0].lastFourDigits").value("1234"))
+                .andExpect(jsonPath("$.creditCards[0].active").value(true))
+                .andExpect(jsonPath("$.creditCards[0].bankName").value("Nubank"))
+                .andExpect(jsonPath("$.creditCards[1].id").value(2))
+                .andExpect(jsonPath("$.creditCards[1].name").value("Inactive Card"))
+                .andExpect(jsonPath("$.creditCards[1].lastFourDigits").value("5678"))
+                .andExpect(jsonPath("$.creditCards[1].active").value(false))
+                .andExpect(jsonPath("$.creditCards[1].bankName").value("Nubank"));
     }
 
     @Test
@@ -176,7 +187,11 @@ public class CreditCardControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Credit card retrieved successfully"))
-                .andExpect(jsonPath("$.creditCard").exists());
+                .andExpect(jsonPath("$.creditCard.id").value(1))
+                .andExpect(jsonPath("$.creditCard.name").value("Test Card"))
+                .andExpect(jsonPath("$.creditCard.lastFourDigits").value("1234"))
+                .andExpect(jsonPath("$.creditCard.active").value(true))
+                .andExpect(jsonPath("$.creditCard.bankName").value("Nubank"));
     }
 
     @Test
@@ -193,7 +208,8 @@ public class CreditCardControllerTest {
         // When & Then
         mockMvc.perform(get("/api/credit-cards/{id}", creditCardId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Credit card not found"));
     }
 
     @Test
@@ -224,7 +240,8 @@ public class CreditCardControllerTest {
 
         mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Credit card not found"));
     }
 
     @Test
