@@ -37,6 +37,7 @@ import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.config.TestSecurityConfig;
+import com.fintrack.dto.creditcard.InvoiceItemResponse;
 
 @WebMvcTest(InvoiceItemController.class)
 @AutoConfigureMockMvc
@@ -162,18 +163,20 @@ class InvoiceItemControllerTest {
         // Given
         Long invoiceId = 1L;
         List<InvoiceItem> invoiceItems = List.of(testInvoiceItem);
-        Map<String, Object> invoiceItemDto = new HashMap<>();
-        invoiceItemDto.put("id", 1L);
-        invoiceItemDto.put("description", "Test Item");
-        invoiceItemDto.put("amount", new BigDecimal("100.00"));
-        invoiceItemDto.put("purchaseDate", "2024-01-15");
-        invoiceItemDto.put("installments", 1);
-
-        List<Map<String, Object>> invoiceItemDtos = List.of(invoiceItemDto);
+        InvoiceItemResponse invoiceItemResponse = new InvoiceItemResponse(
+            testInvoiceItem.getId(),
+            testInvoiceItem.getInvoice().getId(),
+            testInvoiceItem.getDescription(),
+            testInvoiceItem.getAmount(),
+            testInvoiceItem.getCategory() != null ? testInvoiceItem.getCategory().getName() : null,
+            testInvoiceItem.getPurchaseDate().toString(),
+            testInvoiceItem.getCreatedAt()
+        );
+        List<InvoiceItemResponse> invoiceItemResponses = List.of(invoiceItemResponse);
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoiceItems(eq(invoiceId), eq(testUser))).thenReturn(invoiceItems);
-        when(invoiceService.toInvoiceItemDtos(eq(invoiceItems))).thenReturn(invoiceItemDtos);
+        when(invoiceService.toInvoiceItemResponseList(eq(invoiceItems))).thenReturn(invoiceItemResponses);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
 
         // When & Then
@@ -212,16 +215,19 @@ class InvoiceItemControllerTest {
         // Given
         Long invoiceId = 1L;
         Long itemId = 1L;
-        Map<String, Object> invoiceItemDto = new HashMap<>();
-        invoiceItemDto.put("id", 1L);
-        invoiceItemDto.put("description", "Test Item");
-        invoiceItemDto.put("amount", new BigDecimal("100.00"));
-        invoiceItemDto.put("purchaseDate", "2024-01-15");
-        invoiceItemDto.put("installments", 1);
+        InvoiceItemResponse invoiceItemResponse = new InvoiceItemResponse(
+            testInvoiceItem.getId(),
+            testInvoiceItem.getInvoice().getId(),
+            testInvoiceItem.getDescription(),
+            testInvoiceItem.getAmount(),
+            testInvoiceItem.getCategory() != null ? testInvoiceItem.getCategory().getName() : null,
+            testInvoiceItem.getPurchaseDate().toString(),
+            testInvoiceItem.getCreatedAt()
+        );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoiceItem(eq(invoiceId), eq(itemId), eq(testUser))).thenReturn(testInvoiceItem);
-        when(invoiceService.toInvoiceItemDto(eq(testInvoiceItem))).thenReturn(invoiceItemDto);
+        when(invoiceService.toInvoiceItemResponse(eq(testInvoiceItem))).thenReturn(invoiceItemResponse);
 
         // When & Then
         mockMvc.perform(get("/api/invoices/{invoiceId}/items/{itemId}", invoiceId, itemId)
@@ -246,7 +252,8 @@ class InvoiceItemControllerTest {
         // When & Then
         mockMvc.perform(get("/api/invoices/{invoiceId}/items/{itemId}", invoiceId, itemId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invoice item not found"));
     }
 
     @Test
@@ -284,7 +291,8 @@ class InvoiceItemControllerTest {
         // When & Then
         mockMvc.perform(delete("/api/invoices/{invoiceId}/items/{itemId}", invoiceId, itemId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invoice item not found"));
     }
 
     // Helper method to set credit card ID for testing

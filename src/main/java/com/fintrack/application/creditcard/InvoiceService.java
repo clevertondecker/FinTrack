@@ -7,6 +7,7 @@ import com.fintrack.domain.user.Email;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
+import com.fintrack.dto.creditcard.InvoiceItemResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -304,6 +305,32 @@ public class InvoiceService {
         List<Map<String, Object>> dtos = new ArrayList<>();
         for (InvoiceItem item : items) {
             dtos.add(toInvoiceItemDto(item));
+        }
+        return dtos;
+    }
+
+    /**
+     * Converts an InvoiceItem to InvoiceItemResponse DTO.
+     */
+    public InvoiceItemResponse toInvoiceItemResponse(InvoiceItem item) {
+        return new InvoiceItemResponse(
+            item.getId(),
+            item.getInvoice().getId(),
+            item.getDescription(),
+            item.getAmount(),
+            item.getCategory() != null ? item.getCategory().getName() : null,
+            item.getPurchaseDate().toString(),
+            item.getCreatedAt()
+        );
+    }
+
+    /**
+     * Converts a list of InvoiceItem to InvoiceItemResponse DTOs.
+     */
+    public List<InvoiceItemResponse> toInvoiceItemResponseList(List<InvoiceItem> items) {
+        List<InvoiceItemResponse> dtos = new ArrayList<>();
+        for (InvoiceItem item : items) {
+            dtos.add(toInvoiceItemResponse(item));
         }
         return dtos;
     }
