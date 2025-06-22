@@ -158,7 +158,7 @@ public class CategoryControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Category name is required"));
+                .andExpect(jsonPath("$.error").value("Category name must be between 2 and 50 characters"));
         }
 
         @Test

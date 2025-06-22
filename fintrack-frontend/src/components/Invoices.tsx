@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import { Invoice, CreateInvoiceRequest, InvoiceItem, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
+import ShareItemModal from './ShareItemModal';
 import './Invoices.css';
 
 const Invoices: React.FC = () => {
@@ -14,6 +15,8 @@ const Invoices: React.FC = () => {
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedItemForSharing, setSelectedItemForSharing] = useState<InvoiceItem | null>(null);
 
   const [formData, setFormData] = useState<CreateInvoiceRequest>({
     creditCardId: 0,
@@ -241,6 +244,28 @@ const Invoices: React.FC = () => {
     }
   };
 
+  const handleShareItem = (item: InvoiceItem) => {
+    setSelectedItemForSharing(item);
+    setShowShareModal(true);
+  };
+
+  const handleCloseShareModal = () => {
+    setShowShareModal(false);
+    setSelectedItemForSharing(null);
+  };
+
+  const handleSharesUpdated = async () => {
+    if (!selectedInvoice) return;
+    
+    // Recarregar os itens da fatura para mostrar informações atualizadas
+    try {
+      const response = await apiService.getInvoiceItems(selectedInvoice.id);
+      setInvoiceItems(response.items);
+    } catch (err) {
+      console.error('Error reloading invoice items:', err);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading invoices...</div>;
   }
@@ -432,7 +457,7 @@ const Invoices: React.FC = () => {
                       <th>Valor</th>
                       <th>Categoria</th>
                       <th>Data de Compra</th>
-                      <th></th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -442,7 +467,14 @@ const Invoices: React.FC = () => {
                         <td>{formatCurrency(item.amount)}</td>
                         <td>{item.category || '-'}</td>
                         <td>{formatDate(item.purchaseDate)}</td>
-                        <td>
+                        <td className="item-actions">
+                          <button
+                            className="share-item-btn"
+                            onClick={() => handleShareItem(item)}
+                            title="Dividir item"
+                          >
+                            Dividir
+                          </button>
                           <button
                             className="remove-item-btn"
                             onClick={() => handleRemoveItem(item.id)}
@@ -460,6 +492,18 @@ const Invoices: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {showShareModal && selectedItemForSharing && selectedInvoice && (
+        <ShareItemModal
+          isOpen={showShareModal}
+          onClose={handleCloseShareModal}
+          invoiceId={selectedInvoice.id}
+          itemId={selectedItemForSharing.id}
+          itemDescription={selectedItemForSharing.description}
+          itemAmount={selectedItemForSharing.amount}
+          onSharesUpdated={handleSharesUpdated}
+        />
       )}
     </div>
   );

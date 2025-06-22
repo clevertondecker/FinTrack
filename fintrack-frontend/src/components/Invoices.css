@@ -509,16 +509,46 @@
   width: 15%; /* Ações */
 }
 
-.remove-item-btn {
-  background: #e53935;
-  color: #fff;
+.item-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.share-item-btn {
+  background: #667eea;
+  color: white;
   border: none;
+  padding: 6px 12px;
   border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.2s;
-  white-space: nowrap;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.share-item-btn:hover {
+  background: #5a6fd8;
+}
+
+.remove-item-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.remove-item-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.remove-item-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
 .error-message {

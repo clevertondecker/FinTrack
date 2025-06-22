@@ -3,6 +3,7 @@ package com.fintrack.domain.creditcard;
 import com.fintrack.domain.user.User;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import org.apache.commons.lang3.Validate;
@@ -36,6 +37,12 @@ public class ItemShare {
     @Column(nullable = false)
     private boolean responsible = false;
 
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -65,6 +72,8 @@ public class ItemShare {
         percentage = thePercentage;
         amount = theAmount;
         responsible = theResponsible;
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -108,6 +117,7 @@ public class ItemShare {
 
         percentage = newPercentage;
         amount = invoiceItem.getAmount().multiply(percentage);
+        updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -117,6 +127,7 @@ public class ItemShare {
      */
     public void setResponsible(final boolean responsible) {
         this.responsible = responsible;
+        updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -170,6 +181,20 @@ public class ItemShare {
      */
     public boolean isResponsible() { return responsible; }
 
+    /**
+     * Gets the item share's creation timestamp.
+     *
+     * @return the creation timestamp. Never null.
+     */
+    public LocalDateTime getCreatedAt() { return createdAt; }
+
+    /**
+     * Gets the item share's last update timestamp.
+     *
+     * @return the last update timestamp. Never null.
+     */
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -191,6 +216,8 @@ public class ItemShare {
                 ", percentage=" + percentage +
                 ", amount=" + amount +
                 ", responsible=" + responsible +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
                 '}';
     }
 } 
