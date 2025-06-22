@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '../types/auth';
+import { User } from '../types/user';
 import { 
   CreateCreditCardRequest, 
   CreateCreditCardResponse,
@@ -78,8 +79,8 @@ class ApiService {
     return response.data;
   }
 
-  async getUsers(): Promise<{ message: string; users: any[]; count: number }> {
-    const response = await this.api.get<{ message: string; users: any[]; count: number }>('/users');
+  async getUsers(): Promise<{ message: string; users: User[]; count: number }> {
+    const response = await this.api.get<{ message: string; users: User[]; count: number }>('/users');
     return response.data;
   }
 

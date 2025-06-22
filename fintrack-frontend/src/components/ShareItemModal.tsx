@@ -93,31 +93,15 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
     try {
       console.log('Loading users...');
       
-      // TESTE: Usar dados mock que correspondem aos shares
-      const mockUsers = [
-        { id: 1, name: 'John Doe', email: 'john@example.com' },
-        { id: 2, name: 'Cleverton Decker', email: 'cleverton_decker@hotmail.com' }
-      ];
-      
-      console.log('Using MOCK users:', mockUsers);
-      setUsers(mockUsers);
-      
-      // const response = await apiService.getUsers(); // Comment out real API call
-      // console.log('Users API response:', response);
-      // const loadedUsers = response.users || [];
-      // console.log('Loaded users:', loadedUsers);
-      // setUsers(loadedUsers);
+      const response = await apiService.getUsers();
+      console.log('Users API response:', response);
+      const loadedUsers = response.users || [];
+      console.log('Loaded users:', loadedUsers);
+      setUsers(loadedUsers);
     } catch (err) {
       console.error('Failed to load users:', err);
-      // Fallback para lista mockada se a API não estiver disponível
-      const mockUsers: User[] = [
-        { id: 1, name: 'João Silva', email: 'joao@example.com' },
-        { id: 2, name: 'Maria Santos', email: 'maria@example.com' },
-        { id: 3, name: 'Pedro Costa', email: 'pedro@example.com' }
-      ];
-      console.log('Using fallback mock users:', mockUsers);
-      setUsers(mockUsers);
-      setError('Erro ao carregar usuários. Usando lista de exemplo.');
+      setError('Erro ao carregar usuários. Verifique sua conexão.');
+      setUsers([]);
     }
   };
 
