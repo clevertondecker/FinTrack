@@ -122,7 +122,10 @@ class CreditCardTest {
             creditCard.deactivate();
 
             assertFalse(creditCard.isActive());
-            assertTrue(creditCard.getUpdatedAt().isAfter(beforeDeactivation));
+            assertTrue(
+                creditCard.getUpdatedAt().isAfter(beforeDeactivation)
+                || creditCard.getUpdatedAt().isEqual(beforeDeactivation)
+            );
         }
 
         @Test

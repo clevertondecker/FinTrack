@@ -6,10 +6,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Set;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,13 +23,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.Role;
+import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
+import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.RegisterRequest;
 
 @ExtendWith(MockitoExtension.class)
@@ -397,6 +403,176 @@ class UserControllerTest {
 
             verify(userService).registerUser(
               "John Doe", "john@example.com", "   password123   ", Set.of(Role.USER));
+        }
+    }
+
+    @Nested
+    @DisplayName("Get Current User Tests")
+    class GetCurrentUserTests {
+
+        @Test
+        @DisplayName("Should get current user successfully")
+        void shouldGetCurrentUserSuccessfully() {
+            // Given
+            User testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+            // Set ID and timestamps using reflection to avoid null values
+            setUserId(testUser, 1L);
+            setUserTimestamps(testUser);
+            
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("john@example.com")
+                .password("password123")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of("john@example.com"))).thenReturn(Optional.of(testUser));
+
+            // When
+            var response = userController.getCurrentUser(userDetails);
+
+            // Then
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCodeValue());
+            var body = response.getBody();
+            assertNotNull(body);
+            assertEquals(testUser.getId(), body.get("id"));
+            assertEquals("John Doe", body.get("name"));
+            assertEquals("john@example.com", body.get("email"));
+            assertArrayEquals(new Object[]{"USER"}, (Object[]) body.get("roles"));
+            assertNotNull(body.get("createdAt"));
+            assertNotNull(body.get("updatedAt"));
+        }
+
+        @Test
+        @DisplayName("Should return 404 when user not found")
+        void shouldReturn404WhenUserNotFound() {
+            // Given
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("nonexistent@example.com")
+                .password("password123")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of("nonexistent@example.com"))).thenReturn(Optional.empty());
+
+            // When
+            var response = userController.getCurrentUser(userDetails);
+
+            // Then
+            assertNotNull(response);
+            assertEquals(404, response.getStatusCodeValue());
+        }
+
+        @Test
+        @DisplayName("Should return 500 when repository throws exception")
+        void shouldReturn500WhenRepositoryThrowsException() {
+            // Given
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("john@example.com")
+                .password("password123")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of("john@example.com")))
+                .thenThrow(new RuntimeException("Database error"));
+
+            // When
+            var response = userController.getCurrentUser(userDetails);
+
+            // Then
+            assertNotNull(response);
+            assertEquals(500, response.getStatusCodeValue());
+            var body = response.getBody();
+            assertNotNull(body);
+            assertEquals("Failed to get user information", body.get("error"));
+        }
+
+        @Test
+        @DisplayName("Should handle user with multiple roles")
+        void shouldHandleUserWithMultipleRoles() {
+            // Given
+            User testUser = User.of("Admin User", "admin@example.com", "password123", Set.of(Role.USER, Role.ADMIN));
+            setUserId(testUser, 2L);
+            setUserTimestamps(testUser);
+            
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("admin@example.com")
+                .password("password123")
+                .authorities("USER", "ADMIN")
+                .build();
+
+            when(userRepository.findByEmail(Email.of("admin@example.com"))).thenReturn(Optional.of(testUser));
+
+            // When
+            var response = userController.getCurrentUser(userDetails);
+
+            // Then
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCodeValue());
+            var body = response.getBody();
+            assertNotNull(body);
+            assertEquals(testUser.getId(), body.get("id"));
+            assertEquals("Admin User", body.get("name"));
+            assertEquals("admin@example.com", body.get("email"));
+            Object[] roles = (Object[]) body.get("roles");
+            assertEquals(2, roles.length);
+            assertTrue(java.util.Arrays.asList(roles).contains("USER"));
+            assertTrue(java.util.Arrays.asList(roles).contains("ADMIN"));
+        }
+
+        @Test
+        @DisplayName("Should handle special characters in user name")
+        void shouldHandleSpecialCharactersInUserName() {
+            // Given
+            User testUser = User.of("João Silva", "joao@example.com", "password123", Set.of(Role.USER));
+            setUserId(testUser, 3L);
+            setUserTimestamps(testUser);
+            
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("joao@example.com")
+                .password("password123")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of("joao@example.com"))).thenReturn(Optional.of(testUser));
+
+            // When
+            var response = userController.getCurrentUser(userDetails);
+
+            // Then
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCodeValue());
+            var body = response.getBody();
+            assertNotNull(body);
+            assertEquals("João Silva", body.get("name"));
+            assertEquals("joao@example.com", body.get("email"));
+        }
+
+        // Helper methods to set user fields for testing
+        private void setUserId(User user, Long id) {
+            try {
+                java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(user, id);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user ID for testing", e);
+            }
+        }
+
+        private void setUserTimestamps(User user) {
+            try {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                java.lang.reflect.Field createdAtField = User.class.getDeclaredField("createdAt");
+                java.lang.reflect.Field updatedAtField = User.class.getDeclaredField("updatedAt");
+                
+                createdAtField.setAccessible(true);
+                updatedAtField.setAccessible(true);
+                
+                createdAtField.set(user, now);
+                updatedAtField.set(user, now);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user timestamps for testing", e);
+            }
         }
     }
 }

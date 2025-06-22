@@ -1,25 +1,17 @@
 package com.fintrack.controller.creditcard;
 
-import com.fintrack.domain.user.UserRepository;
+import com.fintrack.application.creditcard.CreditCardService;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
-import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.Email;
-import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
-import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
-
-import jakarta.validation.Valid;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ArrayList;
 
 /**
  * REST controller for managing credit cards.
@@ -29,23 +21,10 @@ import java.util.ArrayList;
 @RequestMapping("/api/credit-cards")
 public class CreditCardController {
 
-    private final CreditCardJpaRepository creditCardRepository;
-    private final UserRepository userRepository;
-    private final BankJpaRepository bankRepository;
+    private final CreditCardService creditCardService;
 
-    /**
-     * Constructor for CreditCardController.
-     *
-     * @param theCreditCardRepository the credit card repository. Must not be null.
-     * @param theUserRepository the user repository. Must not be null.
-     * @param theBankRepository the bank repository. Must not be null.
-     */
-    public CreditCardController(CreditCardJpaRepository theCreditCardRepository,
-                                UserRepository theUserRepository,
-                                BankJpaRepository theBankRepository) {
-        this.creditCardRepository = theCreditCardRepository;
-        this.userRepository = theUserRepository;
-        this.bankRepository = theBankRepository;
+    public CreditCardController(CreditCardService creditCardService) {
+        this.creditCardService = creditCardService;
     }
 
     /**
@@ -60,39 +39,29 @@ public class CreditCardController {
             @Valid @RequestBody CreateCreditCardRequest request,
             Authentication authentication) {
 
-        Optional<User> userOpt = getUser(authentication);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        try {
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
+
+            // Create the credit card using service
+            CreditCard creditCard = creditCardService.createCreditCard(request, user);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit card created successfully",
+                "id", creditCard.getId(),
+                "name", creditCard.getName(),
+                "lastFourDigits", creditCard.getLastFourDigits(),
+                "limit", creditCard.getLimit(),
+                "bankName", creditCard.getBank().getName()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        User user = userOpt.get();
-
-        // Find the bank
-        Optional<Bank> bankOpt = bankRepository.findById(request.bankId());
-        if (bankOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Bank not found"));
-        }
-        Bank bank = bankOpt.get();
-
-        // Create the credit card
-        CreditCard creditCard = CreditCard.of(
-            request.name(),
-            request.lastFourDigits(),
-            request.limit(),
-            user,
-            bank
-        );
-
-        // Save the credit card
-        CreditCard savedCreditCard = creditCardRepository.save(creditCard);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit card created successfully",
-            "id", savedCreditCard.getId(),
-            "name", savedCreditCard.getName(),
-            "lastFourDigits", savedCreditCard.getLastFourDigits(),
-            "limit", savedCreditCard.getLimit(),
-            "bankName", savedCreditCard.getBank().getName()
-        ));
     }
 
     /**
@@ -105,34 +74,25 @@ public class CreditCardController {
     public ResponseEntity<Map<String, Object>> getUserCreditCards(
             Authentication authentication) {
 
-        Optional<User> userOpt = getUser(authentication);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
+        try {
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
 
-        // Get all credit cards for the user
-        List<CreditCard> creditCards = creditCardRepository.findByOwner(user);
+            // Get credit cards using service
+            List<CreditCard> creditCards = creditCardService.getUserCreditCards(user);
+            List<Map<String, Object>> creditCardDtos = creditCardService.toCreditCardDtos(creditCards);
 
-        // Convert to DTO format
-        List<Map<String, Object>> creditCardDtos = new ArrayList<>();
-        for (CreditCard card : creditCards) {
-            creditCardDtos.add(Map.of(
-                "id", card.getId(),
-                "name", card.getName(),
-                "lastFourDigits", card.getLastFourDigits(),
-                "limit", card.getLimit(),
-                "bankName", card.getBank().getName(),
-                "active", card.isActive(),
-                "createdAt", card.getCreatedAt()
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit cards retrieved successfully",
+                "creditCards", creditCardDtos,
+                "count", creditCardDtos.size()
             ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit cards retrieved successfully",
-            "creditCards", creditCardDtos,
-            "count", creditCardDtos.size()
-        ));
     }
 
     /**
@@ -147,58 +107,25 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Optional<User> userOpt = getUser(authentication);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
-
-        // Find the credit card
-        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
-        if (creditCardOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        CreditCard creditCard = creditCardOpt.get();
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit card retrieved successfully",
-            "creditCard", Map.of(
-                "id", creditCard.getId(),
-                "name", creditCard.getName(),
-                "lastFourDigits", creditCard.getLastFourDigits(),
-                "limit", creditCard.getLimit(),
-                "bankName", creditCard.getBank().getName(),
-                "bankCode", creditCard.getBank().getCode(),
-                "active", creditCard.isActive(),
-                "createdAt", creditCard.getCreatedAt(),
-                "updatedAt", creditCard.getUpdatedAt()
-            )
-        ));
-    }
-
-    private Optional<User> getUser(final Authentication authentication) {
-        if (authentication == null) {
-            return Optional.empty();
-        }
-
-        String username = null;
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof UserDetails) {
-            username = ((UserDetails) principal).getUsername();
-        } else if (principal instanceof String) {
-            username = (String) principal;
-        }
-
-        if (username == null) {
-            return Optional.empty();
-        }
-
         try {
-            Email email = Email.of(username);
-            return userRepository.findByEmail(email);
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
+
+            // Get credit card using service
+            CreditCard creditCard = creditCardService.getCreditCard(id, user);
+            Map<String, Object> creditCardDto = creditCardService.toCreditCardDto(creditCard);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit card retrieved successfully",
+                "creditCard", creditCardDto
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return Optional.empty();
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
     }
 
@@ -215,29 +142,25 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        if (authentication == null || authentication.getName() == null || authentication.getName().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
+        try {
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
 
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(authentication.getName()));
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
+            // Activate credit card using service
+            CreditCard creditCard = creditCardService.activateCreditCard(id, user);
 
-        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
-        if (creditCardOpt.isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit card activated successfully",
+                "id", creditCard.getId()
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        CreditCard creditCard = creditCardOpt.get();
-
-        creditCard.activate();
-        creditCardRepository.save(creditCard);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit card activated successfully",
-            "id", creditCard.getId()
-        ));
     }
 
     /**
@@ -253,39 +176,35 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Optional<User> userOpt = getUser(authentication);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
+        try {
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
 
-        // Find the credit card
-        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
-        if (creditCardOpt.isEmpty()) {
+            // Deactivate credit card using service
+            CreditCard creditCard = creditCardService.deactivateCreditCard(id, user);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit card deactivated successfully",
+                "id", creditCard.getId()
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        CreditCard creditCard = creditCardOpt.get();
-
-        // Deactivate the credit card
-        creditCard.deactivate();
-        creditCardRepository.save(creditCard);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit card deactivated successfully",
-            "id", creditCard.getId()
-        ));
     }
 
     /**
-     * Updates an existing credit card for the authenticated user.
+     * Updates a credit card for the authenticated user.
      *
-     * @param id the credit card ID. Cannot be null.
+     * @param id the credit card ID.
      * @param request the credit card update request. Must be valid.
-     * @param authentication the authenticated user details. Cannot be null.
+     * @param authentication the authenticated user details.
      *
      * @return a response with the updated credit card information.
-     *
-     * @throws IllegalArgumentException if the request is invalid.
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateCreditCard(
@@ -293,40 +212,28 @@ public class CreditCardController {
             @Valid @RequestBody CreateCreditCardRequest request,
             Authentication authentication) {
 
-        Optional<User> userOpt = getUser(authentication);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        try {
+            Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
+
+            // Update credit card using service
+            CreditCard creditCard = creditCardService.updateCreditCard(id, request, user);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Credit card updated successfully",
+                "id", creditCard.getId(),
+                "name", creditCard.getName(),
+                "lastFourDigits", creditCard.getLastFourDigits(),
+                "limit", creditCard.getLimit(),
+                "bankName", creditCard.getBank().getName()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        User user = userOpt.get();
-
-        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(id, user);
-        if (creditCardOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        CreditCard creditCard = creditCardOpt.get();
-
-        // Note: The last four digits cannot be updated, so we do not set it here.
-        creditCard.updateName(request.name());
-        creditCard.updateLimit(request.limit());
-
-        Optional<Bank> bankOpt = bankRepository.findById(request.bankId());
-        if (bankOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Bank not found"));
-        }
-        creditCard.updateBank(bankOpt.get());
-
-        CreditCard updatedCard = creditCardRepository.save(creditCard);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Credit card updated successfully",
-            "id", updatedCard.getId(),
-            "name", updatedCard.getName(),
-            "lastFourDigits", updatedCard.getLastFourDigits(),
-            "limit", updatedCard.getLimit(),
-            "bankName", updatedCard.getBank().getName(),
-            "active", updatedCard.isActive(),
-            "createdAt", updatedCard.getCreatedAt(),
-            "updatedAt", updatedCard.getUpdatedAt()
-        ));
     }
 }

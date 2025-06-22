@@ -1,14 +1,17 @@
 package com.fintrack.controller.creditcard;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,17 +22,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
+import com.fintrack.application.creditcard.CreditCardService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
-import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
-import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
-import com.fintrack.infrastructure.persistence.user.UserJpaRepository;
-import org.springframework.context.annotation.Import;
 import com.fintrack.config.TestSecurityConfig;
 
 @WebMvcTest(CreditCardController.class)
@@ -37,40 +38,30 @@ import com.fintrack.config.TestSecurityConfig;
 @Import(TestSecurityConfig.class)
 @ActiveProfiles("test")
 @DisplayName("CreditCardController Tests")
-class CreditCardControllerTest {
+public class CreditCardControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private CreditCardJpaRepository creditCardRepository;
-
-    @MockBean
-    private BankJpaRepository bankRepository;
-
-    @MockBean
-    private UserJpaRepository userRepository;
+    private CreditCardService creditCardService;
 
     private User testUser;
     private Bank testBank;
+    private CreditCard testCreditCard;
     private CreditCard inactiveCreditCard;
 
     @BeforeEach
     void setUp() {
         testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");
+        testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         inactiveCreditCard = CreditCard.of("Inactive Card", "5678", new BigDecimal("3000.00"), testUser, testBank);
         inactiveCreditCard.deactivate();
 
-        // Simple mock for userRepository
-        when(userRepository.findByEmail(any(Email.class)))
-            .thenAnswer(invocation -> {
-                Email email = invocation.getArgument(0);
-                if (email != null && email.getEmail().equalsIgnoreCase("john@example.com")) {
-                    return Optional.of(testUser);
-                }
-                return Optional.empty();
-            });
+        // Set IDs using reflection for testing
+        setCreditCardId(testCreditCard, 1L);
+        setCreditCardId(inactiveCreditCard, 2L);
     }
 
     @Test
@@ -78,23 +69,14 @@ class CreditCardControllerTest {
     @DisplayName("Should activate credit card successfully")
     void shouldActivateCreditCardSuccessfully() throws Exception {
         // Given
-        Long creditCardId = 1L;
+        Long creditCardId = 2L;
 
-        // Set ID on the inactive credit card using reflection
-        try {
-            java.lang.reflect.Field idField = CreditCard.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(inactiveCreditCard, creditCardId);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set ID on credit card", e);
-        }
-
-        when(creditCardRepository.findByIdAndOwner(creditCardId, testUser)).thenReturn(Optional.of(inactiveCreditCard));
-        when(creditCardRepository.save(any(CreditCard.class))).thenReturn(inactiveCreditCard);
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.activateCreditCard(eq(creditCardId), eq(testUser))).thenReturn(inactiveCreditCard);
 
         // When & Then
         mockMvc.perform(patch("/api/credit-cards/{id}/activate", creditCardId)
-                .with(csrf()))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Credit card activated successfully"))
                 .andExpect(jsonPath("$.id").value(creditCardId));
@@ -102,41 +84,309 @@ class CreditCardControllerTest {
 
     @Test
     @WithMockUser(username = "john@example.com")
-    @DisplayName("Should update credit card name, limit and bank, but not lastFourDigits")
-    void shouldUpdateCreditCardSuccessfully() throws Exception {
+    @DisplayName("Should return 404 when credit card not found")
+    void shouldReturn404WhenCreditCardNotFound() throws Exception {
         // Given
-        Long creditCardId = 2L;
-        Bank newBank = Bank.of("ITAU", "Itaú");
-        CreditCard card = CreditCard.of("Old Name", "1234", new BigDecimal("5000.00"), testUser, testBank);
-        // Set ID on the card using reflection
-        java.lang.reflect.Field idField = CreditCard.class.getDeclaredField("id");
-        idField.setAccessible(true);
-        idField.set(card, creditCardId);
+        Long creditCardId = 999L;
 
-        when(creditCardRepository.findByIdAndOwner(creditCardId, testUser)).thenReturn(Optional.of(card));
-        when(bankRepository.findById(99L)).thenReturn(Optional.of(newBank));
-        when(creditCardRepository.save(any(CreditCard.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        String updateJson = """
-        {
-          "name": "Updated Card",
-          "lastFourDigits": "9999",
-          "limit": 10000.00,
-          "bankId": 99
-        }
-        """;
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.activateCreditCard(eq(creditCardId), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Credit card not found"));
 
         // When & Then
+        mockMvc.perform(patch("/api/credit-cards/{id}/activate", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when user not found")
+    void shouldReturn400WhenUserNotFound() throws Exception {
+        // Given
+        Long creditCardId = 1L;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+
+        // When & Then
+        mockMvc.perform(patch("/api/credit-cards/{id}/activate", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("User not found"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should get user credit cards successfully")
+    void shouldGetUserCreditCardsSuccessfully() throws Exception {
+        // Given
+        List<CreditCard> creditCards = List.of(testCreditCard, inactiveCreditCard);
+        Map<String, Object> creditCardDto1 = new HashMap<>();
+        creditCardDto1.put("id", 1L);
+        creditCardDto1.put("name", "Test Card");
+        creditCardDto1.put("lastFourDigits", "1234");
+        creditCardDto1.put("limit", new BigDecimal("5000.00"));
+        creditCardDto1.put("active", true);
+        creditCardDto1.put("bankName", "Nubank");
+
+        Map<String, Object> creditCardDto2 = new HashMap<>();
+        creditCardDto2.put("id", 2L);
+        creditCardDto2.put("name", "Inactive Card");
+        creditCardDto2.put("lastFourDigits", "5678");
+        creditCardDto2.put("limit", new BigDecimal("3000.00"));
+        creditCardDto2.put("active", false);
+        creditCardDto2.put("bankName", "Nubank");
+
+        List<Map<String, Object>> creditCardDtos = List.of(creditCardDto1, creditCardDto2);
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.getUserCreditCards(eq(testUser))).thenReturn(creditCards);
+        when(creditCardService.toCreditCardDtos(eq(creditCards))).thenReturn(creditCardDtos);
+
+        // When & Then
+        mockMvc.perform(get("/api/credit-cards")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Credit cards retrieved successfully"))
+                .andExpect(jsonPath("$.count").value(2))
+                .andExpect(jsonPath("$.creditCards").isArray())
+                .andExpect(jsonPath("$.creditCards.length()").value(2));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should get specific credit card successfully")
+    void shouldGetSpecificCreditCardSuccessfully() throws Exception {
+        // Given
+        Long creditCardId = 1L;
+        Map<String, Object> creditCardDto = new HashMap<>();
+        creditCardDto.put("id", 1L);
+        creditCardDto.put("name", "Test Card");
+        creditCardDto.put("lastFourDigits", "1234");
+        creditCardDto.put("limit", new BigDecimal("5000.00"));
+        creditCardDto.put("active", true);
+        creditCardDto.put("bankName", "Nubank");
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.getCreditCard(eq(creditCardId), eq(testUser))).thenReturn(testCreditCard);
+        when(creditCardService.toCreditCardDto(eq(testCreditCard))).thenReturn(creditCardDto);
+
+        // When & Then
+        mockMvc.perform(get("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Credit card retrieved successfully"))
+                .andExpect(jsonPath("$.creditCard").exists());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 404 when specific credit card not found")
+    void shouldReturn404WhenSpecificCreditCardNotFound() throws Exception {
+        // Given
+        Long creditCardId = 999L;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.getCreditCard(eq(creditCardId), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Credit card not found"));
+
+        // When & Then
+        mockMvc.perform(get("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should deactivate credit card successfully")
+    void shouldDeactivateCreditCardSuccessfully() throws Exception {
+        Long creditCardId = 1L;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.deactivateCreditCard(eq(creditCardId), eq(testUser))).thenReturn(testCreditCard);
+
+        mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Credit card deactivated successfully"))
+                .andExpect(jsonPath("$.id").value(creditCardId));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 404 when deactivating non-existent credit card")
+    void shouldReturn404WhenDeactivatingNonExistentCreditCard() throws Exception {
+        Long creditCardId = 999L;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.deactivateCreditCard(eq(creditCardId), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Credit card not found"));
+
+        mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when user not found on deactivate")
+    void shouldReturn400WhenUserNotFoundOnDeactivate() throws Exception {
+        Long creditCardId = 1L;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("User not found"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should update credit card successfully")
+    void shouldUpdateCreditCardSuccessfully() throws Exception {
+        Long creditCardId = 1L;
+        String requestBody = """
+            {
+                "name": "Updated Card",
+                "lastFourDigits": "5678",
+                "limit": 10000.00,
+                "bankId": 1
+            }
+            """;
+
+        CreditCard updatedCreditCard = CreditCard.of("Updated Card", "5678", new BigDecimal("10000.00"), testUser, testBank);
+        setCreditCardId(updatedCreditCard, creditCardId);
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser))).thenReturn(updatedCreditCard);
+
         mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
-                .contentType("application/json")
-                .content(updateJson)
-                .with(csrf()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Credit card updated successfully"))
                 .andExpect(jsonPath("$.id").value(creditCardId))
                 .andExpect(jsonPath("$.name").value("Updated Card"))
-                .andExpect(jsonPath("$.lastFourDigits").value("1234")) // lastFourDigits não muda
+                .andExpect(jsonPath("$.lastFourDigits").value("5678"))
                 .andExpect(jsonPath("$.limit").value(10000.00))
-                .andExpect(jsonPath("$.bankName").value("Itaú"));
+                .andExpect(jsonPath("$.bankName").value("Nubank"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 404 when updating non-existent credit card")
+    void shouldReturn404WhenUpdatingNonExistentCreditCard() throws Exception {
+        Long creditCardId = 999L;
+        String requestBody = """
+            {
+                "name": "Updated Card",
+                "lastFourDigits": "5678",
+                "limit": 10000.00,
+                "bankId": 1
+            }
+            """;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Credit card not found"));
+
+        mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Credit card not found"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when user not found on update")
+    void shouldReturn400WhenUserNotFoundOnUpdate() throws Exception {
+        Long creditCardId = 1L;
+        String requestBody = """
+            {
+                "name": "Updated Card",
+                "lastFourDigits": "5678",
+                "limit": 10000.00,
+                "bankId": 1
+            }
+            """;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("User not found"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when bank not found on update")
+    void shouldReturn400WhenBankNotFoundOnUpdate() throws Exception {
+        Long creditCardId = 1L;
+        String requestBody = """
+            {
+                "name": "Updated Card",
+                "lastFourDigits": "5678",
+                "limit": 10000.00,
+                "bankId": 999
+            }
+            """;
+
+        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Bank not found"));
+
+        mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bank not found"));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when request body is invalid")
+    void shouldReturn400WhenRequestBodyIsInvalid() throws Exception {
+        Long creditCardId = 1L;
+        String invalidRequestBody = """
+            {
+                "name": "",
+                "lastFourDigits": "123",
+                "limit": -1000.00,
+                "bankId": 0
+            }
+            """;
+
+        mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidRequestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when request body is malformed JSON")
+    void shouldReturn400WhenRequestBodyIsMalformedJson() throws Exception {
+        Long creditCardId = 1L;
+        String malformedJson = "{ invalid json }";
+
+        mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(malformedJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    // Helper method to set credit card ID for testing
+    private void setCreditCardId(CreditCard creditCard, Long id) {
+        try {
+            java.lang.reflect.Field idField = CreditCard.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(creditCard, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set credit card ID for testing", e);
+        }
     }
 }

@@ -1,29 +1,19 @@
 package com.fintrack.controller.creditcard;
 
-import com.fintrack.domain.user.UserRepository;
+import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.Email;
-import com.fintrack.domain.creditcard.Category;
-import com.fintrack.infrastructure.persistence.creditcard.InvoiceJpaRepository;
-import com.fintrack.infrastructure.persistence.creditcard.InvoiceItemJpaRepository;
-import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
-
-import jakarta.validation.Valid;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.time.LocalDate;
 
 /**
  * REST controller for managing invoice items.
@@ -33,19 +23,10 @@ import java.time.LocalDate;
 @RequestMapping("/api/invoices")
 public class InvoiceItemController {
 
-    private final InvoiceItemJpaRepository invoiceItemRepository;
-    private final InvoiceJpaRepository invoiceRepository;
-    private final UserRepository userRepository;
-    private final CategoryJpaRepository categoryRepository;
+    private final InvoiceService invoiceService;
 
-    public InvoiceItemController(InvoiceItemJpaRepository invoiceItemRepository,
-                                InvoiceJpaRepository invoiceRepository,
-                                UserRepository userRepository,
-                                CategoryJpaRepository categoryRepository) {
-        this.invoiceItemRepository = invoiceItemRepository;
-        this.invoiceRepository = invoiceRepository;
-        this.userRepository = userRepository;
-        this.categoryRepository = categoryRepository;
+    public InvoiceItemController(InvoiceService invoiceService) {
+        this.invoiceService = invoiceService;
     }
 
     /**
@@ -64,54 +45,36 @@ public class InvoiceItemController {
 
         try {
             // Find the user
-            Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
             if (userOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
             }
             User user = userOpt.get();
 
-            // Find the invoice
-            Optional<Invoice> invoiceOpt = invoiceRepository.findByIdAndCreditCardOwner(invoiceId, user);
-            if (invoiceOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invoice not found"));
-            }
-            Invoice invoice = invoiceOpt.get();
+            // Create the invoice item using service
+            Invoice savedInvoice = invoiceService.createInvoiceItem(invoiceId, request, user);
 
-            // Find the category if provided
-            Category category = null;
-            if (request.categoryId() != null) {
-                Optional<Category> categoryOpt = categoryRepository.findById(request.categoryId());
-                category = categoryOpt.orElse(null);
-            }
+            // Find the created item to return its details
+            List<InvoiceItem> items = invoiceService.getInvoiceItems(invoiceId, user);
+            InvoiceItem createdItem = items.stream()
+                .filter(item -> item.getDescription().equals(request.description()) && 
+                               item.getAmount().equals(request.amount()))
+                .findFirst()
+                .orElse(null);
 
-            // Create the invoice item
-            InvoiceItem invoiceItem = InvoiceItem.of(
-                invoice,
-                request.description(),
-                request.amount(),
-                category,
-                request.purchaseDate()
-            );
-
-            // Add item to invoice first (this will recalculate the total)
-            invoice.addItem(invoiceItem);
-
-            // Save the invoice (this will cascade to save the item)
-            Invoice savedInvoice = invoiceRepository.save(invoice);
-
-            // Return a simple success response
             return ResponseEntity.ok(Map.of(
                 "message", "Invoice item created successfully",
-                "id", invoiceItem.getId() != null ? invoiceItem.getId() : 0L,
+                "id", createdItem != null ? createdItem.getId() : 0L,
                 "invoiceId", invoiceId,
-                "description", invoiceItem.getDescription(),
-                "amount", invoiceItem.getAmount(),
-                "category", invoiceItem.getCategory() != null ? invoiceItem.getCategory().getName() : null,
+                "description", request.description(),
+                "amount", request.amount(),
+                "category", createdItem != null && createdItem.getCategory() != null ? 
+                           createdItem.getCategory().getName() : null,
                 "invoiceTotalAmount", savedInvoice.getTotalAmount()
             ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            System.err.println("Error creating invoice item: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
     }
@@ -128,42 +91,33 @@ public class InvoiceItemController {
             @PathVariable Long invoiceId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        try {
+            // Find the user
+            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
+
+            // Get items using service
+            List<InvoiceItem> items = invoiceService.getInvoiceItems(invoiceId, user);
+            List<Map<String, Object>> itemDtos = invoiceService.toInvoiceItemDtos(items);
+
+            // Get invoice for total amount
+            Invoice invoice = invoiceService.getInvoice(invoiceId, user);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Invoice items retrieved successfully",
+                "invoiceId", invoiceId,
+                "items", itemDtos,
+                "count", itemDtos.size(),
+                "totalAmount", invoice.getTotalAmount()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        User user = userOpt.get();
-
-        // Find the invoice
-        Optional<Invoice> invoiceOpt = invoiceRepository.findByIdAndCreditCardOwner(invoiceId, user);
-        if (invoiceOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invoice not found"));
-        }
-        Invoice invoice = invoiceOpt.get();
-
-        // Get items for the invoice
-        List<InvoiceItem> items = invoiceItemRepository.findByInvoice(invoice);
-
-        // Convert to DTO format
-        List<Map<String, Object>> itemDtos = new ArrayList<>();
-        for (InvoiceItem item : items) {
-            Map<String, Object> itemDto = new HashMap<>();
-            itemDto.put("id", item.getId());
-            itemDto.put("description", item.getDescription());
-            itemDto.put("amount", item.getAmount());
-            itemDto.put("category", item.getCategory() != null ? item.getCategory().getName() : null);
-            itemDto.put("purchaseDate", item.getPurchaseDate().toString());
-            itemDtos.add(itemDto);
-        }
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Invoice items retrieved successfully",
-            "invoiceId", invoiceId,
-            "items", itemDtos,
-            "count", itemDtos.size(),
-            "totalAmount", invoice.getTotalAmount()
-        ));
     }
 
     /**
@@ -180,36 +134,27 @@ public class InvoiceItemController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
+        try {
+            // Find the user
+            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
 
-        // Find the invoice item
-        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
-        if (itemOpt.isEmpty()) {
+            // Get item using service
+            InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
+            Map<String, Object> itemDto = invoiceService.toInvoiceItemDto(item);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Invoice item retrieved successfully",
+                "item", itemDto
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        InvoiceItem item = itemOpt.get();
-
-        // Verify the item belongs to the specified invoice
-        if (!item.getInvoice().getId().equals(invoiceId)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Item does not belong to the specified invoice"));
-        }
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Invoice item retrieved successfully",
-            "item", Map.of(
-                "id", item.getId(),
-                "invoiceId", item.getInvoice().getId(),
-                "description", item.getDescription(),
-                "amount", item.getAmount(),
-                "category", item.getCategory() != null ? item.getCategory().getName() : null,
-                "createdAt", item.getCreatedAt().toLocalDate().toString()
-            )
-        ));
     }
 
     /**
@@ -226,34 +171,27 @@ public class InvoiceItemController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Find the user
-        Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-        }
-        User user = userOpt.get();
+        try {
+            // Find the user
+            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
 
-        // Find the invoice item
-        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
-        if (itemOpt.isEmpty()) {
+            // Delete item using service
+            Invoice updatedInvoice = invoiceService.deleteInvoiceItem(invoiceId, itemId, user);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Invoice item deleted successfully",
+                "invoiceId", invoiceId,
+                "itemId", itemId,
+                "invoiceTotalAmount", updatedInvoice.getTotalAmount()
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
-        InvoiceItem item = itemOpt.get();
-
-        // Verify the item belongs to the specified invoice
-        if (!item.getInvoice().getId().equals(invoiceId)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Item does not belong to the specified invoice"));
-        }
-
-        // Remove item from invoice and save
-        Invoice invoice = item.getInvoice();
-        invoice.removeItem(item);
-        invoiceRepository.save(invoice);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Invoice item deleted successfully",
-            "deletedItemId", itemId,
-            "invoiceId", invoiceId
-        ));
     }
 }
