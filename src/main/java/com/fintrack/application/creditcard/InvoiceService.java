@@ -6,6 +6,7 @@ import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
+import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -248,23 +249,31 @@ public class InvoiceService {
     }
 
     /**
-     * Converts an Invoice to a Map DTO.
-     *
-     * @param invoice the invoice to convert
-     * @return Map representation of the invoice
+     * Converts an Invoice to a InvoiceResponse DTO.
      */
-    public Map<String, Object> toInvoiceDto(Invoice invoice) {
-        Map<String, Object> dto = new HashMap<>();
-        dto.put("id", invoice.getId());
-        dto.put("creditCardId", invoice.getCreditCard().getId());
-        dto.put("creditCardName", invoice.getCreditCard().getName());
-        dto.put("dueDate", invoice.getDueDate());
-        dto.put("totalAmount", invoice.getTotalAmount());
-        dto.put("paidAmount", invoice.getPaidAmount());
-        dto.put("status", invoice.getStatus().name());
-        dto.put("createdAt", invoice.getCreatedAt());
-        dto.put("updatedAt", invoice.getUpdatedAt());
-        return dto;
+    public InvoiceResponse toInvoiceResponse(Invoice invoice) {
+        return new InvoiceResponse(
+            invoice.getId(),
+            invoice.getCreditCard().getId(),
+            invoice.getCreditCard().getName(),
+            invoice.getDueDate(),
+            invoice.getTotalAmount(),
+            invoice.getPaidAmount(),
+            invoice.getStatus().name(),
+            invoice.getCreatedAt(),
+            invoice.getUpdatedAt()
+        );
+    }
+
+    /**
+     * Converts a list of invoices to InvoiceResponse DTOs.
+     */
+    public List<InvoiceResponse> toInvoiceResponseList(List<Invoice> invoices) {
+        List<InvoiceResponse> dtos = new ArrayList<>();
+        for (Invoice invoice : invoices) {
+            dtos.add(toInvoiceResponse(invoice));
+        }
+        return dtos;
     }
 
     /**
@@ -283,20 +292,6 @@ public class InvoiceService {
         dto.put("purchaseDate", item.getPurchaseDate().toString());
         dto.put("createdAt", item.getCreatedAt());
         return dto;
-    }
-
-    /**
-     * Converts a list of invoices to DTOs.
-     *
-     * @param invoices the list of invoices to convert
-     * @return list of invoice DTOs
-     */
-    public List<Map<String, Object>> toInvoiceDtos(List<Invoice> invoices) {
-        List<Map<String, Object>> dtos = new ArrayList<>();
-        for (Invoice invoice : invoices) {
-            dtos.add(toInvoiceDto(invoice));
-        }
-        return dtos;
     }
 
     /**

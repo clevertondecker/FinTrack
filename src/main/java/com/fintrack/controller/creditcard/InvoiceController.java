@@ -2,6 +2,11 @@ package com.fintrack.controller.creditcard;
 
 import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
+import com.fintrack.dto.creditcard.InvoiceCreateResponse;
+import com.fintrack.dto.creditcard.InvoiceListResponse;
+import com.fintrack.dto.creditcard.InvoiceDetailResponse;
+import com.fintrack.dto.creditcard.InvoiceByCreditCardResponse;
+import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.user.User;
 import org.springframework.http.ResponseEntity;
@@ -10,8 +15,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,34 +43,29 @@ public class InvoiceController {
      * @return a response with the created invoice information.
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createInvoice(
+    public ResponseEntity<InvoiceCreateResponse> createInvoice(
             @Valid @RequestBody CreateInvoiceRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        try {
-            // Find the user
-            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-            }
-            User user = userOpt.get();
-
-            // Create the invoice using service
-            Invoice invoice = invoiceService.createInvoice(request, user);
-
-            return ResponseEntity.ok(Map.of(
-                "message", "Invoice created successfully",
-                "id", invoice.getId(),
-                "creditCardId", invoice.getCreditCard().getId(),
-                "dueDate", invoice.getDueDate(),
-                "totalAmount", invoice.getTotalAmount(),
-                "status", invoice.getStatus().name()
-            ));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
+        // Find the user
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
         }
+        User user = userOpt.get();
+
+        // Create the invoice using service
+        Invoice invoice = invoiceService.createInvoice(request, user);
+
+        InvoiceCreateResponse response = new InvoiceCreateResponse(
+            "Invoice created successfully",
+            invoice.getId(),
+            invoice.getCreditCard().getId(),
+            invoice.getDueDate(),
+            invoice.getStatus().name()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -73,29 +75,25 @@ public class InvoiceController {
      * @return a response with the user's invoices.
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getUserInvoices(
+    public ResponseEntity<InvoiceListResponse> getUserInvoices(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        try {
-            // Find the user
-            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-            }
-            User user = userOpt.get();
-
-            // Get invoices using service
-            List<Invoice> invoices = invoiceService.getUserInvoices(user);
-            List<Map<String, Object>> invoiceDtos = invoiceService.toInvoiceDtos(invoices);
-
-            return ResponseEntity.ok(Map.of(
-                "message", "Invoices retrieved successfully",
-                "invoices", invoiceDtos,
-                "count", invoiceDtos.size()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
         }
+        User user = userOpt.get();
+
+        List<Invoice> invoices = invoiceService.getUserInvoices(user);
+        List<InvoiceResponse> invoiceResponses = invoiceService.toInvoiceResponseList(invoices);
+
+        InvoiceListResponse response = new InvoiceListResponse(
+            "Invoices retrieved successfully",
+            invoiceResponses,
+            invoiceResponses.size()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -106,34 +104,30 @@ public class InvoiceController {
      * @return a response with the credit card's invoices.
      */
     @GetMapping("/credit-card/{creditCardId}")
-    public ResponseEntity<Map<String, Object>> getInvoicesByCreditCard(
+    public ResponseEntity<InvoiceByCreditCardResponse> getInvoicesByCreditCard(
             @PathVariable Long creditCardId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        try {
-            // Find the user
-            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-            }
-            User user = userOpt.get();
-
-            // Get invoices using service
-            List<Invoice> invoices = invoiceService.getInvoicesByCreditCard(creditCardId, user);
-            List<Map<String, Object>> invoiceDtos = invoiceService.toInvoiceDtos(invoices);
-
-            return ResponseEntity.ok(Map.of(
-                "message", "Invoices retrieved successfully",
-                "creditCardId", creditCardId,
-                "creditCardName", invoices.isEmpty() ? "" : invoices.get(0).getCreditCard().getName(),
-                "invoices", invoiceDtos,
-                "count", invoiceDtos.size()
-            ));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
         }
+        User user = userOpt.get();
+
+        List<Invoice> invoices = invoiceService.getInvoicesByCreditCard(creditCardId, user);
+        List<InvoiceResponse> invoiceResponses = invoiceService.toInvoiceResponseList(invoices);
+
+        String creditCardName = invoices.isEmpty() ? "" : invoices.get(0).getCreditCard().getName();
+
+        InvoiceByCreditCardResponse response = new InvoiceByCreditCardResponse(
+            "Invoices retrieved successfully",
+            creditCardId,
+            creditCardName,
+            invoiceResponses,
+            invoiceResponses.size()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -144,30 +138,24 @@ public class InvoiceController {
      * @return a response with the invoice information.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getInvoice(
+    public ResponseEntity<InvoiceDetailResponse> getInvoice(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        try {
-            // Find the user
-            Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
-            }
-            User user = userOpt.get();
-
-            // Get invoice using service
-            Invoice invoice = invoiceService.getInvoice(id, user);
-            Map<String, Object> invoiceDto = invoiceService.toInvoiceDto(invoice);
-
-            return ResponseEntity.ok(Map.of(
-                "message", "Invoice retrieved successfully",
-                "invoice", invoiceDto
-            ));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
         }
+        User user = userOpt.get();
+
+        Invoice invoice = invoiceService.getInvoice(id, user);
+        InvoiceResponse invoiceResponse = invoiceService.toInvoiceResponse(invoice);
+
+        InvoiceDetailResponse response = new InvoiceDetailResponse(
+            "Invoice retrieved successfully",
+            invoiceResponse
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

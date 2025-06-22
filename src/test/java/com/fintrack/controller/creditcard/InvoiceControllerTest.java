@@ -36,6 +36,7 @@ import com.fintrack.domain.creditcard.InvoiceStatus;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.config.TestSecurityConfig;
+import com.fintrack.dto.creditcard.InvoiceResponse;
 
 @WebMvcTest(InvoiceController.class)
 @AutoConfigureMockMvc
@@ -145,22 +146,22 @@ class InvoiceControllerTest {
     void shouldGetUserInvoicesSuccessfully() throws Exception {
         // Given
         List<Invoice> invoices = List.of(testInvoice);
-        Map<String, Object> invoiceDto = new HashMap<>();
-        invoiceDto.put("id", 1L);
-        invoiceDto.put("creditCardId", 1L);
-        invoiceDto.put("creditCardName", "Test Card");
-        invoiceDto.put("dueDate", "2024-02-10");
-        invoiceDto.put("totalAmount", BigDecimal.ZERO);
-        invoiceDto.put("paidAmount", BigDecimal.ZERO);
-        invoiceDto.put("status", "OPEN");
-        invoiceDto.put("createdAt", testInvoice.getCreatedAt());
-        invoiceDto.put("updatedAt", testInvoice.getUpdatedAt());
-
-        List<Map<String, Object>> invoiceDtos = List.of(invoiceDto);
+        InvoiceResponse invoiceResponse = new InvoiceResponse(
+            testInvoice.getId(),
+            testInvoice.getCreditCard().getId(),
+            testInvoice.getCreditCard().getName(),
+            testInvoice.getDueDate(),
+            testInvoice.getTotalAmount(),
+            testInvoice.getPaidAmount(),
+            testInvoice.getStatus().name(),
+            testInvoice.getCreatedAt(),
+            testInvoice.getUpdatedAt()
+        );
+        List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getUserInvoices(eq(testUser))).thenReturn(invoices);
-        when(invoiceService.toInvoiceDtos(eq(invoices))).thenReturn(invoiceDtos);
+        when(invoiceService.toInvoiceResponseList(eq(invoices))).thenReturn(invoiceResponses);
 
         // When & Then
         mockMvc.perform(get("/api/invoices")
@@ -179,22 +180,22 @@ class InvoiceControllerTest {
         // Given
         Long creditCardId = 1L;
         List<Invoice> invoices = List.of(testInvoice);
-        Map<String, Object> invoiceDto = new HashMap<>();
-        invoiceDto.put("id", 1L);
-        invoiceDto.put("creditCardId", 1L);
-        invoiceDto.put("creditCardName", "Test Card");
-        invoiceDto.put("dueDate", "2024-02-10");
-        invoiceDto.put("totalAmount", BigDecimal.ZERO);
-        invoiceDto.put("paidAmount", BigDecimal.ZERO);
-        invoiceDto.put("status", "OPEN");
-        invoiceDto.put("createdAt", testInvoice.getCreatedAt());
-        invoiceDto.put("updatedAt", testInvoice.getUpdatedAt());
-
-        List<Map<String, Object>> invoiceDtos = List.of(invoiceDto);
+        InvoiceResponse invoiceResponse = new InvoiceResponse(
+            testInvoice.getId(),
+            testInvoice.getCreditCard().getId(),
+            testInvoice.getCreditCard().getName(),
+            testInvoice.getDueDate(),
+            testInvoice.getTotalAmount(),
+            testInvoice.getPaidAmount(),
+            testInvoice.getStatus().name(),
+            testInvoice.getCreatedAt(),
+            testInvoice.getUpdatedAt()
+        );
+        List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoicesByCreditCard(eq(creditCardId), eq(testUser))).thenReturn(invoices);
-        when(invoiceService.toInvoiceDtos(eq(invoices))).thenReturn(invoiceDtos);
+        when(invoiceService.toInvoiceResponseList(eq(invoices))).thenReturn(invoiceResponses);
 
         // When & Then
         mockMvc.perform(get("/api/invoices/credit-card/{creditCardId}", creditCardId)
@@ -230,20 +231,21 @@ class InvoiceControllerTest {
     void shouldGetSpecificInvoiceSuccessfully() throws Exception {
         // Given
         Long invoiceId = 1L;
-        Map<String, Object> invoiceDto = new HashMap<>();
-        invoiceDto.put("id", 1L);
-        invoiceDto.put("creditCardId", 1L);
-        invoiceDto.put("creditCardName", "Test Card");
-        invoiceDto.put("dueDate", "2024-02-10");
-        invoiceDto.put("totalAmount", BigDecimal.ZERO);
-        invoiceDto.put("paidAmount", BigDecimal.ZERO);
-        invoiceDto.put("status", "OPEN");
-        invoiceDto.put("createdAt", testInvoice.getCreatedAt());
-        invoiceDto.put("updatedAt", testInvoice.getUpdatedAt());
+        InvoiceResponse invoiceResponse = new InvoiceResponse(
+            testInvoice.getId(),
+            testInvoice.getCreditCard().getId(),
+            testInvoice.getCreditCard().getName(),
+            testInvoice.getDueDate(),
+            testInvoice.getTotalAmount(),
+            testInvoice.getPaidAmount(),
+            testInvoice.getStatus().name(),
+            testInvoice.getCreatedAt(),
+            testInvoice.getUpdatedAt()
+        );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
-        when(invoiceService.toInvoiceDto(eq(testInvoice))).thenReturn(invoiceDto);
+        when(invoiceService.toInvoiceResponse(eq(testInvoice))).thenReturn(invoiceResponse);
 
         // When & Then
         mockMvc.perform(get("/api/invoices/{id}", invoiceId)
@@ -267,7 +269,8 @@ class InvoiceControllerTest {
         // When & Then
         mockMvc.perform(get("/api/invoices/{id}", invoiceId)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invoice not found"));
     }
 
     // Helper method to set credit card ID for testing

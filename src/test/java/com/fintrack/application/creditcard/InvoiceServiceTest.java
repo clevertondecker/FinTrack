@@ -27,6 +27,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
+import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -430,16 +431,16 @@ class InvoiceServiceTest {
         @Test
         @DisplayName("Should convert invoice to DTO")
         void shouldConvertInvoiceToDto() {
-            Map<String, Object> result = invoiceService.toInvoiceDto(testInvoice);
+            InvoiceResponse result = invoiceService.toInvoiceResponse(testInvoice);
 
             assertNotNull(result);
-            assertEquals(testInvoice.getId(), result.get("id"));
-            assertEquals(testInvoice.getCreditCard().getId(), result.get("creditCardId"));
-            assertEquals(testInvoice.getCreditCard().getName(), result.get("creditCardName"));
-            assertEquals(testInvoice.getDueDate(), result.get("dueDate"));
-            assertEquals(testInvoice.getTotalAmount(), result.get("totalAmount"));
-            assertEquals(testInvoice.getPaidAmount(), result.get("paidAmount"));
-            assertEquals(testInvoice.getStatus().name(), result.get("status"));
+            assertEquals(testInvoice.getId(), result.id());
+            assertEquals(testInvoice.getCreditCard().getId(), result.creditCardId());
+            assertEquals(testInvoice.getCreditCard().getName(), result.creditCardName());
+            assertEquals(testInvoice.getDueDate(), result.dueDate());
+            assertEquals(testInvoice.getTotalAmount(), result.totalAmount());
+            assertEquals(testInvoice.getPaidAmount(), result.paidAmount());
+            assertEquals(testInvoice.getStatus().name(), result.status());
         }
 
         @Test
@@ -472,10 +473,11 @@ class InvoiceServiceTest {
         @DisplayName("Should convert list of invoices to DTOs")
         void shouldConvertListOfInvoicesToDtos() {
             List<Invoice> invoices = List.of(testInvoice);
-            List<Map<String, Object>> result = invoiceService.toInvoiceDtos(invoices);
+            List<InvoiceResponse> result = invoiceService.toInvoiceResponseList(invoices);
 
             assertNotNull(result);
             assertEquals(1, result.size());
+            assertEquals(testInvoice.getId(), result.get(0).id());
         }
 
         @Test
