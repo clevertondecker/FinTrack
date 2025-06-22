@@ -34,6 +34,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.RegisterRequest;
+import com.fintrack.dto.user.CurrentUserResponse;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController Tests")
@@ -435,12 +436,12 @@ class UserControllerTest {
             assertEquals(200, response.getStatusCodeValue());
             var body = response.getBody();
             assertNotNull(body);
-            assertEquals(testUser.getId(), body.get("id"));
-            assertEquals("John Doe", body.get("name"));
-            assertEquals("john@example.com", body.get("email"));
-            assertArrayEquals(new Object[]{"USER"}, (Object[]) body.get("roles"));
-            assertNotNull(body.get("createdAt"));
-            assertNotNull(body.get("updatedAt"));
+            assertEquals(testUser.getId(), body.id());
+            assertEquals("John Doe", body.name());
+            assertEquals("john@example.com", body.email());
+            assertArrayEquals(new String[]{"USER"}, body.roles());
+            assertNotNull(body.createdAt());
+            assertNotNull(body.updatedAt());
         }
 
         @Test
@@ -476,15 +477,10 @@ class UserControllerTest {
             when(userRepository.findByEmail(Email.of("john@example.com")))
                 .thenThrow(new RuntimeException("Database error"));
 
-            // When
-            var response = userController.getCurrentUser(userDetails);
-
-            // Then
-            assertNotNull(response);
-            assertEquals(500, response.getStatusCodeValue());
-            var body = response.getBody();
-            assertNotNull(body);
-            assertEquals("Failed to get user information", body.get("error"));
+            // When & Then
+            assertThrows(RuntimeException.class, () -> {
+                userController.getCurrentUser(userDetails);
+            });
         }
 
         @Test
@@ -511,10 +507,10 @@ class UserControllerTest {
             assertEquals(200, response.getStatusCodeValue());
             var body = response.getBody();
             assertNotNull(body);
-            assertEquals(testUser.getId(), body.get("id"));
-            assertEquals("Admin User", body.get("name"));
-            assertEquals("admin@example.com", body.get("email"));
-            Object[] roles = (Object[]) body.get("roles");
+            assertEquals(testUser.getId(), body.id());
+            assertEquals("Admin User", body.name());
+            assertEquals("admin@example.com", body.email());
+            String[] roles = body.roles();
             assertEquals(2, roles.length);
             assertTrue(java.util.Arrays.asList(roles).contains("USER"));
             assertTrue(java.util.Arrays.asList(roles).contains("ADMIN"));
@@ -544,8 +540,8 @@ class UserControllerTest {
             assertEquals(200, response.getStatusCodeValue());
             var body = response.getBody();
             assertNotNull(body);
-            assertEquals("João Silva", body.get("name"));
-            assertEquals("joao@example.com", body.get("email"));
+            assertEquals("João Silva", body.name());
+            assertEquals("joao@example.com", body.email());
         }
 
         // Helper methods to set user fields for testing

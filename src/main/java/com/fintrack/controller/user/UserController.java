@@ -21,6 +21,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.RegisterRequest;
 import com.fintrack.dto.user.RegisterResponse;
+import com.fintrack.dto.user.CurrentUserResponse;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.persistence.user.UserJpaRepository;
 
@@ -78,7 +79,7 @@ public class UserController {
      * @return a response with the user's information
      */
     @GetMapping("/current-user")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<CurrentUserResponse> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         try {
             Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
             if (userOpt.isEmpty()) {
@@ -86,17 +87,19 @@ public class UserController {
             }
             
             User user = userOpt.get();
-            return ResponseEntity.ok(Map.of(
-                "id", user.getId(),
-                "name", user.getName(),
-                "email", user.getEmail().getEmail(),
-                "roles", user.getRoles().stream().map(Role::name).toArray(),
-                "createdAt", user.getCreatedAt(),
-                "updatedAt", user.getUpdatedAt()
-            ));
+            CurrentUserResponse response = new CurrentUserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail().getEmail(),
+                user.getRoles().stream().map(Role::name).toArray(String[]::new),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
+            );
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting current user: ", e);
-            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get user information"));
+            throw e; // Let GlobalExceptionHandler handle it
         }
     }
 }
