@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
+import com.fintrack.dto.creditcard.CategoryCreateRequest;
 
 @WebMvcTest(CategoryController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -109,7 +109,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should create category successfully")
         void shouldCreateCategorySuccessfully() throws Exception {
-            Map<String, String> request = Map.of("name", "Food", "color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", "#FF0000");
             when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
@@ -125,7 +125,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should create category without color")
         void shouldCreateCategoryWithoutColor() throws Exception {
-            Map<String, String> request = Map.of("name", "Food");
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", null);
             when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
@@ -140,7 +140,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is null")
         void shouldReturnErrorWhenNameIsNull() throws Exception {
-            Map<String, String> request = Map.of("color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest(null, "#FF0000");
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +152,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is empty")
         void shouldReturnErrorWhenNameIsEmpty() throws Exception {
-            Map<String, String> request = Map.of("name", "", "color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("", "#FF0000");
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -164,7 +164,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is blank")
         void shouldReturnErrorWhenNameIsBlank() throws Exception {
-            Map<String, String> request = Map.of("name", "   ", "color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("   ", "#FF0000");
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -174,9 +174,48 @@ public class CategoryControllerTest {
         }
 
         @Test
+        @DisplayName("Should return error when name is too short")
+        void shouldReturnErrorWhenNameIsTooShort() throws Exception {
+            CategoryCreateRequest request = new CategoryCreateRequest("A", "#FF0000");
+
+            mockMvc.perform(post("/api/categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Category name must be between 2 and 50 characters"));
+        }
+
+        @Test
+        @DisplayName("Should return error when name is too long")
+        void shouldReturnErrorWhenNameIsTooLong() throws Exception {
+            String longName = "This is a very long category name that exceeds the maximum allowed length of fifty characters";
+            CategoryCreateRequest request = new CategoryCreateRequest(longName, "#FF0000");
+
+            mockMvc.perform(post("/api/categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                  .value("Category name must be between 2 and 50 characters"));
+        }
+
+        @Test
+        @DisplayName("Should return error when color is too long")
+        void shouldReturnErrorWhenColorIsTooLong() throws Exception {
+            String longColor = "This color is way too long for the validation";
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", longColor);
+
+            mockMvc.perform(post("/api/categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Color must be at most 20 characters"));
+        }
+
+        @Test
         @DisplayName("Should trim whitespace from name")
         void shouldTrimWhitespaceFromName() throws Exception {
-            Map<String, String> request = Map.of("name", "  Food  ", "color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("  Food  ", "#FF0000");
             when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
@@ -190,7 +229,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should handle special characters in name")
         void shouldHandleSpecialCharactersInName() throws Exception {
-            Map<String, String> request = Map.of("name", "Food & Drinks", "color", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("Food & Drinks", "#FF0000");
             Category specialCategory = Category.of("Food & Drinks", "#FF0000");
             when(categoryRepository.save(any(Category.class))).thenReturn(specialCategory);
 
@@ -203,11 +242,14 @@ public class CategoryControllerTest {
         }
 
         @Test
-        @DisplayName("Should handle long category names")
-        void shouldHandleLongCategoryNames() throws Exception {
-            String longName = "This is a very long category name that should be handled properly";
-            Map<String, String> request = Map.of("name", longName, "color", "#FF0000");
-            Category longCategory = Category.of(longName, "#FF0000");
+        @DisplayName("Should handle maximum allowed category name length")
+        void shouldHandleMaximumAllowedCategoryNameLength() throws Exception {
+            String maxLengthName = "This is exactly fifty characters long category name";
+            if (maxLengthName.length() != 50) {
+                maxLengthName = "A".repeat(50);
+            }
+            CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000");
+            Category longCategory = Category.of(maxLengthName, "#FF0000");
             when(categoryRepository.save(any(Category.class))).thenReturn(longCategory);
 
             mockMvc.perform(post("/api/categories")
@@ -215,7 +257,22 @@ public class CategoryControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Category created successfully"))
-                .andExpect(jsonPath("$.name").value(longName));
+                .andExpect(jsonPath("$.name").value(maxLengthName));
+        }
+
+        @Test
+        @DisplayName("Should handle minimum allowed category name length")
+        void shouldHandleMinimumAllowedCategoryNameLength() throws Exception {
+            CategoryCreateRequest request = new CategoryCreateRequest("AB", "#FF0000");
+            Category minCategory = Category.of("AB", "#FF0000");
+            when(categoryRepository.save(any(Category.class))).thenReturn(minCategory);
+
+            mockMvc.perform(post("/api/categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Category created successfully"))
+                .andExpect(jsonPath("$.name").value("AB"));
         }
     }
 
