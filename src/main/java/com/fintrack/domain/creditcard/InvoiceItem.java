@@ -57,8 +57,7 @@ public class InvoiceItem {
     protected InvoiceItem() {}
 
     /**
-     * Private constructor for InvoiceItem. Use the static factory method to create
-     * instances.
+     * Private constructor for InvoiceItem. Use the static factory method to create instances.
      *
      * @param theInvoice the invoice this item belongs to. Must not be null.
      * @param theDescription the item's description. Must not be null or blank.
@@ -152,7 +151,7 @@ public class InvoiceItem {
     /**
      * Gets the total amount shared among users.
      *
-     * @return the total shared amount.
+     * @return the total shared amount. Never null, may be zero.
      */
     public BigDecimal getSharedAmount() {
         return shares.stream()
@@ -172,7 +171,7 @@ public class InvoiceItem {
     /**
      * Gets the amount that is not shared.
      *
-     * @return the unshared amount.
+     * @return the unshared amount. Never null, may be zero.
      */
     public BigDecimal getUnsharedAmount() {
         return amount.subtract(getSharedAmount());
@@ -181,7 +180,7 @@ public class InvoiceItem {
     /**
      * Sets the invoice for this item. Used by JPA and Invoice entity.
      *
-     * @param invoice the invoice to set.
+     * @param invoice the invoice to set. Can be null.
      */
     void setInvoice(final Invoice invoice) {
         this.invoice = invoice;
@@ -190,21 +189,80 @@ public class InvoiceItem {
     /**
      * Sets the invoice item for a share. Used by JPA and ItemShare entity.
      *
-     * @param invoiceItem the invoice item to set.
+     * @param invoiceItem the invoice item to set. Can be null.
      */
     void setInvoiceItem(final InvoiceItem invoiceItem) {
         // This method is used by ItemShare to set the back reference
     }
 
+    /**
+     * Gets the invoice item's unique identifier.
+     *
+     * @return the invoice item's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the invoice this item belongs to.
+     *
+     * @return the invoice. Never null.
+     */
     public Invoice getInvoice() { return invoice; }
+
+    /**
+     * Gets the item's description.
+     *
+     * @return the description. Never null or blank.
+     */
     public String getDescription() { return description; }
+
+    /**
+     * Gets the item's amount.
+     *
+     * @return the amount. Never null, always positive.
+     */
     public BigDecimal getAmount() { return amount; }
+
+    /**
+     * Gets the item's category.
+     *
+     * @return the category. May be null.
+     */
     public Category getCategory() { return category; }
+
+    /**
+     * Gets the purchase date.
+     *
+     * @return the purchase date. Never null.
+     */
     public LocalDate getPurchaseDate() { return purchaseDate; }
+
+    /**
+     * Gets the current installment number.
+     *
+     * @return the current installment. Never null, always positive.
+     */
     public Integer getInstallments() { return installments; }
+
+    /**
+     * Gets the total number of installments.
+     *
+     * @return the total installments. Never null, always positive.
+     */
     public Integer getTotalInstallments() { return totalInstallments; }
+
+    /**
+     * Gets all shares for this item.
+     *
+     * @return a defensive copy of the shares list. Never null, may be empty.
+     */
     public List<ItemShare> getShares() { return new ArrayList<>(shares); }
+
+    /**
+     * Gets the invoice item's creation timestamp.
+     *
+     * @return the creation timestamp. Never null.
+     */
     public LocalDateTime getCreatedAt() { return createdAt; }
 
     @Override

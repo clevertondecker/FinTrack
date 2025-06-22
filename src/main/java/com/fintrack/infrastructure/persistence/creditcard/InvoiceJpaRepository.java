@@ -22,25 +22,25 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long> {
     /**
      * Finds an invoice by its ID and credit card owner.
      *
-     * @param id the invoice ID.
-     * @param user the owner of the credit card.
-     * @return an Optional containing the invoice if found, empty otherwise.
+     * @param id the invoice ID. Cannot be null.
+     * @param user the owner of the credit card. Cannot be null.
+     * @return an Optional containing the invoice if found, empty otherwise. Never null.
      */
     Optional<Invoice> findByIdAndCreditCardOwner(Long id, User user);
 
     /**
      * Finds all invoices for a specific credit card.
      *
-     * @param creditCard the credit card.
-     * @return a list of invoices for the credit card.
+     * @param creditCard the credit card. Cannot be null.
+     * @return a list of invoices for the credit card. Never null, may be empty.
      */
     List<Invoice> findByCreditCard(CreditCard creditCard);
 
     /**
      * Finds all invoices for credit cards owned by a specific user.
      *
-     * @param user the owner of the credit cards.
-     * @return a list of invoices for the user's credit cards.
+     * @param user the owner of the credit cards. Cannot be null.
+     * @return a list of invoices for the user's credit cards. Never null, may be empty.
      */
     @Query("SELECT i FROM Invoice i WHERE i.creditCard.owner = :user")
     List<Invoice> findByCreditCardOwner(@Param("user") User user);
@@ -48,9 +48,9 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long> {
     /**
      * Finds invoices by credit card and status.
      *
-     * @param creditCard the credit card.
-     * @param status the invoice status.
-     * @return a list of invoices with the specified status.
+     * @param creditCard the credit card. Cannot be null.
+     * @param status the invoice status. Cannot be null.
+     * @return a list of invoices with the specified status. Never null, may be empty.
      */
     List<Invoice> findByCreditCardAndStatus(CreditCard creditCard, com.fintrack.domain.creditcard.InvoiceStatus status);
 

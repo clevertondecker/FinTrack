@@ -22,33 +22,33 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
     /**
      * Finds an invoice item by its ID and invoice credit card owner.
      *
-     * @param id the invoice item ID.
-     * @param user the owner of the credit card.
-     * @return an Optional containing the invoice item if found, empty otherwise.
+     * @param id the invoice item ID. Cannot be null.
+     * @param user the owner of the credit card. Cannot be null.
+     * @return an Optional containing the invoice item if found, empty otherwise. Never null.
      */
     Optional<InvoiceItem> findByIdAndInvoiceCreditCardOwner(Long id, User user);
 
     /**
      * Finds all items for a specific invoice.
      *
-     * @param invoice the invoice.
-     * @return a list of items for the invoice.
+     * @param invoice the invoice. Cannot be null.
+     * @return a list of items for the invoice. Never null, may be empty.
      */
     List<InvoiceItem> findByInvoice(Invoice invoice);
 
     /**
      * Finds invoice items by category.
      *
-     * @param category the category.
-     * @return a list of invoice items with the specified category.
+     * @param category the category. Cannot be null.
+     * @return a list of invoice items with the specified category. Never null, may be empty.
      */
     List<InvoiceItem> findByCategory(Category category);
 
     /**
      * Finds invoice items by category name.
      *
-     * @param categoryName the category name.
-     * @return a list of invoice items with the specified category name.
+     * @param categoryName the category name. Cannot be null or blank.
+     * @return a list of invoice items with the specified category name. Never null, may be empty.
      */
     @Query("SELECT ii FROM InvoiceItem ii WHERE ii.category.name = :categoryName")
     List<InvoiceItem> findByCategoryName(@Param("categoryName") String categoryName);
@@ -56,18 +56,18 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
     /**
      * Finds invoice items by invoice and category.
      *
-     * @param invoice the invoice.
-     * @param category the category.
-     * @return a list of invoice items with the specified category for the invoice.
+     * @param invoice the invoice. Cannot be null.
+     * @param category the category. Cannot be null.
+     * @return a list of invoice items with the specified category for the invoice. Never null, may be empty.
      */
     List<InvoiceItem> findByInvoiceAndCategory(Invoice invoice, Category category);
 
     /**
      * Finds invoice items by invoice and category name.
      *
-     * @param invoice the invoice.
-     * @param categoryName the category name.
-     * @return a list of invoice items with the specified category name for the invoice.
+     * @param invoice the invoice. Cannot be null.
+     * @param categoryName the category name. Cannot be null or blank.
+     * @return a list of invoice items with the specified category name for the invoice. Never null, may be empty.
      */
     @Query("SELECT ii FROM InvoiceItem ii WHERE ii.invoice = :invoice AND ii.category.name = :categoryName")
     List<InvoiceItem> findByInvoiceAndCategoryName(@Param("invoice") Invoice invoice, @Param("categoryName") String categoryName);
@@ -75,7 +75,7 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
     /**
      * Counts items by invoice.
      *
-     * @param invoice the invoice.
+     * @param invoice the invoice. Cannot be null.
      * @return the number of items for the invoice.
      */
     long countByInvoice(Invoice invoice);

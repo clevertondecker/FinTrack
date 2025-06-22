@@ -47,15 +47,11 @@ public class User {
     protected User() {}
 
     /**
-     * Private constructor for User. Use the static factory method to create
-     * instances.
+     * Private constructor for User. Use the static factory method to create instances.
      *
      * @param theName the user's name. Must not be null or blank.
-     *
      * @param theEmail the user's email. Must be a valid Email.
-     *
      * @param thePassword the user's password. Must not be null or blank.
-     *
      * @param theRoles the user's roles. Must not be null or empty.
      */
     private User(final String theName, final Email theEmail,
@@ -77,13 +73,9 @@ public class User {
      * Static factory method to create a new User instance.
      *
      * @param name the user's name. Cannot be null or blank.
-     *
      * @param email the user's email as a string. Cannot be null.
-     *
      * @param password the user's password. Cannot be null or blank.
-     *
      * @param roles the user's roles. Must not be null or empty.
-     *
      * @return a validated User entity. Never null.
      */
     public static User of(final String name, final String email,
@@ -91,12 +83,53 @@ public class User {
         return new User(name, Email.of(email), password, roles);
     }
 
+    /**
+     * Gets the user's unique identifier.
+     *
+     * @return the user's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the user's name.
+     *
+     * @return the user's name. Never null or blank.
+     */
     public String getName() { return name; }
+
+    /**
+     * Gets the user's email.
+     *
+     * @return the user's email. Never null.
+     */
     public Email getEmail() { return email; }
+
+    /**
+     * Gets the user's creation timestamp.
+     *
+     * @return the creation timestamp. Never null.
+     */
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    /**
+     * Gets the user's last update timestamp.
+     *
+     * @return the last update timestamp. Never null.
+     */
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    /**
+     * Gets the user's password.
+     *
+     * @return the user's password. Never null or blank.
+     */
     public String getPassword() { return password; }
+
+    /**
+     * Gets the user's roles.
+     *
+     * @return the user's roles. Never null, may be empty.
+     */
     public Set<Role> getRoles() { return roles; }
 
     @Override

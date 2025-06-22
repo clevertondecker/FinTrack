@@ -61,8 +61,7 @@ public class Invoice {
     protected Invoice() {}
 
     /**
-     * Private constructor for Invoice. Use the static factory method to create
-     * instances.
+     * Private constructor for Invoice. Use the static factory method to create instances.
      *
      * @param theCreditCard the credit card this invoice belongs to. Must not be null.
      * @param theMonth the month/year of the invoice. Must not be null.
@@ -123,7 +122,7 @@ public class Invoice {
     /**
      * Records a payment for this invoice.
      *
-     * @param amount the amount being paid. Must be positive.
+     * @param amount the amount being paid. Must be positive and not exceed total amount.
      */
     public void recordPayment(final BigDecimal amount) {
         Validate.notNull(amount, "Payment amount must not be null.");
@@ -163,7 +162,7 @@ public class Invoice {
     /**
      * Gets the remaining amount to be paid.
      *
-     * @return the remaining amount.
+     * @return the remaining amount. Never null, may be zero.
      */
     public BigDecimal getRemainingAmount() {
         return totalAmount.subtract(paidAmount);
@@ -172,20 +171,73 @@ public class Invoice {
     /**
      * Gets the total amount of this invoice.
      *
-     * @return the total amount.
+     * @return the total amount. Never null, may be zero.
      */
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
+    /**
+     * Gets the invoice's unique identifier.
+     *
+     * @return the invoice's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the credit card this invoice belongs to.
+     *
+     * @return the credit card. Never null.
+     */
     public CreditCard getCreditCard() { return creditCard; }
+
+    /**
+     * Gets the month/year of this invoice.
+     *
+     * @return the month/year. Never null.
+     */
     public YearMonth getMonth() { return month; }
+
+    /**
+     * Gets the due date of this invoice.
+     *
+     * @return the due date. Never null.
+     */
     public LocalDate getDueDate() { return dueDate; }
+
+    /**
+     * Gets the amount already paid for this invoice.
+     *
+     * @return the paid amount. Never null, may be zero.
+     */
     public BigDecimal getPaidAmount() { return paidAmount; }
+
+    /**
+     * Gets the current status of this invoice.
+     *
+     * @return the invoice status. Never null.
+     */
     public InvoiceStatus getStatus() { return status; }
+
+    /**
+     * Gets all items in this invoice.
+     *
+     * @return a defensive copy of the items list. Never null, may be empty.
+     */
     public List<InvoiceItem> getItems() { return new ArrayList<>(items); }
+
+    /**
+     * Gets the invoice's creation timestamp.
+     *
+     * @return the creation timestamp. Never null.
+     */
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    /**
+     * Gets the invoice's last update timestamp.
+     *
+     * @return the last update timestamp. Never null.
+     */
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     @Override

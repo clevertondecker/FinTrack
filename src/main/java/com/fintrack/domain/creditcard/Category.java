@@ -29,11 +29,9 @@ public class Category {
     protected Category() {}
 
     /**
-     * Private constructor for Category. Use the static factory method to create
-     * instances.
+     * Private constructor for Category. Use the static factory method to create instances.
      *
      * @param theName the category's name. Must not be null or blank.
-     *
      * @param theColor the category's color in hex format. Can be null.
      */
     private Category(final String theName, final String theColor) {
@@ -47,17 +45,32 @@ public class Category {
      * Static factory method to create a new Category instance.
      *
      * @param name the category's name. Cannot be null or blank.
-     *
      * @param color the category's color in hex format. Can be null.
-     *
      * @return a validated Category entity. Never null.
      */
     public static Category of(final String name, final String color) {
         return new Category(name, color);
     }
 
+    /**
+     * Gets the category's unique identifier.
+     *
+     * @return the category's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the category's name.
+     *
+     * @return the category's name. Never null or blank.
+     */
     public String getName() { return name; }
+
+    /**
+     * Gets the category's color.
+     *
+     * @return the category's color in hex format. May be null.
+     */
     public String getColor() { return color; }
 
     @Override

@@ -52,17 +52,12 @@ public class CreditCard {
     protected CreditCard() {}
 
     /**
-     * Private constructor for CreditCard. Use the static factory method to create
-     * instances.
+     * Private constructor for CreditCard. Use the static factory method to create instances.
      *
      * @param theName the credit card's name. Must not be null or blank.
-     *
      * @param theLastFourDigits the last four digits of the card. Must be exactly 4 digits.
-     *
      * @param theLimit the credit card's limit. Must be positive.
-     *
      * @param theOwner the credit card's owner. Must not be null.
-     *
      * @param theBank the bank that issued the card. Must not be null.
      */
     private CreditCard(final String theName, final String theLastFourDigits,
@@ -89,15 +84,10 @@ public class CreditCard {
      * Static factory method to create a new CreditCard instance.
      *
      * @param name the credit card's name. Cannot be null or blank.
-     *
      * @param lastFourDigits the last four digits of the card. Must be exactly 4 digits.
-     *
      * @param limit the credit card's limit. Must be positive.
-     *
      * @param owner the credit card's owner. Cannot be null.
-     *
      * @param bank the bank that issued the card. Cannot be null.
-     *
      * @return a validated CreditCard entity. Never null.
      */
     public static CreditCard of(final String name, final String lastFourDigits,
@@ -134,26 +124,89 @@ public class CreditCard {
         updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Updates the credit card's name.
+     *
+     * @param newName the new name. Cannot be null or blank.
+     */
     public void updateName(final String newName) {
         Validate.notBlank(newName, "Credit card name must not be null or blank.");
         name = newName;
         updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Updates the credit card's bank.
+     *
+     * @param newBank the new bank. Cannot be null.
+     */
     public void updateBank(final Bank newBank) {
         Validate.notNull(newBank, "Bank must not be null.");
         bank = newBank;
         updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Gets the credit card's unique identifier.
+     *
+     * @return the credit card's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the credit card's name.
+     *
+     * @return the credit card's name. Never null or blank.
+     */
     public String getName() { return name; }
+
+    /**
+     * Gets the last four digits of the credit card.
+     *
+     * @return the last four digits. Never null or blank, exactly 4 characters.
+     */
     public String getLastFourDigits() { return lastFourDigits; }
+
+    /**
+     * Gets the credit card's limit.
+     *
+     * @return the credit card's limit. Never null, always positive.
+     */
     public BigDecimal getLimit() { return creditLimit; }
+
+    /**
+     * Gets the credit card's owner.
+     *
+     * @return the credit card's owner. Never null.
+     */
     public User getOwner() { return owner; }
+
+    /**
+     * Gets the bank that issued the credit card.
+     *
+     * @return the bank. Never null.
+     */
     public Bank getBank() { return bank; }
+
+    /**
+     * Gets the credit card's creation timestamp.
+     *
+     * @return the creation timestamp. Never null.
+     */
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    /**
+     * Gets the credit card's last update timestamp.
+     *
+     * @return the last update timestamp. Never null.
+     */
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    /**
+     * Checks if the credit card is active.
+     *
+     * @return true if the credit card is active, false otherwise.
+     */
     public boolean isActive() { return active; }
 
     @Override

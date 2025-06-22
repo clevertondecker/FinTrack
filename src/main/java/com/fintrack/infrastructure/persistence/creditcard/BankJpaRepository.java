@@ -16,15 +16,15 @@ public interface BankJpaRepository extends JpaRepository<Bank, Long> {
     /**
      * Finds a bank by its code.
      *
-     * @param code the bank code.
-     * @return an Optional containing the bank if found, empty otherwise.
+     * @param code the bank code. Cannot be null or blank.
+     * @return an Optional containing the bank if found, empty otherwise. Never null.
      */
     Optional<Bank> findByCode(String code);
 
     /**
      * Checks if a bank exists by its code.
      *
-     * @param code the bank code.
+     * @param code the bank code. Cannot be null or blank.
      * @return true if the bank exists, false otherwise.
      */
     boolean existsByCode(String code);

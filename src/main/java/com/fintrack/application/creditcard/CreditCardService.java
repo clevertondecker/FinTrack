@@ -40,8 +40,8 @@ public class CreditCardService {
     /**
      * Finds a user by email from Authentication.
      *
-     * @param username the username (email) from Authentication
-     * @return an Optional containing the user if found
+     * @param username the username (email) from Authentication. Can be null or empty.
+     * @return an Optional containing the user if found, empty otherwise. Never null.
      */
     public Optional<User> findUserByUsername(String username) {
         if (username == null || username.trim().isEmpty()) {
@@ -59,10 +59,10 @@ public class CreditCardService {
     /**
      * Creates a new credit card for a user.
      *
-     * @param request the credit card creation request
-     * @param user the authenticated user
-     * @return the created credit card
-     * @throws IllegalArgumentException if bank not found
+     * @param request the credit card creation request. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the created credit card. Never null.
+     * @throws IllegalArgumentException if bank not found.
      */
     public CreditCard createCreditCard(CreateCreditCardRequest request, User user) {
         // Find the bank
@@ -87,8 +87,8 @@ public class CreditCardService {
     /**
      * Gets all credit cards for a user.
      *
-     * @param user the authenticated user
-     * @return list of credit cards
+     * @param user the authenticated user. Cannot be null.
+     * @return list of credit cards. Never null, may be empty.
      */
     public List<CreditCard> getUserCreditCards(User user) {
         return creditCardRepository.findByOwner(user);
@@ -97,10 +97,10 @@ public class CreditCardService {
     /**
      * Gets a specific credit card by ID for a user.
      *
-     * @param creditCardId the credit card ID
-     * @param user the authenticated user
-     * @return the credit card
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the credit card. Never null.
+     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
      */
     public CreditCard getCreditCard(Long creditCardId, User user) {
         Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(creditCardId, user);
@@ -113,10 +113,10 @@ public class CreditCardService {
     /**
      * Activates a credit card for a user.
      *
-     * @param creditCardId the credit card ID
-     * @param user the authenticated user
-     * @return the activated credit card
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the activated credit card. Never null.
+     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
      */
     public CreditCard activateCreditCard(Long creditCardId, User user) {
         CreditCard creditCard = getCreditCard(creditCardId, user);
@@ -127,10 +127,10 @@ public class CreditCardService {
     /**
      * Deactivates a credit card for a user.
      *
-     * @param creditCardId the credit card ID
-     * @param user the authenticated user
-     * @return the deactivated credit card
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the deactivated credit card. Never null.
+     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
      */
     public CreditCard deactivateCreditCard(Long creditCardId, User user) {
         CreditCard creditCard = getCreditCard(creditCardId, user);
@@ -141,11 +141,11 @@ public class CreditCardService {
     /**
      * Updates a credit card for a user.
      *
-     * @param creditCardId the credit card ID
-     * @param request the credit card update request
-     * @param user the authenticated user
-     * @return the updated credit card
-     * @throws IllegalArgumentException if credit card or bank not found
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param request the credit card update request. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the updated credit card. Never null.
+     * @throws IllegalArgumentException if credit card or bank not found.
      */
     public CreditCard updateCreditCard(Long creditCardId, CreateCreditCardRequest request, User user) {
         // Find the credit card
@@ -169,8 +169,8 @@ public class CreditCardService {
     /**
      * Converts a CreditCard to a Map DTO.
      *
-     * @param creditCard the credit card to convert
-     * @return Map representation of the credit card
+     * @param creditCard the credit card to convert. Cannot be null.
+     * @return Map representation of the credit card. Never null.
      */
     public Map<String, Object> toCreditCardDto(CreditCard creditCard) {
         Map<String, Object> dto = new HashMap<>();
@@ -189,8 +189,8 @@ public class CreditCardService {
     /**
      * Converts a list of credit cards to DTOs.
      *
-     * @param creditCards the list of credit cards to convert
-     * @return list of credit card DTOs
+     * @param creditCards the list of credit cards to convert. Cannot be null.
+     * @return list of credit card DTOs. Never null, may be empty.
      */
     public List<Map<String, Object>> toCreditCardDtos(List<CreditCard> creditCards) {
         List<Map<String, Object>> dtos = new ArrayList<>();

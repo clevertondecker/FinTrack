@@ -48,8 +48,8 @@ public class InvoiceService {
     /**
      * Finds a user by email from UserDetails.
      *
-     * @param username the username (email) from UserDetails
-     * @return an Optional containing the user if found
+     * @param username the username (email) from UserDetails. Can be null or empty.
+     * @return an Optional containing the user if found, empty otherwise. Never null.
      */
     public Optional<User> findUserByUsername(String username) {
         if (username == null || username.trim().isEmpty()) {
@@ -67,10 +67,10 @@ public class InvoiceService {
     /**
      * Creates a new invoice for a credit card.
      *
-     * @param request the invoice creation request
-     * @param user the authenticated user
-     * @return the created invoice
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user
+     * @param request the invoice creation request. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the created invoice. Never null.
+     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
      */
     public Invoice createInvoice(CreateInvoiceRequest request, User user) {
         // Find the credit card
@@ -93,8 +93,8 @@ public class InvoiceService {
     /**
      * Gets all invoices for a user.
      *
-     * @param user the authenticated user
-     * @return list of invoices
+     * @param user the authenticated user. Cannot be null.
+     * @return list of invoices. Never null, may be empty.
      */
     public List<Invoice> getUserInvoices(User user) {
         return invoiceRepository.findByCreditCardOwner(user);
@@ -103,10 +103,10 @@ public class InvoiceService {
     /**
      * Gets invoices for a specific credit card.
      *
-     * @param creditCardId the credit card ID
-     * @param user the authenticated user
-     * @return list of invoices for the credit card
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return list of invoices for the credit card. Never null, may be empty.
+     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
      */
     public List<Invoice> getInvoicesByCreditCard(Long creditCardId, User user) {
         // Find the credit card
@@ -122,10 +122,10 @@ public class InvoiceService {
     /**
      * Gets a specific invoice by ID.
      *
-     * @param invoiceId the invoice ID
-     * @param user the authenticated user
-     * @return the invoice
-     * @throws IllegalArgumentException if invoice not found or doesn't belong to user
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the invoice. Never null.
+     * @throws IllegalArgumentException if invoice not found or doesn't belong to user.
      */
     public Invoice getInvoice(Long invoiceId, User user) {
         Optional<Invoice> invoiceOpt = invoiceRepository.findByIdAndCreditCardOwner(invoiceId, user);
@@ -138,11 +138,11 @@ public class InvoiceService {
     /**
      * Creates a new invoice item.
      *
-     * @param invoiceId the invoice ID
-     * @param request the invoice item creation request
-     * @param user the authenticated user
-     * @return the updated invoice with the new item
-     * @throws IllegalArgumentException if invoice not found or doesn't belong to user
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param request the invoice item creation request. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the updated invoice with the new item. Never null.
+     * @throws IllegalArgumentException if invoice not found or doesn't belong to user.
      */
     public Invoice createInvoiceItem(Long invoiceId, CreateInvoiceItemRequest request, User user) {
         // Find the invoice
@@ -178,10 +178,10 @@ public class InvoiceService {
     /**
      * Gets all items for a specific invoice.
      *
-     * @param invoiceId the invoice ID
-     * @param user the authenticated user
-     * @return list of invoice items
-     * @throws IllegalArgumentException if invoice not found or doesn't belong to user
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return list of invoice items. Never null, may be empty.
+     * @throws IllegalArgumentException if invoice not found or doesn't belong to user.
      */
     public List<InvoiceItem> getInvoiceItems(Long invoiceId, User user) {
         // Find the invoice
@@ -197,15 +197,17 @@ public class InvoiceService {
     /**
      * Gets a specific invoice item by ID.
      *
-     * @param invoiceId the invoice ID
-     * @param itemId the invoice item ID
-     * @param user the authenticated user
-     * @return the invoice item
-     * @throws IllegalArgumentException if item not found or doesn't belong to invoice/user
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param itemId the invoice item ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the invoice item. Never null.
+     * @throws IllegalArgumentException if item not found or doesn't belong to invoice/user.
      */
     public InvoiceItem getInvoiceItem(Long invoiceId, Long itemId, User user) {
         // Find the invoice item
-        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
+        Optional<InvoiceItem> itemOpt =
+          invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
+
         if (itemOpt.isEmpty()) {
             throw new IllegalArgumentException("Invoice item not found");
         }
@@ -222,11 +224,11 @@ public class InvoiceService {
     /**
      * Deletes an invoice item.
      *
-     * @param invoiceId the invoice ID
-     * @param itemId the invoice item ID
-     * @param user the authenticated user
-     * @return the updated invoice
-     * @throws IllegalArgumentException if item not found or doesn't belong to invoice/user
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param itemId the invoice item ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the updated invoice. Never null.
+     * @throws IllegalArgumentException if item not found or doesn't belong to invoice/user.
      */
     public Invoice deleteInvoiceItem(Long invoiceId, Long itemId, User user) {
         // Find the invoice item
@@ -334,4 +336,4 @@ public class InvoiceService {
         }
         return dtos;
     }
-} 
+}

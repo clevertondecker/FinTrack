@@ -29,11 +29,9 @@ public class Bank {
     protected Bank() {}
 
     /**
-     * Private constructor for Bank. Use the static factory method to create
-     * instances.
+     * Private constructor for Bank. Use the static factory method to create instances.
      *
      * @param theCode the bank's code. Must not be null or blank.
-     *
      * @param theName the bank's name. Must not be null or blank.
      */
     private Bank(final String theCode, final String theName) {
@@ -48,17 +46,32 @@ public class Bank {
      * Static factory method to create a new Bank instance.
      *
      * @param code the bank's code. Cannot be null or blank.
-     *
      * @param name the bank's name. Cannot be null or blank.
-     *
      * @return a validated Bank entity. Never null.
      */
     public static Bank of(final String code, final String name) {
         return new Bank(code, name);
     }
 
+    /**
+     * Gets the bank's unique identifier.
+     *
+     * @return the bank's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the bank's code.
+     *
+     * @return the bank's code. Never null or blank.
+     */
     public String getCode() { return code; }
+
+    /**
+     * Gets the bank's name.
+     *
+     * @return the bank's name. Never null or blank.
+     */
     public String getName() { return name; }
 
     @Override

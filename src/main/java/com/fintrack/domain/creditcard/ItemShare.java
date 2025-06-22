@@ -42,8 +42,7 @@ public class ItemShare {
     protected ItemShare() {}
 
     /**
-     * Private constructor for ItemShare. Use the static factory method to create
-     * instances.
+     * Private constructor for ItemShare. Use the static factory method to create instances.
      *
      * @param theUser the user this share belongs to. Must not be null.
      * @param theInvoiceItem the invoice item this share belongs to. Must not be null.
@@ -123,17 +122,52 @@ public class ItemShare {
     /**
      * Sets the invoice item for this share. Used by JPA and InvoiceItem entity.
      *
-     * @param invoiceItem the invoice item to set.
+     * @param invoiceItem the invoice item to set. Can be null.
      */
     void setInvoiceItem(final InvoiceItem invoiceItem) {
         this.invoiceItem = invoiceItem;
     }
 
+    /**
+     * Gets the item share's unique identifier.
+     *
+     * @return the item share's ID. May be null if not persisted.
+     */
     public Long getId() { return id; }
+
+    /**
+     * Gets the user this share belongs to.
+     *
+     * @return the user. Never null.
+     */
     public User getUser() { return user; }
+
+    /**
+     * Gets the invoice item this share belongs to.
+     *
+     * @return the invoice item. Never null.
+     */
     public InvoiceItem getInvoiceItem() { return invoiceItem; }
+
+    /**
+     * Gets the percentage of the item this user is responsible for.
+     *
+     * @return the percentage (0.0 to 1.0). Never null, always between 0 and 1.
+     */
     public BigDecimal getPercentage() { return percentage; }
+
+    /**
+     * Gets the amount this user is responsible for.
+     *
+     * @return the amount. Never null, always positive.
+     */
     public BigDecimal getAmount() { return amount; }
+
+    /**
+     * Checks if this user is responsible for paying this share.
+     *
+     * @return true if the user is responsible, false otherwise.
+     */
     public boolean isResponsible() { return responsible; }
 
     @Override
