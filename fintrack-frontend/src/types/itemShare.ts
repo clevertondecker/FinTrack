@@ -41,4 +41,27 @@ export interface ItemShareCreateResponse {
   shareCount: number;
   totalSharedAmount: number;
   unsharedAmount: number;
+}
+
+// Types for user's shares
+export interface MyShareResponse {
+  shareId: number;
+  invoiceId: number;
+  itemId: number;
+  itemDescription: string;
+  itemAmount: number;
+  myAmount: number;
+  myPercentage: number;
+  isResponsible: boolean;
+  creditCardName: string;
+  creditCardOwnerName: string;
+  invoiceDueDate: string;
+  invoiceStatus: string;
+  shareCreatedAt: string;
+}
+
+export interface MySharesResponse {
+  message: string;
+  shares: MyShareResponse[];
+  shareCount: number;
 } 

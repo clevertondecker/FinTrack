@@ -18,6 +18,7 @@ import {
   ItemShareListResponse,
   ItemShareCreateResponse
 } from '../types/itemShare';
+import { MySharesResponse } from '../types/itemShare';
 
 class ApiService {
   private api: AxiosInstance;
@@ -176,8 +177,8 @@ class ApiService {
     await this.api.delete(`/invoices/${invoiceId}/items/${itemId}/shares`);
   }
 
-  async getMyShares(): Promise<{ message: string; shares: any[]; shareCount: number }> {
-    const response = await this.api.get<{ message: string; shares: any[]; shareCount: number }>('/invoices/shares/my-shares');
+  async getMyShares(): Promise<MySharesResponse> {
+    const response = await this.api.get<MySharesResponse>('/invoices/shares/my-shares');
     return response.data;
   }
 }

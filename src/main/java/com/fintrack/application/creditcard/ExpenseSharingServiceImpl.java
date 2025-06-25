@@ -86,6 +86,16 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         return itemShareRepository.findByUserAndMonth(user, month);
     }
 
+    /**
+     * Gets all shares for a specific user across all invoices.
+     *
+     * @param user the user to get shares for. Must not be null.
+     * @return a list of item shares for the user. Never null, may be empty.
+     */
+    public List<ItemShare> getSharesForUser(User user) {
+        return itemShareRepository.findByUser(user);
+    }
+
     @Override
     public List<ItemShare> getSharesForItem(InvoiceItem item) {
         // Use the repository method to ensure shares are loaded from the database

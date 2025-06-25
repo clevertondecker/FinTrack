@@ -4,6 +4,8 @@ import com.fintrack.application.creditcard.ExpenseSharingServiceImpl;
 import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.ItemShare;
+import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
 import com.fintrack.dto.creditcard.*;
 import org.springframework.http.ResponseEntity;
@@ -190,7 +192,7 @@ public class ItemShareController {
      * @return a response with the user's shares.
      */
     @GetMapping("/shares/my-shares")
-    public ResponseEntity<Map<String, Object>> getMyShares(
+    public ResponseEntity<MySharesResponse> getMyShares(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
@@ -199,13 +201,21 @@ public class ItemShareController {
         }
         User user = userOpt.get();
 
-        // For now, return empty list - this endpoint needs to be implemented properly
-        // TODO: Implement proper user shares retrieval
-        return ResponseEntity.ok(Map.of(
-            "message", "User shares retrieved successfully",
-            "shares", new ArrayList<>(),
-            "shareCount", 0
-        ));
+        // Get all shares for the user
+        List<ItemShare> userShares = expenseSharingService.getSharesForUser(user);
+        
+        // Convert to response DTOs
+        List<MyShareResponse> shareResponses = userShares.stream()
+            .map(this::toMyShareResponse)
+            .toList();
+
+        MySharesResponse response = new MySharesResponse(
+            "User shares retrieved successfully",
+            shareResponses,
+            shareResponses.size()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -237,5 +247,27 @@ public class ItemShareController {
                          ", Percentage: " + response.percentage());
         
         return response;
+    }
+
+    private MyShareResponse toMyShareResponse(ItemShare share) {
+        InvoiceItem item = share.getInvoiceItem();
+        Invoice invoice = item.getInvoice();
+        CreditCard creditCard = invoice.getCreditCard();
+        
+        return new MyShareResponse(
+            share.getId(),
+            invoice.getId(),
+            item.getId(),
+            item.getDescription(),
+            item.getAmount(),
+            share.getAmount(),
+            share.getPercentage(),
+            share.isResponsible(),
+            creditCard.getName(),
+            creditCard.getOwner().getName(),
+            invoice.getDueDate(),
+            invoice.getStatus().name(),
+            share.getCreatedAt()
+        );
     }
 }

@@ -1,0 +1,358 @@
+.my-shares-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.my-shares-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.my-shares-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.shares-summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.total-shares {
+  background: #3498db;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.total-amount {
+  background: #27ae60;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.shares-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.credit-card-group {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.card-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.card-owner {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.group-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.group-count {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.group-total {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.shares-list {
+  padding: 0;
+}
+
+.share-item {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.share-item:last-child {
+  border-bottom: none;
+}
+
+.share-item:hover {
+  background-color: #f8f9fa;
+}
+
+.share-main-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.item-description h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-info {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.invoice-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-partial {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-overdue {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-open {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.share-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.amount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: right;
+}
+
+.total-item, .my-share {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.label {
+  color: #6c757d;
+}
+
+.value {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.value.highlight {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.responsible-badge {
+  background: #e74c3c;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.share-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-date {
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.error-message {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 8px;
+  border: 1px solid #f5c6cb;
+}
+
+.retry-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 12px;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background: #c82333;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 20px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .my-shares-container {
+    padding: 16px;
+  }
+
+  .my-shares-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .shares-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .group-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .group-summary {
+    align-items: flex-start;
+  }
+
+  .share-main-info {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .share-amounts {
+    align-items: flex-start;
+    min-width: auto;
+    width: 100%;
+  }
+
+  .amount-breakdown {
+    text-align: left;
+    width: 100%;
+  }
+
+  .total-item, .my-share {
+    justify-content: space-between;
+  }
+
+  .share-footer {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-shares-header h2 {
+    font-size: 24px;
+  }
+
+  .total-shares, .total-amount {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .card-info h3 {
+    font-size: 18px;
+  }
+
+  .item-description h4 {
+    font-size: 15px;
+  }
+
+  .share-item {
+    padding: 16px;
+  }
+} 
