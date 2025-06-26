@@ -121,6 +121,7 @@
     "title": "Invoices",
     "addInvoice": "Add Invoice",
     "editInvoice": "Edit Invoice",
+    "addItem": "Add Item",
     "invoiceNumber": "Invoice #",
     "dueDate": "Due Date",
     "totalAmount": "Total Amount",
@@ -195,7 +196,48 @@
     "shareWithUsers": "Share with users",
     "shareSuccess": "Item shared successfully",
     "shareError": "Error sharing item",
-    "removeItem": "Remove item from invoice"
+    "removeItem": "Remove item from invoice",
+    "noCategory": "No category",
+    "filters": {
+      "title": "Filters",
+      "status": "Status",
+      "creditCard": "Credit Card",
+      "dateFrom": "Due Date (From)",
+      "dateTo": "Due Date (To)",
+      "minAmount": "Minimum Amount",
+      "maxAmount": "Maximum Amount",
+      "allStatus": "All Status",
+      "allCards": "All Cards",
+      "clearFilters": "Clear Filters",
+      "applyFilters": "Apply Filters"
+    },
+    "summary": {
+      "title": "Summary",
+      "totalInvoices": "Total Invoices",
+      "totalAmount": "Total Amount",
+      "totalPaid": "Total Paid",
+      "totalRemaining": "Total Remaining",
+      "overdue": "Overdue",
+      "open": "Open",
+      "partial": "Partially Paid",
+      "paid": "Paid"
+    },
+    "groups": {
+      "overdue": "Overdue Invoices",
+      "open": "Open Invoices",
+      "partial": "Partially Paid",
+      "paid": "Paid Invoices",
+      "noOverdue": "No overdue invoices",
+      "noOpen": "No open invoices",
+      "noPartial": "No partially paid invoices",
+      "noPaid": "No paid invoices"
+    },
+    "urgency": {
+      "overdue": "Overdue by {{days}} days",
+      "dueToday": "Due today",
+      "dueTomorrow": "Due tomorrow",
+      "dueInDays": "Due in {{days}} days"
+    }
   },
   "invoiceItems": {
     "title": "Invoice Items",

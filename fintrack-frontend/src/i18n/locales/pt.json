@@ -121,6 +121,7 @@
     "title": "Faturas",
     "addInvoice": "Adicionar Fatura",
     "editInvoice": "Editar Fatura",
+    "addItem": "Adicionar Item",
     "invoiceNumber": "Fatura #",
     "dueDate": "Data de Vencimento",
     "totalAmount": "Valor Total",
@@ -193,7 +194,48 @@
     "shareWithUsers": "Dividir com usuários",
     "shareSuccess": "Item dividido com sucesso",
     "shareError": "Erro ao dividir item",
-    "removeItem": "Remover item da fatura"
+    "removeItem": "Remover item da fatura",
+    "filters": {
+      "title": "Filtros",
+      "status": "Status",
+      "creditCard": "Cartão de Crédito",
+      "dateFrom": "Data de Vencimento (De)",
+      "dateTo": "Data de Vencimento (Até)",
+      "minAmount": "Valor Mínimo",
+      "maxAmount": "Valor Máximo",
+      "allStatus": "Todos os Status",
+      "allCards": "Todos os Cartões",
+      "clearFilters": "Limpar Filtros",
+      "applyFilters": "Aplicar Filtros"
+    },
+    "summary": {
+      "title": "Resumo",
+      "totalInvoices": "Total de Faturas",
+      "totalAmount": "Valor Total",
+      "totalPaid": "Total Pago",
+      "totalRemaining": "Total Restante",
+      "overdue": "Vencidas",
+      "open": "Abertas",
+      "partial": "Parcialmente Pagas",
+      "paid": "Pagas"
+    },
+    "groups": {
+      "overdue": "Faturas Vencidas",
+      "open": "Faturas Abertas",
+      "partial": "Parcialmente Pagas",
+      "paid": "Faturas Pagas",
+      "noOverdue": "Nenhuma fatura vencida",
+      "noOpen": "Nenhuma fatura aberta",
+      "noPartial": "Nenhuma fatura parcialmente paga",
+      "noPaid": "Nenhuma fatura paga"
+    },
+    "urgency": {
+      "overdue": "Venceu há {{days}} dias",
+      "dueToday": "Vence hoje",
+      "dueTomorrow": "Vence amanhã",
+      "dueInDays": "Vence em {{days}} dias"
+    },
+    "noCategory": "Sem categoria"
   },
   "invoiceItems": {
     "title": "Itens da Fatura",
@@ -227,7 +269,8 @@
     "shareCount_plural": "{{count}} divisões",
     "itemCount": "{{count}} item",
     "itemCount_plural": "{{count}} itens",
-    "cardOf": "Cartão de {{owner}}",
+    "cardOf": "Cartão de {{owner}} - {{count}} divisão",
+    "cardOf_plural": "Cartão de {{owner}} - {{count}} divisões",
     "invoiceNumber": "Fatura #{{number}}",
     "dueDate": "Vencimento: {{date}}",
     "totalAmount": "Valor total:",
@@ -235,7 +278,13 @@
     "responsibleForPayment": "Responsável pelo pagamento",
     "sharedOn": "Dividido em {{date}}",
     "loadingShares": "Carregando suas divisões...",
-    "errorLoadingShares": "Erro ao carregar divisões"
+    "errorLoadingShares": "Erro ao carregar divisões",
+    "status": {
+      "open": "Aberta",
+      "paid": "Paga",
+      "overdue": "Vencida",
+      "partial": "Parcial"
+    }
   },
   "language": {
     "en": "English",

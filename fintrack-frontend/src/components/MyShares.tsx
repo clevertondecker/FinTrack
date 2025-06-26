@@ -13,11 +13,24 @@ interface GroupedShares {
 }
 
 const MyShares: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [shares, setShares] = useState<MySharesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groupedShares, setGroupedShares] = useState<GroupedShares>({});
+
+  // Atualizar idioma quando mudar
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setCurrentLanguage(i18n.language);
+    };
+
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   useEffect(() => {
     loadMyShares();
@@ -29,7 +42,7 @@ const MyShares: React.FC = () => {
       setError(null);
       const response = await apiService.getMyShares();
       setShares(response);
-      
+
       // Group shares by credit card
       const grouped: GroupedShares = {};
       response.shares.forEach(share => {
@@ -65,39 +78,31 @@ const MyShares: React.FC = () => {
   };
 
   const formatPercentage = (percentage: number) => {
-    return `${(percentage * 100).toFixed(1)}%`;
+    return `${percentage.toFixed(1)}%`;
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toUpperCase()) {
-      case 'PAID':
-        return 'status-paid';
-      case 'PARTIAL':
-        return 'status-partial';
-      case 'OVERDUE':
-        return 'status-overdue';
-      default:
-        return 'status-open';
+    switch (status?.toUpperCase()) {
+      case 'PAID': return 'status-paid';
+      case 'PARTIAL': return 'status-partial';
+      case 'OVERDUE': return 'status-overdue';
+      default: return 'status-open';
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status.toUpperCase()) {
-      case 'PAID':
-        return t('invoices.status.paid');
-      case 'PARTIAL':
-        return t('invoices.status.partial');
-      case 'OVERDUE':
-        return t('invoices.status.overdue');
-      default:
-        return t('invoices.status.open');
+    switch (status?.toUpperCase()) {
+      case 'PAID': return 'Paga';
+      case 'PARTIAL': return 'Parcial';
+      case 'OVERDUE': return 'Vencida';
+      default: return 'Aberta';
     }
   };
 
   if (loading) {
     return (
       <div className="my-shares-container">
-        <div className="loading">{t('shares.loadingShares')}</div>
+        <div className="loading">Carregando suas divisões...</div>
       </div>
     );
   }
@@ -108,7 +113,7 @@ const MyShares: React.FC = () => {
         <div className="error-message">
           <p>{error}</p>
           <button onClick={loadMyShares} className="retry-btn">
-            {t('common.retry')}
+            Tentar Novamente
           </button>
         </div>
       </div>
@@ -120,8 +125,8 @@ const MyShares: React.FC = () => {
       <div className="my-shares-container">
         <div className="empty-state">
           <div className="empty-icon">📋</div>
-          <h3>{t('shares.noShares')}</h3>
-          <p>{t('shares.noSharesDescription')}</p>
+          <h3>Nenhuma divisão encontrada</h3>
+          <p>Você não tem itens divididos com você por outros usuários ainda</p>
         </div>
       </div>
     );
@@ -130,13 +135,13 @@ const MyShares: React.FC = () => {
   return (
     <div className="my-shares-container">
       <div className="my-shares-header">
-        <h2>{t('shares.title')}</h2>
+        <h2>Minhas Divisões</h2>
         <div className="shares-summary">
           <span className="total-shares">
-            {t('shares.shareCount', { count: shares.shareCount })}
+            {shares.shareCount} divisão{shares.shareCount > 1 ? 'ões' : ''}
           </span>
           <span className="total-amount">
-            {t('common.total')}: {formatCurrency(
+            Total: {formatCurrency(
               shares.shares.reduce((sum, share) => sum + share.myAmount, 0)
             )}
           </span>
@@ -144,73 +149,81 @@ const MyShares: React.FC = () => {
       </div>
 
       <div className="shares-groups">
-        {Object.entries(groupedShares).map(([key, group]) => (
-          <div key={key} className="credit-card-group">
-            <div className="group-header">
-              <div className="card-info">
-                <h3 className="card-name">{group.creditCardName}</h3>
-                <p className="card-owner">{t('shares.cardOf', { owner: group.creditCardOwnerName })}</p>
-              </div>
-              <div className="group-summary">
-                <span className="group-count">
-                  {t('shares.itemCount', { count: group.shares.length })}
-                </span>
-                <span className="group-total">
-                  {formatCurrency(
-                    group.shares.reduce((sum, share) => sum + share.myAmount, 0)
-                  )}
-                </span>
-              </div>
-            </div>
+        {Object.entries(groupedShares).map(([key, group]) => {
+          const owner = group.creditCardOwnerName;
+          const count = group.shares.length;
+          
+          // Usar interpolação direta
+          const cardTitle = `Cartão de ${owner} - ${count} divisão${count > 1 ? 'ões' : ''}`;
 
-            <div className="shares-list">
-              {group.shares.map((share) => (
-                <div key={share.shareId} className="share-item">
-                  <div className="share-main-info">
-                    <div className="item-description">
-                      <h4>{share.itemDescription}</h4>
-                      <div className="item-meta">
-                        <span className="invoice-info">
-                          {t('shares.invoiceNumber', { number: share.invoiceId })} • {t('shares.dueDate', { date: formatDate(share.invoiceDueDate) })}
-                        </span>
-                        <span className={`invoice-status ${getStatusColor(share.invoiceStatus)}`}>
-                          {getStatusText(share.invoiceStatus)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="share-amounts">
-                      <div className="amount-breakdown">
-                        <div className="total-item">
-                          <span className="label">{t('shares.totalAmount')}</span>
-                          <span className="value">{formatCurrency(share.itemAmount)}</span>
-                        </div>
-                        <div className="my-share">
-                          <span className="label">{t('shares.myShare')}</span>
-                          <span className="value highlight">
-                            {formatCurrency(share.myAmount)} ({formatPercentage(share.myPercentage)})
+          return (
+            <div key={key} className="credit-card-group">
+              <div className="group-header">
+                <div className="card-info">
+                  <h3 className="card-name">{group.creditCardName}</h3>
+                  <p className="card-owner">{cardTitle}</p>
+                </div>
+                <div className="group-summary">
+                  <span className="group-count">
+                    {group.shares.length} item{group.shares.length > 1 ? 's' : ''}
+                  </span>
+                  <span className="group-total">
+                    {formatCurrency(
+                      group.shares.reduce((sum, share) => sum + share.myAmount, 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="shares-list">
+                {group.shares.map((share) => (
+                  <div key={share.shareId} className="share-item">
+                    <div className="share-main-info">
+                      <div className="item-description">
+                        <h4>{share.itemDescription}</h4>
+                        <div className="item-meta">
+                          <span className="invoice-info">
+                            Fatura #{share.invoiceId} • Vencimento: {formatDate(share.invoiceDueDate)}
+                          </span>
+                          <span className={`invoice-status ${getStatusColor(share.invoiceStatus)}`}>
+                            {getStatusText(share.invoiceStatus)}
                           </span>
                         </div>
                       </div>
                       
-                      {share.isResponsible && (
-                        <div className="responsible-badge">
-                          <span>{t('shares.responsibleForPayment')}</span>
+                      <div className="share-amounts">
+                        <div className="amount-breakdown">
+                          <div className="total-item">
+                            <span className="label">Valor total:</span>
+                            <span className="value">{formatCurrency(share.itemAmount)}</span>
+                          </div>
+                          <div className="my-share">
+                            <span className="label">Minha parte:</span>
+                            <span className="value highlight">
+                              {formatCurrency(share.myAmount)} ({formatPercentage(share.myPercentage)})
+                            </span>
+                          </div>
                         </div>
-                      )}
+                        
+                        {share.isResponsible && (
+                          <div className="responsible-badge">
+                            <span>Responsável pelo pagamento</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="share-footer">
+                      <span className="share-date">
+                        Dividido em {formatDate(share.shareCreatedAt)}
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="share-footer">
-                    <span className="share-date">
-                      {t('shares.sharedOn', { date: formatDate(share.shareCreatedAt) })}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

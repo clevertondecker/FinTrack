@@ -26,13 +26,13 @@ i18n
       escapeValue: false, // React already does escaping
     },
 
+    // Configuração específica para idiomas
+    supportedLngs: ['en', 'pt'],
+
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
-      lookupQuerystring: 'lng',
-      lookupCookie: 'i18next',
-      lookupSessionStorage: 'i18nextLng'
     }
   });
 

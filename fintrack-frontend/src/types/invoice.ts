@@ -5,7 +5,7 @@ export interface Invoice {
   dueDate: string;
   totalAmount: number | null;
   paidAmount: number | null;
-  status: InvoiceStatus;
+  status: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -15,10 +15,8 @@ export interface InvoiceItem {
   invoiceId: number;
   description: string;
   amount: number;
-  category?: string;
+  category: string | null;
   purchaseDate: string;
-  installments?: number;
-  totalInstallments?: number;
   createdAt: string;
 }
 
@@ -32,6 +30,37 @@ export interface CreateInvoiceItemRequest {
   amount: number;
   categoryId?: number;
   purchaseDate: string;
+}
+
+export interface InvoiceFilters {
+  status?: string;
+  creditCardId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface InvoiceSummary {
+  totalInvoices: number;
+  totalAmount: number;
+  totalPaid: number;
+  totalRemaining: number;
+  overdueCount: number;
+  overdueAmount: number;
+  openCount: number;
+  openAmount: number;
+  partialCount: number;
+  partialAmount: number;
+  paidCount: number;
+  paidAmount: number;
+}
+
+export interface GroupedInvoices {
+  overdue: Invoice[];
+  open: Invoice[];
+  partial: Invoice[];
+  paid: Invoice[];
 }
 
 export interface InvoiceResponse {
