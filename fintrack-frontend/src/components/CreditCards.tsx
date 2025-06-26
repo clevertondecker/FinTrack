@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import { CreditCard, CreateCreditCardRequest, Bank } from '../types/creditCard';
 import './CreditCards.css';
 
 const CreditCards: React.FC = () => {
+  const { t } = useTranslation();
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,9 +26,9 @@ const CreditCards: React.FC = () => {
     
     const token = localStorage.getItem('token');
     if (!token) {
-      setError('No authentication token found. Please login again.');
+      setError(t('common.noAuthToken'));
     }
-  }, []);
+  }, [t]);
 
   const loadCreditCards = async () => {
     try {
@@ -35,7 +37,7 @@ const CreditCards: React.FC = () => {
       setCreditCards(response.creditCards);
       setError(null);
     } catch (err) {
-      setError('Failed to load credit cards');
+      setError(t('creditCards.failedToLoad'));
       console.error('Error loading credit cards:', err);
     } finally {
       setLoading(false);
@@ -63,7 +65,7 @@ const CreditCards: React.FC = () => {
     e.preventDefault();
     
     if (!formData.name || !formData.lastFourDigits || formData.limit <= 0 || formData.bankId === 0) {
-      setError('Please fill in all fields correctly');
+      setError(t('creditCards.pleaseFillFields'));
       return;
     }
 
@@ -80,7 +82,7 @@ const CreditCards: React.FC = () => {
       await loadCreditCards();
       setError(null);
     } catch (err) {
-      setError('Failed to save credit card');
+      setError(t('creditCards.failedToSave'));
       console.error('Error saving credit card:', err);
     }
   };
@@ -97,26 +99,26 @@ const CreditCards: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to deactivate this credit card?')) {
+    if (window.confirm(t('creditCards.confirmDeactivate'))) {
       try {
         await apiService.deleteCreditCard(id);
         await loadCreditCards();
         setError(null);
       } catch (err) {
-        setError('Failed to deactivate credit card');
+        setError(t('creditCards.failedToDeactivate'));
         console.error('Error deleting credit card:', err);
       }
     }
   };
 
   const handleActivate = async (id: number) => {
-    if (window.confirm('Are you sure you want to activate this credit card?')) {
+    if (window.confirm(t('creditCards.confirmActivate'))) {
       try {
         await apiService.activateCreditCard(id);
         await loadCreditCards();
         setError(null);
       } catch (err) {
-        setError('Failed to activate credit card');
+        setError(t('creditCards.failedToActivate'));
         console.error('Error activating credit card:', err);
       }
     }
@@ -136,23 +138,19 @@ const CreditCards: React.FC = () => {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
   if (loading) {
-    return <div className="loading">Loading credit cards...</div>;
+    return <div className="loading">{t('creditCards.loading')}</div>;
   }
 
   return (
     <div className="credit-cards-container">
       <header className="credit-cards-header">
-        <h1>Credit Cards</h1>
+        <h1>{t('creditCards.title')}</h1>
         <button 
           className="add-button"
           onClick={() => setShowCreateForm(true)}
         >
-          Add New Card
+          {t('creditCards.addCard')}
         </button>
       </header>
 
@@ -161,23 +159,23 @@ const CreditCards: React.FC = () => {
       {showCreateForm && (
         <div className="form-overlay">
           <div className="form-container">
-            <h2>{editingCard ? 'Edit Credit Card' : 'Add New Credit Card'}</h2>
+            <h2>{editingCard ? t('creditCards.editCard') : t('creditCards.addNewCard')}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="name">Card Name</label>
+                <label htmlFor="name">{t('creditCards.cardName')}</label>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="e.g., Nubank, Itaú"
+                  placeholder={t('creditCards.cardNamePlaceholder')}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="lastFourDigits">Last 4 Digits</label>
+                <label htmlFor="lastFourDigits">{t('creditCards.lastFourDigits')}</label>
                 <input
                   type="text"
                   id="lastFourDigits"
@@ -193,7 +191,7 @@ const CreditCards: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="limit">Credit Limit</label>
+                <label htmlFor="limit">{t('creditCards.creditLimit')}</label>
                 <input
                   type="number"
                   id="limit"
@@ -208,7 +206,7 @@ const CreditCards: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="bankId">Bank</label>
+                <label htmlFor="bankId">{t('creditCards.bank')}</label>
                 <select
                   id="bankId"
                   name="bankId"
@@ -216,7 +214,7 @@ const CreditCards: React.FC = () => {
                   onChange={handleInputChange}
                   required
                 >
-                  <option value={0}>Select a bank</option>
+                  <option value={0}>{t('creditCards.selectBank')}</option>
                   {banks.map(bank => (
                     <option key={bank.id} value={bank.id}>
                       {bank.name}
@@ -227,10 +225,10 @@ const CreditCards: React.FC = () => {
 
               <div className="form-actions">
                 <button type="submit" className="submit-button">
-                  {editingCard ? 'Update Card' : 'Create Card'}
+                  {editingCard ? t('creditCards.updateCard') : t('creditCards.createCard')}
                 </button>
                 <button type="button" onClick={handleCancel} className="cancel-button">
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -241,7 +239,7 @@ const CreditCards: React.FC = () => {
       <div className="credit-cards-grid">
         {creditCards.length === 0 ? (
           <div className="empty-state">
-            <p>No credit cards found. Add your first credit card to get started!</p>
+            <p>{t('creditCards.emptyState')}</p>
           </div>
         ) : (
           creditCards.map(card => (
@@ -249,29 +247,24 @@ const CreditCards: React.FC = () => {
               <div className="card-header">
                 <h3>{card.name}</h3>
                 <span className={`status ${card.active ? 'active' : 'inactive'}`}>
-                  {card.active ? 'Active' : 'Inactive'}
+                  {card.active ? t('creditCards.status.active') : t('creditCards.status.inactive')}
                 </span>
               </div>
               
               <div className="card-details">
                 <div className="detail-item">
-                  <span className="label">Last 4 digits:</span>
+                  <span className="label">{t('creditCards.lastFourDigitsLabel')}:</span>
                   <span className="value">**** {card.lastFourDigits}</span>
                 </div>
                 
                 <div className="detail-item">
-                  <span className="label">Bank:</span>
+                  <span className="label">{t('creditCards.bankLabel')}:</span>
                   <span className="value">{card.bankName}</span>
                 </div>
                 
                 <div className="detail-item">
-                  <span className="label">Limit:</span>
+                  <span className="label">{t('creditCards.limitLabel')}:</span>
                   <span className="value limit">{formatCurrency(card.limit)}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="label">Created:</span>
-                  <span className="value">{formatDate(card.createdAt)}</span>
                 </div>
               </div>
 
@@ -280,21 +273,21 @@ const CreditCards: React.FC = () => {
                   onClick={() => handleEdit(card)}
                   className="edit-button"
                 >
-                  Edit
+                  {t('common.edit')}
                 </button>
                 {card.active ? (
                   <button 
                     onClick={() => handleDelete(card.id)}
                     className="delete-button"
                   >
-                    Deactivate
+                    {t('creditCards.deactivate')}
                   </button>
                 ) : (
                   <button 
                     onClick={() => handleActivate(card.id)}
                     className="activate-button"
                   >
-                    Activate
+                    {t('creditCards.activate')}
                   </button>
                 )}
               </div>

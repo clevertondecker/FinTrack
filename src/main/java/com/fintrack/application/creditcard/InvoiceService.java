@@ -8,6 +8,8 @@ import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.dto.creditcard.InvoiceItemResponse;
+import com.fintrack.dto.creditcard.InvoicePaymentRequest;
+import com.fintrack.dto.creditcard.InvoicePaymentResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -336,5 +338,31 @@ public class InvoiceService {
             dtos.add(toInvoiceItemResponse(item));
         }
         return dtos;
+    }
+
+    /**
+     * Registers a payment for an invoice.
+     *
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param request the payment request. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the payment response DTO. Never null.
+     * @throws IllegalArgumentException if invoice not found or doesn't belong to user.
+     */
+    public InvoicePaymentResponse payInvoice(Long invoiceId, InvoicePaymentRequest request, User user) {
+        Invoice invoice = getInvoice(invoiceId, user);
+        invoice.recordPayment(request.amount());
+        Invoice saved = invoiceRepository.save(invoice);
+        return new InvoicePaymentResponse(
+            saved.getId(),
+            saved.getCreditCard().getId(),
+            saved.getCreditCard().getName(),
+            saved.getDueDate(),
+            saved.getTotalAmount(),
+            saved.getPaidAmount(),
+            saved.getStatus().name(),
+            saved.getUpdatedAt(),
+            "Invoice payment registered successfully"
+        );
     }
 }

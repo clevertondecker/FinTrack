@@ -19,6 +19,7 @@ import {
   ItemShareCreateResponse
 } from '../types/itemShare';
 import { MySharesResponse } from '../types/itemShare';
+import { InvoicePaymentRequest, InvoicePaymentResponse } from '../types/invoice';
 
 class ApiService {
   private api: AxiosInstance;
@@ -179,6 +180,11 @@ class ApiService {
 
   async getMyShares(): Promise<MySharesResponse> {
     const response = await this.api.get<MySharesResponse>('/invoices/shares/my-shares');
+    return response.data;
+  }
+
+  async payInvoice(invoiceId: number, data: InvoicePaymentRequest): Promise<InvoicePaymentResponse> {
+    const response = await this.api.post<InvoicePaymentResponse>(`/invoices/${invoiceId}/pay`, data);
     return response.data;
   }
 }

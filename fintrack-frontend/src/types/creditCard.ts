@@ -6,8 +6,6 @@ export interface CreditCard {
   bankName: string;
   bankCode?: string;
   active: boolean;
-  createdAt: string;
-  updatedAt?: string;
 }
 
 export interface CreateCreditCardRequest {

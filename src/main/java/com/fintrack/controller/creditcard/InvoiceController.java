@@ -7,6 +7,8 @@ import com.fintrack.dto.creditcard.InvoiceListResponse;
 import com.fintrack.dto.creditcard.InvoiceDetailResponse;
 import com.fintrack.dto.creditcard.InvoiceByCreditCardResponse;
 import com.fintrack.dto.creditcard.InvoiceResponse;
+import com.fintrack.dto.creditcard.InvoicePaymentRequest;
+import com.fintrack.dto.creditcard.InvoicePaymentResponse;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.user.User;
 import org.springframework.http.ResponseEntity;
@@ -156,6 +158,20 @@ public class InvoiceController {
             invoiceResponse
         );
 
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<InvoicePaymentResponse> payInvoice(
+            @PathVariable Long id,
+            @Valid @RequestBody InvoicePaymentRequest request,
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        Optional<com.fintrack.domain.user.User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        com.fintrack.domain.user.User user = userOpt.get();
+        InvoicePaymentResponse response = invoiceService.payInvoice(id, request, user);
         return ResponseEntity.ok(response);
     }
 }

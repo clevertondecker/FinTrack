@@ -93,7 +93,9 @@ public class CreditCardController {
                 (String) dto.get("lastFourDigits"),
                 (java.math.BigDecimal) dto.get("limit"),
                 (Boolean) dto.get("active"),
-                (String) dto.get("bankName")
+                (String) dto.get("bankName"),
+                (java.time.LocalDateTime) dto.get("createdAt"),
+                (java.time.LocalDateTime) dto.get("updatedAt")
             ))
             .toList();
 
@@ -134,7 +136,9 @@ public class CreditCardController {
             (String) creditCardDto.get("lastFourDigits"),
             (java.math.BigDecimal) creditCardDto.get("limit"),
             (Boolean) creditCardDto.get("active"),
-            (String) creditCardDto.get("bankName")
+            (String) creditCardDto.get("bankName"),
+            (java.time.LocalDateTime) creditCardDto.get("createdAt"),
+            (java.time.LocalDateTime) creditCardDto.get("updatedAt")
         );
 
         CreditCardDetailResponse response = new CreditCardDetailResponse(

@@ -90,4 +90,20 @@ export interface Category {
   id: number;
   name: string;
   color?: string;
+}
+
+export interface InvoicePaymentRequest {
+  amount: number;
+}
+
+export interface InvoicePaymentResponse {
+  id: number;
+  creditCardId: number;
+  creditCardName: string;
+  dueDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  updatedAt: string;
+  message: string;
 } 
