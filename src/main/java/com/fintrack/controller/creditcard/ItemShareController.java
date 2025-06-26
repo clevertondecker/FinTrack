@@ -100,8 +100,6 @@ public class ItemShareController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        System.out.println("DEBUG: Getting shares for invoiceId: " + invoiceId + ", itemId: " + itemId);
-
         Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
         if (userOpt.isEmpty()) {
             throw new IllegalArgumentException("User not found");
@@ -110,27 +108,14 @@ public class ItemShareController {
 
         // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
-        System.out.println("DEBUG: Found invoice item: " + item.getId() + ", description: " + item.getDescription());
 
         // Get shares for the item
         List<ItemShare> shares = expenseSharingService.getSharesForItem(item);
-        System.out.println("DEBUG: Retrieved " + shares.size() + " shares from service");
 
         // Convert to response DTOs
         List<ItemShareResponse> shareResponses = shares.stream()
             .map(this::toItemShareResponse)
             .toList();
-
-        System.out.println("DEBUG: Converted to " + shareResponses.size() + " response DTOs");
-        
-        // Log each share response
-        for (ItemShareResponse shareResponse : shareResponses) {
-            System.out.println("DEBUG: Share Response - ID: " + shareResponse.id() + 
-                             ", UserID: " + shareResponse.userId() + 
-                             ", UserName: " + shareResponse.userName() + 
-                             ", Percentage: " + shareResponse.percentage() + 
-                             ", Responsible: " + shareResponse.responsible());
-        }
 
         ItemShareListResponse response = new ItemShareListResponse(
             "Item shares retrieved successfully",
@@ -143,10 +128,6 @@ public class ItemShareController {
             item.getSharedAmount(),
             item.getUnsharedAmount()
         );
-
-        System.out.println("DEBUG: Final response - shareCount: " + response.shareCount() + 
-                         ", shares size: " + response.shares().size() + 
-                         ", totalSharedAmount: " + response.totalSharedAmount());
 
         return ResponseEntity.ok(response);
     }
@@ -225,11 +206,6 @@ public class ItemShareController {
      * @return the ItemShareResponse DTO.
      */
     private ItemShareResponse toItemShareResponse(ItemShare share) {
-        System.out.println("DEBUG: Converting share ID: " + share.getId() + 
-                         ", User: " + share.getUser().getName() + 
-                         ", Percentage: " + share.getPercentage() + 
-                         ", Responsible: " + share.isResponsible());
-        
         ItemShareResponse response = new ItemShareResponse(
             share.getId(),
             share.getUser().getId(),
@@ -240,11 +216,6 @@ public class ItemShareController {
             Boolean.valueOf(share.isResponsible()),
             share.getCreatedAt()
         );
-        
-        System.out.println("DEBUG: Created response - ID: " + response.id() + 
-                         ", UserID: " + response.userId() + 
-                         ", UserName: " + response.userName() + 
-                         ", Percentage: " + response.percentage());
         
         return response;
     }
