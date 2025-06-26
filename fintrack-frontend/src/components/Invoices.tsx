@@ -228,14 +228,20 @@ const Invoices: React.FC = () => {
         categoryId: itemForm.categoryId ? Number(itemForm.categoryId) : undefined,
         purchaseDate: itemForm.purchaseDate
       });
+      
       // Atualiza lista de itens e dados da fatura
       const [itemsResponse, invoiceResponse] = await Promise.all([
         apiService.getInvoiceItems(selectedInvoice.id),
         apiService.getInvoice(selectedInvoice.id)
       ]);
+      
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
       setItemForm({ description: '', amount: '', categoryId: '', purchaseDate: '' });
+      
+      // Atualiza também a lista principal de faturas para refletir o novo valor total
+      await loadInvoices();
+      
     } catch (err: any) {
       // Tenta extrair a mensagem de erro específica do backend
       const errorMessage = err.response?.data?.error || err.message || 'Erro ao adicionar item';
@@ -251,13 +257,19 @@ const Invoices: React.FC = () => {
     setRemovingItemId(itemId);
     try {
       await apiService.deleteInvoiceItem(selectedInvoice.id, itemId);
+      
       // Atualiza lista de itens e dados da fatura
       const [itemsResponse, invoiceResponse] = await Promise.all([
         apiService.getInvoiceItems(selectedInvoice.id),
         apiService.getInvoice(selectedInvoice.id)
       ]);
+      
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
+      
+      // Atualiza também a lista principal de faturas para refletir o novo valor total
+      await loadInvoices();
+      
     } catch (err) {
       // Pode exibir erro se quiser
     } finally {
@@ -280,8 +292,17 @@ const Invoices: React.FC = () => {
     
     // Recarregar os itens da fatura para mostrar informações atualizadas
     try {
-      const response = await apiService.getInvoiceItems(selectedInvoice.id);
-      setInvoiceItems(response.items);
+      const [itemsResponse, invoiceResponse] = await Promise.all([
+        apiService.getInvoiceItems(selectedInvoice.id),
+        apiService.getInvoice(selectedInvoice.id)
+      ]);
+      
+      setInvoiceItems(itemsResponse.items);
+      setSelectedInvoice(invoiceResponse.invoice);
+      
+      // Atualiza também a lista principal de faturas
+      await loadInvoices();
+      
     } catch (err) {
       console.error('Error reloading invoice items:', err);
     }
