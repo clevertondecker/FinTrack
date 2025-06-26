@@ -24,6 +24,13 @@
     "password": "Password",
     "actions": "Actions"
   },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "creditCards": "Credit Cards",
+    "invoices": "Invoices",
+    "shares": "Shares",
+    "reports": "Reports"
+  },
   "auth": {
     "login": "Login",
     "logout": "Logout",

@@ -24,6 +24,13 @@
     "password": "Senha",
     "actions": "Ações"
   },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "creditCards": "Cartões",
+    "invoices": "Faturas",
+    "shares": "Dívidas",
+    "reports": "Relatórios"
+  },
   "auth": {
     "login": "Entrar",
     "logout": "Sair",
