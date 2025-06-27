@@ -63,7 +63,7 @@ public class ItemShare {
         Validate.notNull(theInvoiceItem, "Invoice item must not be null.");
         Validate.notNull(thePercentage, "Percentage must not be null.");
         Validate.isTrue(thePercentage.compareTo(BigDecimal.ZERO) >= 0, "Percentage must be non-negative.");
-        Validate.isTrue(thePercentage.compareTo(BigDecimal.ONE) <= 0, "Percentage cannot exceed 1.0 (100%).");
+        Validate.isTrue(thePercentage.compareTo(BigDecimal.ONE) <= 0, "Percentage cannot exceed 1.0 (100%%).");
         Validate.notNull(theAmount, "Amount must not be null.");
         Validate.isTrue(theAmount.compareTo(BigDecimal.ZERO) > 0, "Amount must be positive.");
 
@@ -113,7 +113,7 @@ public class ItemShare {
     public void updatePercentage(final BigDecimal newPercentage) {
         Validate.notNull(newPercentage, "New percentage must not be null.");
         Validate.isTrue(newPercentage.compareTo(BigDecimal.ZERO) >= 0, "Percentage must be non-negative.");
-        Validate.isTrue(newPercentage.compareTo(BigDecimal.ONE) <= 0, "Percentage cannot exceed 1.0 (100%).");
+        Validate.isTrue(newPercentage.compareTo(BigDecimal.ONE) <= 0, "Percentage cannot exceed 1.0 (100%%).");
 
         percentage = newPercentage;
         amount = invoiceItem.getAmount().multiply(percentage);
