@@ -246,6 +246,7 @@
     "category": "Categoria",
     "installments": "Parcelas",
     "totalInstallments": "Total de Parcelas",
+    "singlePayment": "À vista",
     "noItems": "Nenhum item encontrado",
     "noItemsDescription": "Adicione itens a esta fatura",
     "addFirstItem": "Adicionar Primeiro Item",
@@ -284,7 +285,15 @@
       "paid": "Paga",
       "overdue": "Vencida",
       "partial": "Parcial"
-    }
+    },
+    "amount": "Valor",
+    "divideEqually": "Dividir igualmente",
+    "saveShares": "Salvar divisões",
+    "errorSavingShares": "Erro ao salvar divisões. Tente novamente.",
+    "saving": "Salvando...",
+    "totalShared": "Total dividido",
+    "remaining": "Restante",
+    "shareItem": "Dividir item"
   },
   "language": {
     "en": "English",

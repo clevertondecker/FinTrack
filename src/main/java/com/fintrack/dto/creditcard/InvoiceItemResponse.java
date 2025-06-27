@@ -13,5 +13,7 @@ public record InvoiceItemResponse(
     BigDecimal amount,
     String category,
     String purchaseDate,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    Integer installments,
+    Integer totalInstallments
 ) {} 

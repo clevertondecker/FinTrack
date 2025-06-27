@@ -248,6 +248,7 @@
     "category": "Category",
     "installments": "Installments",
     "totalInstallments": "Total Installments",
+    "singlePayment": "Single payment",
     "noItems": "No items found",
     "noItemsDescription": "Add items to this invoice",
     "addFirstItem": "Add First Item",
@@ -279,7 +280,15 @@
     "responsibleForPayment": "Responsible for payment",
     "sharedOn": "Shared on {{date}}",
     "loadingShares": "Loading your shares...",
-    "errorLoadingShares": "Error loading shares"
+    "errorLoadingShares": "Error loading shares",
+    "amount": "Amount",
+    "divideEqually": "Divide equally",
+    "saveShares": "Save shares",
+    "errorSavingShares": "Error saving shares. Please try again.",
+    "saving": "Saving...",
+    "totalShared": "Total shared",
+    "remaining": "Remaining",
+    "shareItem": "Share item"
   },
   "language": {
     "en": "English",

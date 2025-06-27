@@ -59,6 +59,9 @@ const Invoices: React.FC = () => {
     purchaseDate: ''
   });
 
+  const [showAddMore, setShowAddMore] = useState(false);
+  const [quickAddMode, setQuickAddMode] = useState(false);
+
   useEffect(() => {
     loadInvoices();
     loadCreditCards();
@@ -355,10 +358,20 @@ const Invoices: React.FC = () => {
     setItemForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleQuickAdd = () => {
+    setQuickAddMode(true);
+    setItemForm({
+      description: '',
+      amount: '',
+      categoryId: '',
+      purchaseDate: new Date().toISOString().split('T')[0] // Data atual como padrão
+    });
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemForm.description || !itemForm.amount || !itemForm.purchaseDate || isNaN(Number(itemForm.amount))) {
-      setItemError('Preencha todos os campos obrigatórios corretamente');
+    if (!itemForm.description || !itemForm.amount || isNaN(Number(itemForm.amount))) {
+      setItemError('Descrição e valor são obrigatórios');
       return;
     }
     if (!selectedInvoice) return;
@@ -369,7 +382,7 @@ const Invoices: React.FC = () => {
         description: itemForm.description,
         amount: Number(itemForm.amount),
         categoryId: itemForm.categoryId ? Number(itemForm.categoryId) : undefined,
-        purchaseDate: itemForm.purchaseDate
+        purchaseDate: itemForm.purchaseDate || new Date().toISOString().split('T')[0]
       });
       
       // Atualiza lista de itens e dados da fatura
@@ -380,7 +393,16 @@ const Invoices: React.FC = () => {
       
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
-      setItemForm({ description: '', amount: '', categoryId: '', purchaseDate: '' });
+      
+      // Limpa apenas descrição e valor, mantém categoria e data
+      setItemForm(prev => ({ 
+        ...prev, 
+        description: '', 
+        amount: '' 
+      }));
+      
+      setShowAddMore(true);
+      setQuickAddMode(false);
       
       // Atualiza também a lista principal de faturas para refletir o novo valor total
       await loadInvoices();
@@ -393,6 +415,29 @@ const Invoices: React.FC = () => {
     } finally {
       setAddingItem(false);
     }
+  };
+
+  const handleAddMore = () => {
+    setShowAddMore(false);
+    setQuickAddMode(true);
+  };
+
+  const handleFinishAdding = () => {
+    setShowAddMore(false);
+    setQuickAddMode(false);
+    setItemForm({ description: '', amount: '', categoryId: '', purchaseDate: '' });
+  };
+
+  const handleQuickCategorySelect = (categoryId: string) => {
+    setItemForm(prev => ({ ...prev, categoryId }));
+  };
+
+  const handleQuickAmountSelect = (amount: string) => {
+    setItemForm(prev => ({ ...prev, amount }));
+  };
+
+  const handleQuickDateSelect = (date: string) => {
+    setItemForm(prev => ({ ...prev, purchaseDate: date }));
   };
 
   const handleRemoveItem = async (itemId: number) => {
@@ -967,9 +1012,19 @@ const Invoices: React.FC = () => {
                 </div>
               </div>
 
-              <div className="items-section">
-                <h3>{t('invoices.itemsLabel')}</h3>
-                
+              <div className="invoice-items-section">
+                <div className="section-header">
+                  <h3>{t('invoices.itemsLabel')}</h3>
+                  {!quickAddMode && (
+                    <button 
+                      className="quick-add-button"
+                      onClick={handleQuickAdd}
+                    >
+                      + {t('invoices.addItem')}
+                    </button>
+                  )}
+                </div>
+
                 {loadingItems ? (
                   <div className="loading">{t('invoices.loadingItems')}</div>
                 ) : (
@@ -977,99 +1032,196 @@ const Invoices: React.FC = () => {
                     {invoiceItems.length === 0 ? (
                       <p className="no-items">{t('invoices.noItems')}</p>
                     ) : (
-                      <div className="items-list">
-                        {invoiceItems.map(item => (
-                          <div key={item.id} className="item-row">
-                            <div className="item-info">
+                      <>
+                        <div className="items-header">
+                          <div className="header-description">{t('invoices.descriptionLabel')}</div>
+                          <div className="header-category">{t('invoices.categoryLabel')}</div>
+                          <div className="header-date">{t('invoices.purchaseDateLabel')}</div>
+                          <div className="header-amount">{t('invoices.amountLabel')}</div>
+                          <div className="header-installments">{t('invoiceItems.installments')}</div>
+                          <div className="header-actions">{t('invoices.actionsLabel')}</div>
+                        </div>
+                        <div className="items-list">
+                          {invoiceItems.map(item => (
+                            <div key={item.id} className="item-row">
                               <div className="item-description">{item.description}</div>
-                              <div className="item-meta">
-                                <span className="item-category">{item.category || t('invoices.noCategory')}</span>
-                                <span className="item-date">{formatDate(item.purchaseDate)}</span>
+                              <div className="item-category">{item.category || t('invoices.noCategory')}</div>
+                              <div className="item-date">{formatDate(item.purchaseDate)}</div>
+                              <div className="item-amount">{formatCurrency(item.amount)}</div>
+                              <div className="item-installments">
+                                {item.totalInstallments && item.totalInstallments > 1
+                                  ? `${item.installments}/${item.totalInstallments}`
+                                  : t('invoiceItems.singlePayment')}
+                              </div>
+                              <div className="item-actions">
+                                <button 
+                                  onClick={() => handleShareItem(item)}
+                                  className="share-button"
+                                  title={t('invoices.shareItemTooltip')}
+                                >
+                                  {t('invoices.shareButton')}
+                                </button>
+                                <button 
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  className="remove-button"
+                                  title={t('invoices.removeItemTooltip')}
+                                  disabled={removingItemId === item.id}
+                                >
+                                  {removingItemId === item.id ? t('invoices.removing') : t('invoices.removeButton')}
+                                </button>
                               </div>
                             </div>
-                            <div className="item-amount">{formatCurrency(item.amount)}</div>
-                            <div className="item-actions">
-                              <button 
-                                onClick={() => handleShareItem(item)}
-                                className="share-button"
-                                title={t('invoices.shareItemTooltip')}
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {quickAddMode && (
+                      <div className="compact-item-form">
+                        <div className="form-header">
+                          <h4>{t('invoices.addItem')}</h4>
+                          <button 
+                            className="close-form-button"
+                            onClick={handleFinishAdding}
+                          >
+                            ×
+                          </button>
+                        </div>
+
+                        {/* Atalhos de Categorias */}
+                        <div className="quick-shortcuts">
+                          <div className="shortcut-group">
+                            <label>Categorias:</label>
+                            <div className="shortcut-buttons">
+                              {categories.slice(0, 5).map(category => (
+                                <button
+                                  key={category.id}
+                                  type="button"
+                                  className={`shortcut-btn ${itemForm.categoryId === category.id.toString() ? 'active' : ''}`}
+                                  onClick={() => handleQuickCategorySelect(category.id.toString())}
+                                >
+                                  {category.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="shortcut-group">
+                            <label>Valores comuns:</label>
+                            <div className="shortcut-buttons">
+                              {['10', '20', '50', '100', '200'].map(amount => (
+                                <button
+                                  key={amount}
+                                  type="button"
+                                  className={`shortcut-btn ${itemForm.amount === amount ? 'active' : ''}`}
+                                  onClick={() => handleQuickAmountSelect(amount)}
+                                >
+                                  R$ {amount}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="shortcut-group">
+                            <label>Data:</label>
+                            <div className="shortcut-buttons">
+                              <button
+                                type="button"
+                                className={`shortcut-btn ${itemForm.purchaseDate === new Date().toISOString().split('T')[0] ? 'active' : ''}`}
+                                onClick={() => handleQuickDateSelect(new Date().toISOString().split('T')[0])}
                               >
-                                {t('invoices.shareButton')}
+                                Hoje
                               </button>
-                              <button 
-                                onClick={() => handleRemoveItem(item.id)}
-                                className="remove-button"
-                                title={t('invoices.removeItemTooltip')}
-                                disabled={removingItemId === item.id}
+                              <button
+                                type="button"
+                                className={`shortcut-btn ${itemForm.purchaseDate === new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0] ? 'active' : ''}`}
+                                onClick={() => handleQuickDateSelect(new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0])}
                               >
-                                {removingItemId === item.id ? t('invoices.removing') : t('invoices.removeButton')}
+                                Ontem
                               </button>
                             </div>
                           </div>
-                        ))}
+                        </div>
+
+                        {/* Formulário Compacto */}
+                        <form onSubmit={handleAddItem} className="compact-form">
+                          <div className="form-row-compact">
+                            <div className="form-group-compact">
+                              <input
+                                type="text"
+                                name="description"
+                                value={itemForm.description}
+                                onChange={handleItemInputChange}
+                                placeholder={t('invoices.descriptionPlaceholder')}
+                                required
+                                className="description-input"
+                              />
+                            </div>
+                            <div className="form-group-compact">
+                              <input
+                                type="number"
+                                name="amount"
+                                value={itemForm.amount}
+                                onChange={handleItemInputChange}
+                                placeholder="R$ 0,00"
+                                step="0.01"
+                                min="0"
+                                required
+                                className="amount-input"
+                              />
+                            </div>
+                            <div className="form-group-compact">
+                              <select
+                                name="categoryId"
+                                value={itemForm.categoryId}
+                                onChange={handleItemInputChange}
+                                className="category-select"
+                              >
+                                <option value="">{t('invoices.selectCategory')}</option>
+                                {categories.map(category => (
+                                  <option key={category.id} value={category.id}>
+                                    {category.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="form-group-compact">
+                              <input
+                                type="date"
+                                name="purchaseDate"
+                                value={itemForm.purchaseDate}
+                                onChange={handleItemInputChange}
+                                className="date-input"
+                              />
+                            </div>
+                            <button type="submit" className="add-button-compact" disabled={addingItem}>
+                              {addingItem ? '...' : '+'}
+                            </button>
+                          </div>
+                          {itemError && <div className="error-message">{itemError}</div>}
+                        </form>
                       </div>
                     )}
 
-                    <form onSubmit={handleAddItem} className="add-item-form">
-                      <h4>{t('invoices.addItem')}</h4>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>{t('invoices.descriptionLabel')}</label>
-                          <input
-                            type="text"
-                            name="description"
-                            value={itemForm.description}
-                            onChange={handleItemInputChange}
-                            placeholder={t('invoices.descriptionPlaceholder')}
-                            required
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>{t('invoices.amountLabel')}</label>
-                          <input
-                            type="number"
-                            name="amount"
-                            value={itemForm.amount}
-                            onChange={handleItemInputChange}
-                            placeholder={t('invoices.amountPlaceholder')}
-                            step="0.01"
-                            min="0"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>{t('invoices.categoryLabel')}</label>
-                          <select
-                            name="categoryId"
-                            value={itemForm.categoryId}
-                            onChange={handleItemInputChange}
+                    {showAddMore && (
+                      <div className="add-more-section">
+                        <p>Item adicionado com sucesso!</p>
+                        <div className="add-more-buttons">
+                          <button 
+                            className="add-more-button"
+                            onClick={handleAddMore}
                           >
-                            <option value="">{t('invoices.selectCategory')}</option>
-                            {categories.map(category => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>{t('invoices.purchaseDateLabel')}</label>
-                          <input
-                            type="date"
-                            name="purchaseDate"
-                            value={itemForm.purchaseDate}
-                            onChange={handleItemInputChange}
-                            required
-                          />
+                            + Adicionar outro item
+                          </button>
+                          <button 
+                            className="finish-button"
+                            onClick={handleFinishAdding}
+                          >
+                            Finalizar
+                          </button>
                         </div>
                       </div>
-                      {itemError && <div className="error-message">{itemError}</div>}
-                      <button type="submit" className="submit-button" disabled={addingItem}>
-                        {addingItem ? t('invoices.adding') : t('invoices.addItem')}
-                      </button>
-                    </form>
+                    )}
                   </>
                 )}
               </div>

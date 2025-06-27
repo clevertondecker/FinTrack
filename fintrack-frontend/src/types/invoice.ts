@@ -18,6 +18,8 @@ export interface InvoiceItem {
   category: string | null;
   purchaseDate: string;
   createdAt: string;
+  installments?: number;
+  totalInstallments?: number;
 }
 
 export interface CreateInvoiceRequest {

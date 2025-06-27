@@ -34,9 +34,16 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadData();
+      loadUsers();
     }
   }, [isOpen, invoiceId, itemId]);
+
+  useEffect(() => {
+    if (isOpen && users.length > 0) {
+      loadExistingShares();
+    }
+    // eslint-disable-next-line
+  }, [users, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -149,6 +156,17 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
     return itemAmount - calculateTotalShared();
   };
 
+  // NOVA FUNÇÃO: Dividir igualmente
+  const handleDivideEqually = () => {
+    if (selectedUsers.length === 0) return;
+    const equalValue = (itemAmount / selectedUsers.length).toFixed(2);
+    const newValues: { [key: number]: string } = {};
+    selectedUsers.forEach(userId => {
+      newValues[userId] = equalValue;
+    });
+    setInputValues(newValues);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -185,81 +203,72 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container">
+    <div className="share-modal-overlay">
+      <div className="share-modal-container">
         <div className="modal-header">
           <h2>{t('shares.shareItem')}</h2>
-          <button onClick={onClose} className="close-button">&times;</button>
+          <button onClick={onClose} className="close-modal">&times;</button>
         </div>
-        
-        <div className="modal-content">
-          <div className="item-info">
-            <h3>{itemDescription}</h3>
-            <p><strong>{t('shares.itemAmount')}:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemAmount)}</p>
+        <div className="item-info">
+          <h3>{itemDescription}</h3>
+          <p>
+            <strong>{t('shares.itemAmount')}:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(itemAmount)}
+          </p>
+        </div>
+        <div className="share-controls">
+          <button className="equal-shares-btn" onClick={handleDivideEqually} disabled={selectedUsers.length === 0}>
+            {t('shares.divideEqually')}
+          </button>
+        </div>
+        <div className="users-list">
+          {users.map(user => (
+            <div key={user.id} className="user-share-item">
+              <div className="user-select">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.includes(user.id)}
+                  onChange={() => handleUserToggle(user.id)}
+                />
+                <label>
+                  <strong>{user.name}</strong>
+                  <span className="user-email">{user.email}</span>
+                </label>
+                {selectedUsers.includes(user.id) && (
+                  <div className="percentage-input">
+                    <label>{t('shares.amount')}</label>
+                    <input
+                      type="number"
+                      value={inputValues[user.id] || ''}
+                      onChange={e => handleInputChange(user.id, e.target.value)}
+                      min="0"
+                      max={itemAmount}
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="distribution-status">
+          <div className="status-info">
+            <span>{t('shares.totalShared')}:</span>
+            <span className="shared">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotalShared())}</span>
           </div>
-
-          {loading ? (
-            <div className="loading">{t('shares.loading')}</div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="users-section">
-                <h4>{t('shares.selectUsers')}</h4>
-                <div className="users-list">
-                  {users.map(user => (
-                    <div key={user.id} className="user-item">
-                      <label className="user-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => handleUserToggle(user.id)}
-                        />
-                        <span className="user-name">{user.name}</span>
-                      </label>
-                      
-                      {selectedUsers.includes(user.id) && (
-                        <div className="amount-input">
-                          <label>{t('shares.amount')}:</label>
-                          <input
-                            type="number"
-                            value={inputValues[user.id] || ''}
-                            onChange={(e) => handleInputChange(user.id, e.target.value)}
-                            step="0.01"
-                            min="0"
-                            max={itemAmount}
-                            placeholder="0.00"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="summary-section">
-                <div className="summary-item">
-                  <span>{t('shares.totalShared')}:</span>
-                  <span className="amount">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotalShared())}</span>
-                </div>
-                <div className="summary-item">
-                  <span>{t('shares.remaining')}:</span>
-                  <span className={`amount ${getRemainingAmount() < 0 ? 'negative' : ''}`}>
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getRemainingAmount())}
-                  </span>
-                </div>
-              </div>
-
-              {error && <div className="error-message">{error}</div>}
-
-              <div className="form-actions">
-                <button type="submit" className="submit-button" disabled={saving}>
-                  {saving ? t('shares.saving') : t('shares.saveShares')}
-                </button>
-                <button type="button" onClick={onClose} className="cancel-button">
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          )}
+          <div className="status-info">
+            <span>{t('shares.remaining')}:</span>
+            <span className={`remaining ${getRemainingAmount() < 0 ? 'negative' : ''}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getRemainingAmount())}</span>
+          </div>
+        </div>
+        {error && <div className="error-message">{error}</div>}
+        <div className="modal-actions">
+          <button className="save-shares-btn" onClick={handleSubmit} disabled={saving}>
+            {saving ? t('shares.saving') : t('shares.saveShares')}
+          </button>
+          <button className="remove-shares-btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
         </div>
       </div>
     </div>
