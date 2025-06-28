@@ -5,13 +5,14 @@ import { useAuth } from '../contexts/AuthContext';
 import CreditCards from './CreditCards';
 import Invoices from './Invoices';
 import MyShares from './MyShares';
+import InvoiceImport from './InvoiceImport';
 import Layout from './layout/Layout';
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
-  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'myShares'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'importInvoices' | 'myShares'>('main');
 
   // Atualizar view baseado no estado da navegação
   useEffect(() => {
@@ -23,6 +24,7 @@ const Dashboard: React.FC = () => {
   let title = t('dashboard.welcome') + (user?.name ? `, ${user.name}!` : '');
   if (activeView === 'creditCards') title = t('creditCards.title');
   if (activeView === 'invoices') title = t('invoices.title');
+  if (activeView === 'importInvoices') title = t('invoiceImport.title');
   if (activeView === 'myShares') title = t('shares.title');
 
   return (
@@ -78,6 +80,7 @@ const Dashboard: React.FC = () => {
       
       {activeView === 'creditCards' && <CreditCards />}
       {activeView === 'invoices' && <Invoices />}
+      {activeView === 'importInvoices' && <InvoiceImport />}
       {activeView === 'myShares' && <MyShares />}
     </Layout>
   );

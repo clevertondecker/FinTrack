@@ -88,7 +88,7 @@ class ItemSharePaymentTest {
             LocalDateTime paymentDate = LocalDateTime.now();
 
             assertThatThrownBy(() -> share.markAsPaid(null, paymentDate))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NullPointerException.class)
                 .hasMessage("Payment method cannot be blank.");
         }
 
@@ -109,7 +109,7 @@ class ItemSharePaymentTest {
             ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"), new BigDecimal("50.00"));
 
             assertThatThrownBy(() -> share.markAsPaid("PIX", null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NullPointerException.class)
                 .hasMessage("Payment date cannot be null.");
         }
     }

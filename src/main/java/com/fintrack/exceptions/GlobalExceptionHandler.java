@@ -18,6 +18,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.dao.DataIntegrityViolationException;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -95,6 +96,13 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException e) {
     logger.warn("Illegal argument: {}", e.getMessage());
     return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+  }
+
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException e) {
+    logger.warn("Response Status Exception: {} - {}", e.getStatusCode(), e.getReason());
+    return ResponseEntity.status(e.getStatusCode())
+      .body(Map.of("error", e.getReason() != null ? e.getReason() : "Request failed"));
   }
 
   @ExceptionHandler(Exception.class)

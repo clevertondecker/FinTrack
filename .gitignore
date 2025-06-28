@@ -53,3 +53,4 @@ mysql_data/
 # Outros arquivos temporários
 *.log
 .DS_Store
+uploads/

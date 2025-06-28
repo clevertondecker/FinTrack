@@ -111,14 +111,16 @@ class ItemShareControllerTest {
                 .andExpect(jsonPath("$.shares[1].responsible").value(false));
     }
 
-    // Métodos utilitários para setar IDs via reflexão
+    /**
+     * Utility methods for setting IDs via reflection for test purposes
+     */
     private void setInvoiceId(Invoice invoice, Long id) {
         try {
             java.lang.reflect.Field idField = Invoice.class.getDeclaredField("id");
             idField.setAccessible(true);
             idField.set(invoice, id);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to set invoice ID", e);
         }
     }
 
@@ -128,7 +130,7 @@ class ItemShareControllerTest {
             idField.setAccessible(true);
             idField.set(invoiceItem, id);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to set invoice item ID", e);
         }
     }
 } 

@@ -22,6 +22,14 @@ import {
 import { MySharesResponse } from '../types/itemShare';
 import { InvoicePaymentRequest, InvoicePaymentResponse } from '../types/invoice';
 import { MarkShareAsPaidRequest } from '../types/itemShare';
+import {
+  ImportInvoiceRequest,
+  ImportInvoiceResponse,
+  InvoiceImportListResponse,
+  InvoiceImportDetailResponse,
+  ManualReviewRequest,
+  ManualReviewResponse
+} from '../types/invoiceImport';
 
 class ApiService {
   private api: AxiosInstance;
@@ -197,6 +205,40 @@ class ApiService {
 
   async payInvoice(invoiceId: number, data: InvoicePaymentRequest): Promise<InvoicePaymentResponse> {
     const response = await this.api.post<InvoicePaymentResponse>(`/invoices/${invoiceId}/pay`, data);
+    return response.data;
+  }
+
+  // Invoice Import endpoints
+  async importInvoice(file: File, request: ImportInvoiceRequest): Promise<ImportInvoiceResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('request', JSON.stringify(request));
+
+    const response = await this.api.post<ImportInvoiceResponse>('/invoice-imports', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async getInvoiceImports(): Promise<InvoiceImportListResponse> {
+    const response = await this.api.get<InvoiceImportListResponse>('/invoice-imports');
+    return response.data;
+  }
+
+  async getInvoiceImport(id: number): Promise<InvoiceImportDetailResponse> {
+    const response = await this.api.get<InvoiceImportDetailResponse>(`/invoice-imports/${id}`);
+    return response.data;
+  }
+
+  async deleteInvoiceImport(id: number): Promise<{ message: string; id: number }> {
+    const response = await this.api.delete(`/invoice-imports/${id}`);
+    return response.data;
+  }
+
+  async manualReview(id: number, request: ManualReviewRequest): Promise<ManualReviewResponse> {
+    const response = await this.api.post<ManualReviewResponse>(`/invoice-imports/${id}/manual-review`, request);
     return response.data;
   }
 }

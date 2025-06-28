@@ -70,6 +70,9 @@ class InvoiceServiceTest {
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
         testCategory = Category.of("Food", "#FF0000");
         testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"), testCategory, LocalDate.of(2024, 1, 15));
+        
+        // Add the item to the invoice
+        testInvoice.addItem(testInvoiceItem);
 
         // Set IDs via reflection
         java.lang.reflect.Field invoiceIdField = Invoice.class.getDeclaredField("id");
@@ -507,7 +510,11 @@ class InvoiceServiceTest {
         // Given: A closed invoice (no items, past due date)
         Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
         invoice.updateStatus(); // Force status calculation
-        invoice = invoiceRepository.save(invoice);
+        
+        // Mock repository calls
+        when(invoiceRepository.findByIdAndCreditCardOwner(1L, testUser)).thenReturn(Optional.of(invoice));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
         assertEquals(BigDecimal.ZERO, invoice.getTotalAmount());
@@ -520,7 +527,7 @@ class InvoiceServiceTest {
             LocalDate.now()
         );
         
-        Invoice updatedInvoice = invoiceService.createInvoiceItem(invoice.getId(), request, testUser);
+        Invoice updatedInvoice = invoiceService.createInvoiceItem(1L, request, testUser);
         
         // Then: Invoice should be updated and status should change
         assertEquals(new BigDecimal("100.00"), updatedInvoice.getTotalAmount());

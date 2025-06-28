@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +27,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.user.User;
+import com.fintrack.domain.user.Role;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 
 @WebMvcTest(BankController.class)
@@ -46,12 +49,14 @@ class BankControllerTest {
     private Bank nubank;
     private Bank itau;
     private Bank santander;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
         nubank = Bank.of("NU", "Nubank");
         itau = Bank.of("ITAU", "Itaú Unibanco");
         santander = Bank.of("SAN", "Santander");
+        testUser = User.of("Test User", "test@example.com", "password123", Set.of(Role.USER));
     }
 
     @Nested
