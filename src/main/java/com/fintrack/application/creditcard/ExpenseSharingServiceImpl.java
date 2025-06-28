@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -185,5 +186,31 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         }
         
         return createdShares;
+    }
+
+    @Override
+    public ItemShare markShareAsPaid(Long shareId, String paymentMethod, LocalDateTime paidAt, User user) {
+        ItemShare share = itemShareRepository.findById(shareId)
+            .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
+        
+        if (!share.getUser().equals(user)) {
+            throw new IllegalArgumentException("Share does not belong to the specified user");
+        }
+        
+        share.markAsPaid(paymentMethod, paidAt);
+        return itemShareRepository.save(share);
+    }
+
+    @Override
+    public ItemShare markShareAsUnpaid(Long shareId, User user) {
+        ItemShare share = itemShareRepository.findById(shareId)
+            .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
+        
+        if (!share.getUser().equals(user)) {
+            throw new IllegalArgumentException("Share does not belong to the specified user");
+        }
+        
+        share.markAsUnpaid();
+        return itemShareRepository.save(share);
     }
 } 

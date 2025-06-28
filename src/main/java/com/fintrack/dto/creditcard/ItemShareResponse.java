@@ -14,5 +14,8 @@ public record ItemShareResponse(
     BigDecimal percentage,
     BigDecimal amount,
     Boolean responsible,
+    Boolean paid,
+    String paymentMethod,
+    LocalDateTime paidAt,
     LocalDateTime createdAt
 ) {} 

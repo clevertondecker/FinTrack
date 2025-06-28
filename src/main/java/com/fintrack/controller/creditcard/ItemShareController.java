@@ -200,6 +200,59 @@ public class ItemShareController {
     }
 
     /**
+     * Marks a share as paid.
+     *
+     * @param shareId the share ID.
+     * @param request the payment details.
+     * @param userDetails the authenticated user details.
+     * @return a response confirming the payment.
+     */
+    @PostMapping("/shares/{shareId}/mark-as-paid")
+    @Transactional
+    public ResponseEntity<ItemShareResponse> markShareAsPaid(
+            @PathVariable Long shareId,
+            @Valid @RequestBody MarkShareAsPaidRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        User user = userOpt.get();
+
+        ItemShare updatedShare = expenseSharingService.markShareAsPaid(
+            shareId, request.paymentMethod(), request.paidAt(), user);
+
+        ItemShareResponse response = toItemShareResponse(updatedShare);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Marks a share as unpaid.
+     *
+     * @param shareId the share ID.
+     * @param userDetails the authenticated user details.
+     * @return a response confirming the change.
+     */
+    @PostMapping("/shares/{shareId}/mark-as-unpaid")
+    @Transactional
+    public ResponseEntity<ItemShareResponse> markShareAsUnpaid(
+            @PathVariable Long shareId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        User user = userOpt.get();
+
+        ItemShare updatedShare = expenseSharingService.markShareAsUnpaid(shareId, user);
+
+        ItemShareResponse response = toItemShareResponse(updatedShare);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Converts an ItemShare to an ItemShareResponse DTO.
      *
      * @param share the item share to convert.
@@ -214,6 +267,9 @@ public class ItemShareController {
             share.getPercentage(),
             share.getAmount(),
             Boolean.valueOf(share.isResponsible()),
+            Boolean.valueOf(share.isPaid()),
+            share.getPaymentMethod(),
+            share.getPaidAt(),
             share.getCreatedAt()
         );
         
@@ -234,6 +290,9 @@ public class ItemShareController {
             share.getAmount(),
             share.getPercentage(),
             share.isResponsible(),
+            share.isPaid(),
+            share.getPaymentMethod(),
+            share.getPaidAt(),
             creditCard.getName(),
             creditCard.getOwner().getName(),
             invoice.getDueDate(),

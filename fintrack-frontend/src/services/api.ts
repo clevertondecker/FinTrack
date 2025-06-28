@@ -16,10 +16,12 @@ import {
 import {
   CreateItemShareRequest,
   ItemShareListResponse,
-  ItemShareCreateResponse
+  ItemShareCreateResponse,
+  ItemShareResponse
 } from '../types/itemShare';
 import { MySharesResponse } from '../types/itemShare';
 import { InvoicePaymentRequest, InvoicePaymentResponse } from '../types/invoice';
+import { MarkShareAsPaidRequest } from '../types/itemShare';
 
 class ApiService {
   private api: AxiosInstance;
@@ -169,17 +171,27 @@ class ApiService {
     return response.data;
   }
 
-  async createItemShares(invoiceId: number, itemId: number, data: CreateItemShareRequest): Promise<ItemShareCreateResponse> {
-    const response = await this.api.post<ItemShareCreateResponse>(`/invoices/${invoiceId}/items/${itemId}/shares`, data);
+  async createItemShares(invoiceId: number, itemId: number, request: CreateItemShareRequest): Promise<ItemShareCreateResponse> {
+    const response = await this.api.post<ItemShareCreateResponse>(`/invoices/${invoiceId}/items/${itemId}/shares`, request);
     return response.data;
   }
 
-  async removeItemShares(invoiceId: number, itemId: number): Promise<void> {
+  async deleteItemShares(invoiceId: number, itemId: number): Promise<void> {
     await this.api.delete(`/invoices/${invoiceId}/items/${itemId}/shares`);
   }
 
   async getMyShares(): Promise<MySharesResponse> {
     const response = await this.api.get<MySharesResponse>('/invoices/shares/my-shares');
+    return response.data;
+  }
+
+  async markShareAsPaid(shareId: number, request: MarkShareAsPaidRequest): Promise<ItemShareResponse> {
+    const response = await this.api.post<ItemShareResponse>(`/invoices/shares/${shareId}/mark-as-paid`, request);
+    return response.data;
+  }
+
+  async markShareAsUnpaid(shareId: number): Promise<ItemShareResponse> {
+    const response = await this.api.post<ItemShareResponse>(`/invoices/shares/${shareId}/mark-as-unpaid`);
     return response.data;
   }
 

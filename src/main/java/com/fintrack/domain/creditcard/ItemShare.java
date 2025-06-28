@@ -37,6 +37,15 @@ public class ItemShare {
     @Column(nullable = false)
     private boolean responsible = false;
 
+    @Column(nullable = false)
+    private boolean paid = false;
+
+    @Column(length = 50)
+    private String paymentMethod;
+
+    @Column
+    private LocalDateTime paidAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -128,6 +137,59 @@ public class ItemShare {
     public void setResponsible(final boolean responsible) {
         this.responsible = responsible;
         updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Marks this share as paid with payment details.
+     *
+     * @param paymentMethod the method used for payment (e.g., "PIX", "Transfer", "Cash").
+     * @param paidAt the date and time when the payment was made.
+     */
+    public void markAsPaid(final String paymentMethod, final LocalDateTime paidAt) {
+        Validate.notBlank(paymentMethod, "Payment method cannot be blank.");
+        Validate.notNull(paidAt, "Payment date cannot be null.");
+        
+        this.paid = true;
+        this.paymentMethod = paymentMethod;
+        this.paidAt = paidAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Marks this share as unpaid (reverses payment).
+     */
+    public void markAsUnpaid() {
+        this.paid = false;
+        this.paymentMethod = null;
+        this.paidAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Checks if this share has been paid.
+     *
+     * @return true if the share has been paid, false otherwise.
+     */
+    public boolean isPaid() {
+        return paid;
+    }
+
+    /**
+     * Gets the payment method used for this share.
+     *
+     * @return the payment method, or null if not paid.
+     */
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    /**
+     * Gets the date and time when this share was paid.
+     *
+     * @return the payment date and time, or null if not paid.
+     */
+    public LocalDateTime getPaidAt() {
+        return paidAt;
     }
 
     /**

@@ -16,6 +16,9 @@ export interface ItemShareResponse {
   percentage: number;
   amount: number;
   responsible: boolean;
+  paid: boolean;
+  paymentMethod: string | null;
+  paidAt: string | null;
   createdAt: string;
 }
 
@@ -53,6 +56,9 @@ export interface MyShareResponse {
   myAmount: number;
   myPercentage: number;
   isResponsible: boolean;
+  isPaid: boolean;
+  paymentMethod: string | null;
+  paidAt: string | null;
   creditCardName: string;
   creditCardOwnerName: string;
   invoiceDueDate: string;
@@ -64,4 +70,9 @@ export interface MySharesResponse {
   message: string;
   shares: MyShareResponse[];
   shareCount: number;
+}
+
+export interface MarkShareAsPaidRequest {
+  paymentMethod: string;
+  paidAt: string;
 } 

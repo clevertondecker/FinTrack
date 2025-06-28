@@ -2,6 +2,7 @@ package com.fintrack.domain.creditcard;
 
 import com.fintrack.domain.user.User;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -83,4 +84,34 @@ public interface ExpenseSharingService {
      * @return a map of users to their calculated amounts. Never null.
      */
     Map<User, BigDecimal> calculateShareAmounts(InvoiceItem item, Map<User, BigDecimal> shares);
+
+    /**
+     * Marks a share as paid with payment details.
+     *
+     * @param shareId the ID of the share to mark as paid. Must not be null.
+     * @param paymentMethod the method used for payment. Must not be null or blank.
+     * @param paidAt the date and time when the payment was made. Must not be null.
+     * @param user the user making the payment. Must not be null.
+     * @return the updated share. Never null.
+     * @throws IllegalArgumentException if the share is not found or does not belong to the user.
+     */
+    ItemShare markShareAsPaid(Long shareId, String paymentMethod, LocalDateTime paidAt, User user);
+
+    /**
+     * Marks a share as unpaid (reverses payment).
+     *
+     * @param shareId the ID of the share to mark as unpaid. Must not be null.
+     * @param user the user making the change. Must not be null.
+     * @return the updated share. Never null.
+     * @throws IllegalArgumentException if the share is not found or does not belong to the user.
+     */
+    ItemShare markShareAsUnpaid(Long shareId, User user);
+
+    /**
+     * Gets all shares for a specific user.
+     *
+     * @param user the user to get shares for. Must not be null.
+     * @return a list of item shares for the user. Never null, may be empty.
+     */
+    List<ItemShare> getSharesForUser(User user);
 }
