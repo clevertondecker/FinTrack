@@ -152,7 +152,8 @@
       "open": "Open",
       "paid": "Paid",
       "overdue": "Overdue",
-      "partial": "Partial"
+      "partial": "Partial",
+      "closed": "Closed"
     },
     "addFormTitle": "Add New Invoice",
     "creditCardLabel": "Credit Card",
@@ -288,7 +289,14 @@
     "saving": "Saving...",
     "totalShared": "Total shared",
     "remaining": "Remaining",
-    "shareItem": "Share item"
+    "shareItem": "Share item",
+    "status": {
+      "open": "Open",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "partial": "Partial",
+      "closed": "Closed"
+    }
   },
   "language": {
     "en": "English",

@@ -167,6 +167,16 @@ class InvoiceServiceTest {
             assertThrows(IllegalArgumentException.class, () ->
                 invoiceService.createInvoice(request, testUser));
         }
+
+        @Test
+        @DisplayName("Should throw exception when due date is null")
+        void shouldThrowExceptionWhenDueDateIsNull() {
+            CreateInvoiceRequest request = new CreateInvoiceRequest(1L, null);
+            when(creditCardRepository.findByIdAndOwner(1L, testUser))
+                .thenReturn(Optional.of(testCreditCard));
+            assertThrows(NullPointerException.class, () ->
+                invoiceService.createInvoice(request, testUser));
+        }
     }
 
     @Nested
@@ -489,5 +499,32 @@ class InvoiceServiceTest {
             assertNotNull(result);
             assertEquals(1, result.size());
         }
+    }
+
+    @Test
+    @DisplayName("Should allow adding items to closed invoice through service")
+    void shouldAllowAddingItemsToClosedInvoiceThroughService() {
+        // Given: A closed invoice (no items, past due date)
+        Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+        invoice.updateStatus(); // Force status calculation
+        invoice = invoiceRepository.save(invoice);
+        
+        assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+        assertEquals(BigDecimal.ZERO, invoice.getTotalAmount());
+        
+        // When: Adding an item through the service
+        CreateInvoiceItemRequest request = new CreateInvoiceItemRequest(
+            "Test Item",
+            new BigDecimal("100.00"),
+            1L, // categoryId
+            LocalDate.now()
+        );
+        
+        Invoice updatedInvoice = invoiceService.createInvoiceItem(invoice.getId(), request, testUser);
+        
+        // Then: Invoice should be updated and status should change
+        assertEquals(new BigDecimal("100.00"), updatedInvoice.getTotalAmount());
+        assertEquals(InvoiceStatus.OVERDUE, updatedInvoice.getStatus());
+        assertEquals(1, updatedInvoice.getItems().size());
     }
 }

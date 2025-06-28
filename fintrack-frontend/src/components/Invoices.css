@@ -160,6 +160,12 @@
   opacity: 0.8;
 }
 
+.invoice-card.closed {
+  border-left: 4px solid var(--neutral-500);
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  opacity: 0.8;
+}
+
 /* Header do Card */
 .invoice-header {
   display: flex;
@@ -204,6 +210,10 @@
 .status-paid {
   background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
   color: white;
+}
+
+.status-closed {
+  color: #6b7280;
 }
 
 /* Detalhes da Fatura */
@@ -1838,7 +1848,15 @@
 }
 
 .invoice-group.paid .group-header h2 {
-  color: var(--secondary-color);
+  color: #10b981;
+}
+
+.invoice-group.closed .group-header {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+.invoice-group.closed .group-header h2 {
+  color: #f9fafb;
 }
 
 /* Filters Section - Posicionamento correto */

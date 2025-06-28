@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
-import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, GroupedInvoices, Category } from '../types/invoice';
+import { Invoice, InvoiceItem, CreateInvoiceRequest, CreateInvoiceItemRequest, InvoiceFilters, InvoiceSummary, GroupedInvoices, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
+import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate } from '../utils/invoiceUtils';
 import ShareItemModal from './ShareItemModal';
 import './Invoices.css';
 
@@ -134,96 +135,12 @@ const Invoices: React.FC = () => {
     setError(null);
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (amount === null || amount === undefined) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString || dateString === 'null' || dateString === 'undefined') return '-';
-    
-    try {
-      const cleanDateString = dateString.trim();
-      
-      // Se já é uma string ISO válida
-      if (cleanDateString.includes('T')) {
-        const date = new Date(cleanDateString);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString('pt-BR');
-        }
-      }
-      
-      // Se é apenas uma data (yyyy-MM-dd)
-      if (cleanDateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const date = new Date(cleanDateString + 'T00:00:00');
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString('pt-BR');
-        }
-      }
-      
-      // Fallback: retorna a string original se não conseguir parsear
-      return cleanDateString;
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return 'status-paid';
-      case 'OVERDUE':
-        return 'status-overdue';
-      case 'PARTIAL':
-        return 'status-partial';
-      default:
-        return 'status-open';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return t('invoices.status.paid');
-      case 'OVERDUE':
-        return t('invoices.status.overdue');
-      case 'PARTIAL':
-        return t('invoices.status.partial');
-      default:
-        return t('invoices.status.open');
-    }
-  };
-
-  const getUrgencyText = (dueDate: string, status: string) => {
-    if (status === 'PAID') return '';
-    
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (status === 'OVERDUE') {
-      return t('invoices.urgency.overdue', { days: Math.abs(diffDays) });
-    } else if (diffDays === 0) {
-      return t('invoices.urgency.dueToday');
-    } else if (diffDays === 1) {
-      return t('invoices.urgency.dueTomorrow');
-    } else if (diffDays > 0) {
-      return t('invoices.urgency.dueInDays', { days: diffDays });
-    }
-    
-    return '';
-  };
-
   const sortInvoices = (invoices: Invoice[]): Invoice[] => {
-    const priority: Record<string, number> = { 'OVERDUE': 1, 'OPEN': 2, 'PARTIAL': 3, 'PAID': 4 };
+    const priority: Record<string, number> = { 'OVERDUE': 1, 'OPEN': 2, 'PARTIAL': 3, 'PAID': 4, 'CLOSED': 5 };
     
     return invoices.sort((a, b) => {
       // Primeiro por status
-      const statusDiff = (priority[a.status] || 5) - (priority[b.status] || 5);
+      const statusDiff = (priority[a.status] || 6) - (priority[b.status] || 6);
       if (statusDiff !== 0) return statusDiff;
       
       // Depois por data de vencimento (mais próxima primeiro)
@@ -236,7 +153,8 @@ const Invoices: React.FC = () => {
       overdue: invoices.filter(i => i.status === 'OVERDUE'),
       open: invoices.filter(i => i.status === 'OPEN'),
       partial: invoices.filter(i => i.status === 'PARTIAL'),
-      paid: invoices.filter(i => i.status === 'PAID')
+      paid: invoices.filter(i => i.status === 'PAID'),
+      closed: invoices.filter(i => i.status === 'CLOSED')
     };
   };
 
@@ -280,6 +198,9 @@ const Invoices: React.FC = () => {
         case 'PAID':
           summary.paidCount++;
           summary.paidAmount += total;
+          break;
+        case 'CLOSED':
+          // Faturas fechadas não são contabilizadas no resumo
           break;
       }
     });
@@ -599,6 +520,7 @@ const Invoices: React.FC = () => {
                 <option value="OPEN">{t('invoices.status.open')}</option>
                 <option value="PARTIAL">{t('invoices.status.partial')}</option>
                 <option value="PAID">{t('invoices.status.paid')}</option>
+                <option value="CLOSED">{t('invoices.status.closed')}</option>
               </select>
             </div>
             <div className="filter-group">
@@ -726,9 +648,7 @@ const Invoices: React.FC = () => {
                 <div key={invoice.id} className="invoice-card overdue">
                   <div className="invoice-header">
                     <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>
-                      {getStatusText(invoice.status)}
-                    </span>
+                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
                   </div>
                   
                   <div className="invoice-details">
@@ -753,7 +673,7 @@ const Invoices: React.FC = () => {
                     </div>
                     
                     <div className="urgency-badge">
-                      {getUrgencyText(invoice.dueDate, invoice.status)}
+                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
                     </div>
                   </div>
 
@@ -793,9 +713,7 @@ const Invoices: React.FC = () => {
                 <div key={invoice.id} className="invoice-card open">
                   <div className="invoice-header">
                     <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>
-                      {getStatusText(invoice.status)}
-                    </span>
+                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
                   </div>
                   
                   <div className="invoice-details">
@@ -820,7 +738,7 @@ const Invoices: React.FC = () => {
                     </div>
                     
                     <div className="urgency-badge">
-                      {getUrgencyText(invoice.dueDate, invoice.status)}
+                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
                     </div>
                   </div>
 
@@ -858,9 +776,7 @@ const Invoices: React.FC = () => {
                 <div key={invoice.id} className="invoice-card partial">
                   <div className="invoice-header">
                     <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>
-                      {getStatusText(invoice.status)}
-                    </span>
+                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
                   </div>
                   
                   <div className="invoice-details">
@@ -928,9 +844,7 @@ const Invoices: React.FC = () => {
                 <div key={invoice.id} className="invoice-card paid">
                   <div className="invoice-header">
                     <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>
-                      {getStatusText(invoice.status)}
-                    </span>
+                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
                   </div>
                   
                   <div className="invoice-details">
@@ -969,6 +883,70 @@ const Invoices: React.FC = () => {
           </div>
         )}
 
+        {/* Closed Invoices */}
+        {groupedInvoices.closed.length > 0 && (
+          <div className="invoice-group closed">
+            <div className="group-header">
+              <h2>✅ Faturas Fechadas ({groupedInvoices.closed.length})</h2>
+              <div className="group-summary">
+                {formatCurrency(groupedInvoices.closed.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+              </div>
+            </div>
+            <div className="invoices-grid">
+              {groupedInvoices.closed.map(invoice => (
+                <div key={invoice.id} className="invoice-card closed">
+                  <div className="invoice-header">
+                    <h3>{invoice.creditCardName}</h3>
+                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
+                  </div>
+                  <div className="invoice-details">
+                    <div className="detail-item">
+                      <span className="label">{t('invoices.dueDateLabel')}:</span>
+                      <span className="value">{formatDate(invoice.dueDate)}</span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
+                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
+                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="label">{t('invoices.remainingAmountLabel')}:</span>
+                      <span className="value remaining">{formatCurrency((invoice.totalAmount || 0) - (invoice.paidAmount || 0))}</span>
+                    </div>
+                    
+                    <div className="urgency-badge">
+                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
+                    </div>
+                  </div>
+
+                  <div className="invoice-actions">
+                    <button 
+                      onClick={() => handleViewDetails(invoice)}
+                      className="view-button"
+                    >
+                      {t('invoices.viewButton')}
+                    </button>
+                    {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && (
+                      <button 
+                        onClick={() => handleOpenPayModal(invoice)}
+                        className="pay-button"
+                      >
+                        {t('invoices.payButton')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Empty State */}
         {filteredInvoices.length === 0 && (
           <div className="empty-state">
@@ -998,9 +976,7 @@ const Invoices: React.FC = () => {
                 </div>
                 <div className="info-row">
                   <span className="label">{t('invoices.statusLabel')}:</span>
-                  <span className={`value status ${getStatusColor(selectedInvoice.status)}`}>
-                    {getStatusText(selectedInvoice.status)}
-                  </span>
+                  <span className={`value status ${getStatusColor(selectedInvoice.status)}`}>{getStatusText(selectedInvoice.status, t)}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">{t('invoices.totalAmountLabel')}:</span>
@@ -1015,7 +991,8 @@ const Invoices: React.FC = () => {
               <div className="invoice-items-section">
                 <div className="section-header">
                   <h3>{t('invoices.itemsLabel')}</h3>
-                  {!quickAddMode && (
+                  {/* Botão sempre visível para todas as faturas, incluindo fechadas */}
+                  {!quickAddMode && selectedInvoice && (
                     <button 
                       className="quick-add-button"
                       onClick={handleQuickAdd}

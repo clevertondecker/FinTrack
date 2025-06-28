@@ -83,10 +83,12 @@ public class InvoiceService {
         }
         CreditCard creditCard = creditCardOpt.get();
 
-        // Create the invoice
+        // Create the invoice with month derived from due date
+        YearMonth invoiceMonth = YearMonth.from(request.dueDate());
+        
         Invoice invoice = Invoice.of(
             creditCard,
-            YearMonth.from(request.dueDate()),
+            invoiceMonth,
             request.dueDate()
         );
 
@@ -100,7 +102,10 @@ public class InvoiceService {
      * @return list of invoices. Never null, may be empty.
      */
     public List<Invoice> getUserInvoices(User user) {
-        return invoiceRepository.findByCreditCardOwner(user);
+        List<Invoice> invoices = invoiceRepository.findByCreditCardOwner(user);
+        // Update status dynamically for each invoice to reflect current state
+        invoices.forEach(Invoice::updateStatus);
+        return invoices;
     }
 
     /**
@@ -119,7 +124,10 @@ public class InvoiceService {
         }
         CreditCard creditCard = creditCardOpt.get();
 
-        return invoiceRepository.findByCreditCard(creditCard);
+        List<Invoice> invoices = invoiceRepository.findByCreditCard(creditCard);
+        // Update status dynamically for each invoice to reflect current state
+        invoices.forEach(Invoice::updateStatus);
+        return invoices;
     }
 
     /**
@@ -135,7 +143,10 @@ public class InvoiceService {
         if (invoiceOpt.isEmpty()) {
             throw new IllegalArgumentException("Invoice not found");
         }
-        return invoiceOpt.get();
+        Invoice invoice = invoiceOpt.get();
+        // Update status dynamically to reflect current state
+        invoice.updateStatus();
+        return invoice;
     }
 
     /**
@@ -258,6 +269,9 @@ public class InvoiceService {
      * Converts an Invoice to a InvoiceResponse DTO.
      */
     public InvoiceResponse toInvoiceResponse(Invoice invoice) {
+        // Use dynamic calculation for real-time consistency
+        InvoiceStatus currentStatus = invoice.calculateCurrentStatus();
+        
         return new InvoiceResponse(
             invoice.getId(),
             invoice.getCreditCard().getId(),
@@ -265,7 +279,7 @@ public class InvoiceService {
             invoice.getDueDate(),
             invoice.getTotalAmount(),
             invoice.getPaidAmount(),
-            invoice.getStatus().name(),
+            currentStatus.name(),
             invoice.getCreatedAt(),
             invoice.getUpdatedAt()
         );
@@ -325,7 +339,9 @@ public class InvoiceService {
             item.getAmount(),
             item.getCategory() != null ? item.getCategory().getName() : null,
             item.getPurchaseDate().toString(),
-            item.getCreatedAt()
+            item.getCreatedAt(),
+            item.getInstallments(),
+            item.getTotalInstallments()
         );
     }
 

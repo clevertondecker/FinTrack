@@ -63,6 +63,7 @@ export interface GroupedInvoices {
   open: Invoice[];
   partial: Invoice[];
   paid: Invoice[];
+  closed: Invoice[];
 }
 
 export interface InvoiceResponse {
@@ -107,14 +108,16 @@ export enum InvoiceStatus {
   OPEN = 'OPEN',
   PAID = 'PAID',
   OVERDUE = 'OVERDUE',
-  PARTIAL = 'PARTIAL'
+  PARTIAL = 'PARTIAL',
+  CLOSED = 'CLOSED'
 }
 
 export const InvoiceStatusDisplay = {
   [InvoiceStatus.OPEN]: 'Aberta',
   [InvoiceStatus.PAID]: 'Paga',
   [InvoiceStatus.OVERDUE]: 'Vencida',
-  [InvoiceStatus.PARTIAL]: 'Parcial'
+  [InvoiceStatus.PARTIAL]: 'Parcial',
+  [InvoiceStatus.CLOSED]: 'Fechada'
 };
 
 export interface Category {

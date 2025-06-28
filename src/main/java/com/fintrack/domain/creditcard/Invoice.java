@@ -67,7 +67,7 @@ public class Invoice {
      * @param theMonth the month/year of the invoice. Must not be null.
      * @param theDueDate the due date of the invoice. Must not be null.
      */
-    private Invoice(final CreditCard theCreditCard, final YearMonth theMonth, final LocalDate theDueDate) {
+    private Invoice(CreditCard theCreditCard, YearMonth theMonth, LocalDate theDueDate) {
         Validate.notNull(theCreditCard, "Credit card must not be null.");
         Validate.notNull(theMonth, "Month must not be null.");
         Validate.notNull(theDueDate, "Due date must not be null.");
@@ -75,6 +75,9 @@ public class Invoice {
         creditCard = theCreditCard;
         month = theMonth;
         dueDate = theDueDate;
+        status = InvoiceStatus.OPEN;
+        totalAmount = BigDecimal.ZERO;
+        paidAmount = BigDecimal.ZERO;
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
@@ -127,7 +130,10 @@ public class Invoice {
     public void recordPayment(final BigDecimal amount) {
         Validate.notNull(amount, "Payment amount must not be null.");
         Validate.isTrue(amount.compareTo(BigDecimal.ZERO) > 0, "Payment amount must be positive.");
-        Validate.isTrue(amount.compareTo(totalAmount) <= 0, "Payment amount cannot exceed total amount.");
+        // Allow payments even when totalAmount is zero (for closed invoices)
+        if (totalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            Validate.isTrue(amount.compareTo(totalAmount) <= 0, "Payment amount cannot exceed total amount.");
+        }
 
         paidAmount = paidAmount.add(amount);
         updateStatus();
@@ -138,7 +144,10 @@ public class Invoice {
      * Updates the status based on current payment and due date.
      */
     public void updateStatus() {
-        if (paidAmount.compareTo(totalAmount) >= 0) {
+        // If there's no amount to pay and past due date, consider it CLOSED
+        if (totalAmount.compareTo(BigDecimal.ZERO) == 0 && LocalDate.now().isAfter(dueDate)) {
+            status = InvoiceStatus.CLOSED;
+        } else if (totalAmount.compareTo(BigDecimal.ZERO) > 0 && paidAmount.compareTo(totalAmount) >= 0) {
             status = InvoiceStatus.PAID;
         } else if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
             status = InvoiceStatus.PARTIAL;
@@ -218,6 +227,39 @@ public class Invoice {
      * @return the invoice status. Never null.
      */
     public InvoiceStatus getStatus() { return status; }
+
+    /**
+     * Calculates the current status dynamically based on real-time data.
+     * Use this method when you need the most up-to-date status.
+     *
+     * @return the calculated invoice status. Never null.
+     */
+    public InvoiceStatus calculateCurrentStatus() {
+        // If there's no amount to pay and past due date, consider it CLOSED
+        if (totalAmount.compareTo(BigDecimal.ZERO) == 0 && LocalDate.now().isAfter(dueDate)) {
+            return InvoiceStatus.CLOSED;
+        }
+        // Only consider PAID if there is a total amount and it is fully paid
+        else if (totalAmount.compareTo(BigDecimal.ZERO) > 0 && paidAmount.compareTo(totalAmount) >= 0) {
+            return InvoiceStatus.PAID;
+        } else if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
+            return InvoiceStatus.PARTIAL;
+        } else if (LocalDate.now().isAfter(dueDate)) {
+            return InvoiceStatus.OVERDUE;
+        } else {
+            return InvoiceStatus.OPEN;
+        }
+    }
+
+    /**
+     * Checks if the persisted status is different from the calculated status.
+     * Useful for detecting when status needs to be updated.
+     *
+     * @return true if status needs update, false otherwise.
+     */
+    public boolean needsStatusUpdate() {
+        return !status.equals(calculateCurrentStatus());
+    }
 
     /**
      * Gets all items in this invoice.

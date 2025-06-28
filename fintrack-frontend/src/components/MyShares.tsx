@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MySharesResponse, MyShareResponse } from '../types/itemShare';
-import { apiService } from '../services/api';
+import apiService from '../services/api';
+import { getStatusColor, getStatusText, formatCurrency, formatDate } from '../utils/invoiceUtils';
 import './MyShares.css';
 
 interface GroupedShares {
@@ -66,37 +67,8 @@ const MyShares: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
   const formatPercentage = (percentage: number) => {
     return `${percentage.toFixed(1)}%`;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'PAID': return 'status-paid';
-      case 'PARTIAL': return 'status-partial';
-      case 'OVERDUE': return 'status-overdue';
-      default: return 'status-open';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'PAID': return 'Paga';
-      case 'PARTIAL': return 'Parcial';
-      case 'OVERDUE': return 'Vencida';
-      default: return 'Aberta';
-    }
   };
 
   if (loading) {
@@ -186,7 +158,7 @@ const MyShares: React.FC = () => {
                             Fatura #{share.invoiceId} • Vencimento: {formatDate(share.invoiceDueDate)}
                           </span>
                           <span className={`invoice-status ${getStatusColor(share.invoiceStatus)}`}>
-                            {getStatusText(share.invoiceStatus)}
+                            {getStatusText(share.invoiceStatus, t)}
                           </span>
                         </div>
                       </div>

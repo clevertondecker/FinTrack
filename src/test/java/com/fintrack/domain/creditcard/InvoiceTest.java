@@ -203,6 +203,148 @@ class InvoiceTest {
             
             assertEquals(InvoiceStatus.OPEN, invoice.getStatus());
         }
+
+        @Test
+        @DisplayName("Should update status to CLOSED when zero amount and past due date")
+        void shouldUpdateStatusToClosedWhenZeroAmountAndPastDueDate() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            // No items added, so totalAmount is zero
+            
+            invoice.updateStatus();
+            
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should keep status as OPEN when zero amount and not past due date")
+        void shouldKeepStatusAsOpenWhenZeroAmountAndNotPastDueDate() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.now().plusDays(30));
+            // No items added, so totalAmount is zero
+            
+            invoice.updateStatus();
+            
+            assertEquals(InvoiceStatus.OPEN, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should update status to CLOSED when all items removed and past due date")
+        void shouldUpdateStatusToClosedWhenAllItemsRemovedAndPastDueDate() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            invoice.addItem(item);
+            
+            // Remove the item, making totalAmount zero
+            invoice.removeItem(item);
+            
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should calculate current status correctly for zero amount past due")
+        void shouldCalculateCurrentStatusCorrectlyForZeroAmountPastDue() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            // No items added, so totalAmount is zero
+            
+            InvoiceStatus calculatedStatus = invoice.calculateCurrentStatus();
+            
+            assertEquals(InvoiceStatus.CLOSED, calculatedStatus);
+        }
+
+        @Test
+        @DisplayName("Should calculate current status correctly for zero amount not past due")
+        void shouldCalculateCurrentStatusCorrectlyForZeroAmountNotPastDue() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.now().plusDays(30));
+            // No items added, so totalAmount is zero
+            
+            InvoiceStatus calculatedStatus = invoice.calculateCurrentStatus();
+            
+            assertEquals(InvoiceStatus.OPEN, calculatedStatus);
+        }
+
+        @Test
+        @DisplayName("Should change status from CLOSED to OVERDUE when adding item to closed invoice")
+        void shouldChangeStatusFromClosedToOverdueWhenAddingItemToClosedInvoice() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            // No items added, so totalAmount is zero and past due date = CLOSED
+            invoice.updateStatus(); // Força o cálculo do status
+            
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+            
+            // Add an item - should recalculate status
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            invoice.addItem(item);
+            
+            // Should now be OVERDUE because has amount and is past due date
+            assertEquals(InvoiceStatus.OVERDUE, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should change status from CLOSED to OPEN when adding item to closed invoice not past due")
+        void shouldChangeStatusFromClosedToOpenWhenAddingItemToClosedInvoiceNotPastDue() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.now().plusDays(30));
+            // No items added, so totalAmount is zero and not past due date = OPEN
+            
+            assertEquals(InvoiceStatus.OPEN, invoice.getStatus());
+            
+            // Add an item - should recalculate status
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            invoice.addItem(item);
+            
+            // Should now be OPEN because has amount and is not past due date
+            assertEquals(InvoiceStatus.OPEN, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should return to CLOSED when removing all items from overdue invoice")
+        void shouldReturnToClosedWhenRemovingAllItemsFromOverdueInvoice() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            invoice.addItem(item);
+            
+            // Should be OVERDUE because has amount and is past due date
+            assertEquals(InvoiceStatus.OVERDUE, invoice.getStatus());
+            
+            // Remove the item - should recalculate status
+            invoice.removeItem(item);
+            
+            // Should now be CLOSED because no amount and is past due date
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should allow adding items to closed invoice and recalculate status")
+        void shouldAllowAddingItemsToClosedInvoiceAndRecalculateStatus() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            invoice.updateStatus(); // Force status calculation
+            
+            // Should be CLOSED because no items and past due date
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+            
+            // Add an item - should be allowed and status should change
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            invoice.addItem(item);
+            
+            // Should now be OVERDUE because has amount and is past due date
+            assertEquals(InvoiceStatus.OVERDUE, invoice.getStatus());
+            assertEquals(new BigDecimal("100.00"), invoice.getTotalAmount());
+        }
+
+        @Test
+        @DisplayName("Should allow payments in closed invoices with zero amount")
+        void shouldAllowPaymentsInClosedInvoicesWithZeroAmount() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
+            invoice.updateStatus(); // Force status calculation
+            
+            // Should be CLOSED because no items and past due date
+            assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
+            assertEquals(BigDecimal.ZERO, invoice.getTotalAmount());
+            
+            // Should allow payment even with zero total amount
+            invoice.recordPayment(new BigDecimal("50.00"));
+            
+            // Should now have paid amount
+            assertEquals(new BigDecimal("50.00"), invoice.getPaidAmount());
+        }
     }
 
     @Nested

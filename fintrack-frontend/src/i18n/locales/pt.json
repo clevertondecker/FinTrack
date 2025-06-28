@@ -151,7 +151,8 @@
       "open": "Aberta",
       "paid": "Paga",
       "overdue": "Vencida",
-      "partial": "Parcial"
+      "partial": "Parcial",
+      "closed": "Fechada"
     },
     "addFormTitle": "Adicionar Nova Fatura",
     "creditCardLabel": "Cartão de Crédito",
@@ -284,7 +285,8 @@
       "open": "Aberta",
       "paid": "Paga",
       "overdue": "Vencida",
-      "partial": "Parcial"
+      "partial": "Parcial",
+      "closed": "Fechada"
     },
     "amount": "Valor",
     "divideEqually": "Dividir igualmente",

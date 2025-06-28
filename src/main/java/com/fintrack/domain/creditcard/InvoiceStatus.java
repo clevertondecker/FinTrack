@@ -24,7 +24,12 @@ public enum InvoiceStatus {
     /**
      * Invoice has been partially paid.
      */
-    PARTIAL("Partial");
+    PARTIAL("Partial"),
+
+    /**
+     * Invoice is closed - no amount to pay and past due date.
+     */
+    CLOSED("Closed");
 
     private final String displayName;
 
