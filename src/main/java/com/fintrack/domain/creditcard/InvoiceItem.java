@@ -73,7 +73,6 @@ public class InvoiceItem {
         Validate.notNull(theInvoice, "Invoice must not be null.");
         Validate.notBlank(theDescription, "Description must not be null or blank.");
         Validate.notNull(theAmount, "Amount must not be null.");
-        Validate.isTrue(theAmount.compareTo(BigDecimal.ZERO) >= 0, "Amount must be zero or positive.");
         Validate.notNull(thePurchaseDate, "Purchase date must not be null.");
         Validate.notNull(theInstallments, "Installments must not be null.");
         Validate.isTrue(theInstallments > 0, "Installments must be positive.");

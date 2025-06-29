@@ -241,6 +241,11 @@ class ApiService {
     const response = await this.api.post<ManualReviewResponse>(`/invoice-imports/${id}/manual-review`, request);
     return response.data;
   }
+
+  // Deleta uma fatura (apenas para admin)
+  async deleteInvoice(invoiceId: number): Promise<void> {
+    await this.api.delete(`/invoices/${invoiceId}`);
+  }
 }
 
 export const apiService = new ApiService();

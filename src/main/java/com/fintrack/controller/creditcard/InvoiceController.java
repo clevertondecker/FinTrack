@@ -14,6 +14,7 @@ import com.fintrack.domain.user.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -173,5 +174,18 @@ public class InvoiceController {
         com.fintrack.domain.user.User user = userOpt.get();
         InvoicePaymentResponse response = invoiceService.payInvoice(id, request, user);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Deletes an invoice by ID. Only accessible to ADMIN users.
+     *
+     * @param id the invoice ID.
+     * @return 204 No Content if deleted.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
+        invoiceService.deleteInvoice(id);
+        return ResponseEntity.noContent().build();
     }
 }

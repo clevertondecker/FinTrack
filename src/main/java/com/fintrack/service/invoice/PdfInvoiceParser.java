@@ -38,11 +38,15 @@ public class PdfInvoiceParser {
     private static final Pattern TOTAL_PATTERN = Pattern.compile("(?:total|valor total|amount)\\s*:?\\s*R\\$\\s*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern BANK_PATTERN = Pattern.compile("(?:banco|bank)\\s*:?\\s*([A-Za-z\\s]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern SANTANDER_ITEM_PATTERN = Pattern.compile(
-        "^.*?(\\d{2}/\\d{2})\\s+(.+?)(?:\\s+(\\d{2}/\\d{2,4}))?\\s+([\\d.,]+)$"
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)(?:\\s+(\\d{2}/\\d{2,4}))?\\s+(-?[\\d.,]+)$"
     );
 
     private static final List<String> IGNORE_KEYWORDS = List.of(
         "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas", "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar", "central", "atendimento", "seguro", "prestamista", "valor parcelado"
+    );
+
+    private static final List<String> IGNORE_NEGATIVE_KEYWORDS = List.of(
+        "pagamento de fatura", "pagamento", "crédito", "demais créditos", "estorno de pagamento"
     );
 
     /**
@@ -230,6 +234,14 @@ public class PdfInvoiceParser {
         return true;
     }
 
+    private boolean isValidNegativeItem(String description) {
+        String lower = description.toLowerCase();
+        for (String keyword : IGNORE_NEGATIVE_KEYWORDS) {
+            if (lower.contains(keyword)) return false;
+        }
+        return true;
+    }
+
     /**
      * Extracts individual items from the text.
      * This is a simplified implementation - in a real scenario, this would be much more complex.
@@ -255,6 +267,11 @@ public class PdfInvoiceParser {
                 String amountStr = matcher.group(4).replace(".", "").replace(",", ".");
                 try {
                     BigDecimal amount = new BigDecimal(amountStr);
+                    // Ignorar itens negativos com palavras-chave de pagamento/crédito
+                    if (amount.compareTo(BigDecimal.ZERO) < 0 && !isValidNegativeItem(description)) {
+                        logger.info("Ignoring negative item by keyword: {} - {}", description, amount);
+                        continue;
+                    }
                     LocalDate purchaseDate = LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                     Integer installments = 1;
                     Integer totalInstallments = 1;

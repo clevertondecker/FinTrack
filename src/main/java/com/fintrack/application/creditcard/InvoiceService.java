@@ -381,4 +381,8 @@ public class InvoiceService {
             "Invoice payment registered successfully"
         );
     }
+
+    public void deleteInvoice(Long id) {
+        invoiceRepository.deleteById(id);
+    }
 }

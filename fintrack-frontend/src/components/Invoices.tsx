@@ -6,9 +6,11 @@ import { CreditCard } from '../types/creditCard';
 import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate } from '../utils/invoiceUtils';
 import ShareItemModal from './ShareItemModal';
 import './Invoices.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const Invoices: React.FC = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
@@ -459,6 +461,16 @@ const Invoices: React.FC = () => {
     }
   };
 
+  const handleDeleteInvoice = async (invoiceId: number) => {
+    if (!window.confirm(t('invoices.confirmDeleteInvoice') || 'Tem certeza que deseja excluir esta fatura?')) return;
+    try {
+      await apiService.deleteInvoice(invoiceId);
+      await loadInvoices();
+    } catch (err) {
+      alert(t('invoices.failedToDeleteInvoice') || 'Erro ao excluir fatura');
+    }
+  };
+
   const groupedInvoices = groupInvoices(filteredInvoices);
 
   if (loading) {
@@ -692,6 +704,14 @@ const Invoices: React.FC = () => {
                         {t('invoices.payButton')}
                       </button>
                     )}
+                    {user?.roles?.includes('ADMIN') && (
+                      <button 
+                        onClick={() => handleDeleteInvoice(invoice.id)}
+                        className="delete-invoice-btn"
+                      >
+                        Excluir Fatura
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -755,6 +775,14 @@ const Invoices: React.FC = () => {
                     >
                       {t('invoices.payButton')}
                     </button>
+                    {user?.roles?.includes('ADMIN') && (
+                      <button 
+                        onClick={() => handleDeleteInvoice(invoice.id)}
+                        className="delete-invoice-btn"
+                      >
+                        Excluir Fatura
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -823,6 +851,14 @@ const Invoices: React.FC = () => {
                     >
                       {t('invoices.payButton')}
                     </button>
+                    {user?.roles?.includes('ADMIN') && (
+                      <button 
+                        onClick={() => handleDeleteInvoice(invoice.id)}
+                        className="delete-invoice-btn"
+                      >
+                        Excluir Fatura
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -876,6 +912,14 @@ const Invoices: React.FC = () => {
                     >
                       {t('invoices.viewButton')}
                     </button>
+                    {user?.roles?.includes('ADMIN') && (
+                      <button 
+                        onClick={() => handleDeleteInvoice(invoice.id)}
+                        className="delete-invoice-btn"
+                      >
+                        Excluir Fatura
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -932,12 +976,12 @@ const Invoices: React.FC = () => {
                     >
                       {t('invoices.viewButton')}
                     </button>
-                    {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && (
+                    {user?.roles?.includes('ADMIN') && (
                       <button 
-                        onClick={() => handleOpenPayModal(invoice)}
-                        className="pay-button"
+                        onClick={() => handleDeleteInvoice(invoice.id)}
+                        className="delete-invoice-btn"
                       >
-                        {t('invoices.payButton')}
+                        Excluir Fatura
                       </button>
                     )}
                   </div>
