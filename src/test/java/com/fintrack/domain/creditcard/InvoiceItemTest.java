@@ -110,13 +110,6 @@ class InvoiceItemTest {
         }
 
         @Test
-        @DisplayName("Should throw exception when amount is negative")
-        void shouldThrowExceptionWhenAmountIsNegative() {
-            assertThrows(IllegalArgumentException.class, () ->
-                InvoiceItem.of(testInvoice, "Description", new BigDecimal("-100.00"), foodCategory, LocalDate.now()));
-        }
-
-        @Test
         @DisplayName("Should throw exception when purchaseDate is null")
         void shouldThrowExceptionWhenPurchaseDateIsNull() {
             assertThrows(NullPointerException.class, () ->
@@ -167,16 +160,9 @@ class InvoiceItemTest {
         @DisplayName("Should accept null category")
         void shouldAcceptNullCategory() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), null, LocalDate.now());
-            
+
             assertNotNull(item);
             assertEquals(null, item.getCategory());
-        }
-
-        @Test
-        @DisplayName("Should handle zero amount")
-        void shouldHandleZeroAmount() {
-            assertThrows(IllegalArgumentException.class, () ->
-                InvoiceItem.of(testInvoice, "Description", BigDecimal.ZERO, foodCategory, LocalDate.now()));
         }
 
         @Test
@@ -184,7 +170,7 @@ class InvoiceItemTest {
         void shouldHandleVeryLargeAmount() {
             BigDecimal largeAmount = new BigDecimal("999999.99");
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", largeAmount, foodCategory, LocalDate.now());
-            
+
             assertEquals(largeAmount, item.getAmount());
         }
 
@@ -193,7 +179,7 @@ class InvoiceItemTest {
         void shouldHandleDecimalAmounts() {
             BigDecimal decimalAmount = new BigDecimal("123.45");
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", decimalAmount, foodCategory, LocalDate.now());
-            
+
             assertEquals(decimalAmount, item.getAmount());
         }
 
@@ -201,7 +187,7 @@ class InvoiceItemTest {
         @DisplayName("Should handle single installment by default")
         void shouldHandleSingleInstallmentByDefault() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             assertEquals(1, item.getInstallments());
             assertEquals(1, item.getTotalInstallments());
         }
@@ -210,9 +196,23 @@ class InvoiceItemTest {
         @DisplayName("Should handle multiple installments")
         void shouldHandleMultipleInstallments() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("1000.00"), foodCategory, LocalDate.now(), 3, 6);
-            
+
             assertEquals(3, item.getInstallments());
             assertEquals(6, item.getTotalInstallments());
+        }
+
+        @Test
+        @DisplayName("Should allow negative amount (for estornos/credits)")
+        void shouldAllowNegativeAmount() {
+            InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("-100.00"), foodCategory, LocalDate.now());
+            assertEquals(new BigDecimal("-100.00"), item.getAmount());
+        }
+
+        @Test
+        @DisplayName("Should allow zero amount")
+        void shouldAllowZeroAmount() {
+            InvoiceItem item = InvoiceItem.of(testInvoice, "Description", BigDecimal.ZERO, foodCategory, LocalDate.now());
+            assertEquals(BigDecimal.ZERO, item.getAmount());
         }
     }
 
@@ -226,13 +226,13 @@ class InvoiceItemTest {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
             User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
             User user2 = User.of("User2", "user2@example.com", "password123", Set.of(Role.USER));
-            
+
             ItemShare share1 = ItemShare.of(user1, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
             ItemShare share2 = ItemShare.of(user2, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
-            
+
             item.addShare(share1);
             item.addShare(share2);
-            
+
             assertEquals(2, item.getShares().size());
             assertEquals(new BigDecimal("100.00"), item.getSharedAmount());
             assertTrue(item.isFullyShared());
@@ -243,10 +243,10 @@ class InvoiceItemTest {
         void shouldCalculateSharedAmountCorrectly() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
             User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
-            
+
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.3"), new BigDecimal("30.00"));
             item.addShare(share);
-            
+
             assertEquals(new BigDecimal("30.00"), item.getSharedAmount());
             assertEquals(new BigDecimal("70.00"), item.getUnsharedAmount());
             assertFalse(item.isFullyShared());
@@ -257,14 +257,14 @@ class InvoiceItemTest {
         void shouldRemoveShareSuccessfully() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
             User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
-            
+
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
             item.addShare(share);
-            
+
             assertEquals(1, item.getShares().size());
-            
+
             item.removeShare(share);
-            
+
             assertEquals(0, item.getShares().size());
             assertEquals(BigDecimal.ZERO, item.getSharedAmount());
         }
@@ -276,15 +276,15 @@ class InvoiceItemTest {
             User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
             User user2 = User.of("User2", "user2@example.com", "password123", Set.of(Role.USER));
             User user3 = User.of("User3", "user3@example.com", "password123", Set.of(Role.USER));
-            
+
             ItemShare share1 = ItemShare.of(user1, item, new BigDecimal("0.4"), new BigDecimal("40.00"));
             ItemShare share2 = ItemShare.of(user2, item, new BigDecimal("0.3"), new BigDecimal("30.00"));
             ItemShare share3 = ItemShare.of(user3, item, new BigDecimal("0.3"), new BigDecimal("30.00"));
-            
+
             item.addShare(share1);
             item.addShare(share2);
             item.addShare(share3);
-            
+
             assertEquals(new BigDecimal("100.00"), item.getSharedAmount());
             assertTrue(item.isFullyShared());
         }
@@ -294,10 +294,10 @@ class InvoiceItemTest {
         void shouldHandleMultipleSharesWithZeroAmounts() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
             User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
-            
+
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.01"), new BigDecimal("0.01"));
             item.addShare(share);
-            
+
             assertEquals(new BigDecimal("0.01"), item.getSharedAmount());
             assertEquals(new BigDecimal("99.99"), item.getUnsharedAmount());
         }
@@ -311,14 +311,14 @@ class InvoiceItemTest {
         @DisplayName("Should set createdAt on creation")
         void shouldSetCreatedAtOnCreation() {
             LocalDateTime beforeCreation = LocalDateTime.now();
-            
+
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             LocalDateTime afterCreation = LocalDateTime.now();
 
-            assertTrue(item.getCreatedAt().isAfter(beforeCreation) || 
+            assertTrue(item.getCreatedAt().isAfter(beforeCreation) ||
                       item.getCreatedAt().equals(beforeCreation));
-            assertTrue(item.getCreatedAt().isBefore(afterCreation) || 
+            assertTrue(item.getCreatedAt().isBefore(afterCreation) ||
                       item.getCreatedAt().equals(afterCreation));
         }
     }
@@ -331,7 +331,7 @@ class InvoiceItemTest {
         @DisplayName("Should be equal to itself")
         void shouldBeEqualToItself() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             assertEquals(item, item);
             assertEquals(item.hashCode(), item.hashCode());
         }
@@ -340,7 +340,7 @@ class InvoiceItemTest {
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             assertFalse(item.equals(null));
         }
 
@@ -348,7 +348,7 @@ class InvoiceItemTest {
         @DisplayName("Should not be equal to different type")
         void shouldNotBeEqualToDifferentType() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             assertFalse(item.equals("Not an InvoiceItem"));
         }
 
@@ -373,7 +373,7 @@ class InvoiceItemTest {
         void shouldHandleVeryLongDescription() {
             String longDescription = "A".repeat(1000);
             InvoiceItem item = InvoiceItem.of(testInvoice, longDescription, new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            
+
             assertEquals(longDescription, item.getDescription());
         }
 
@@ -382,7 +382,7 @@ class InvoiceItemTest {
         void shouldHandleFuturePurchaseDate() {
             LocalDate futureDate = LocalDate.now().plusDays(30);
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, futureDate);
-            
+
             assertEquals(futureDate, item.getPurchaseDate());
         }
 
@@ -391,7 +391,7 @@ class InvoiceItemTest {
         void shouldHandlePastPurchaseDate() {
             LocalDate pastDate = LocalDate.now().minusDays(30);
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, pastDate);
-            
+
             assertEquals(pastDate, item.getPurchaseDate());
         }
     }
@@ -406,4 +406,4 @@ class InvoiceItemTest {
             throw new RuntimeException("Failed to set invoice item ID for testing", e);
         }
     }
-} 
+}
