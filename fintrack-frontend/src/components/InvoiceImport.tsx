@@ -4,7 +4,7 @@ import apiService from '../services/api';
 import { InvoiceImport as InvoiceImportType, ImportStatus, ImportSource } from '../types/invoiceImport';
 import { CreditCard } from '../types/creditCard';
 import { Category } from '../types/invoice';
-import './InvoiceImport.css';
+import styles from './InvoiceImport.module.css';
 
 interface InvoiceImportProps {
   onImportSuccess?: () => void;
@@ -185,41 +185,41 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
   };
 
   return (
-    <div className="invoice-import-container">
-      <div className="invoice-import-header">
+    <div className={styles.invoiceImportContainer}>
+      <div className={styles.invoiceImportHeader}>
         <h2>{t('invoiceImport.title')}</h2>
         <p>{t('invoiceImport.description')}</p>
       </div>
 
       {/* Upload Section */}
-      <div className="upload-section">
+      <div className={styles.uploadSection}>
         <h3>{t('invoiceImport.uploadTitle')}</h3>
         
-        <div className="upload-form">
-          <div className="form-group">
+        <div className={styles.uploadForm}>
+          <div className={styles.formGroup}>
             <label htmlFor="file-input">{t('invoiceImport.selectFile')}:</label>
             <input
               id="file-input"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleFileChange}
-              className="file-input"
+              className={styles.fileInput}
             />
             {file && (
-              <div className="file-info">
+              <div className={styles.fileInfo}>
                 <span>{file.name}</span>
                 <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
               </div>
             )}
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label htmlFor="credit-card-select">{t('invoiceImport.selectCreditCard')}:</label>
             <select
               id="credit-card-select"
               value={selectedCreditCard}
               onChange={handleCreditCardChange}
-              className="select-input"
+              className={styles.selectInput}
             >
               <option value="">{t('invoiceImport.selectCreditCardPlaceholder')}</option>
               {creditCards.map((card) => (
@@ -233,97 +233,97 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
           <button
             onClick={handleUpload}
             disabled={!file || !selectedCreditCard || uploading}
-            className="upload-button"
+            className={styles.uploadButton}
           >
             {uploading ? t('invoiceImport.uploading') : t('invoiceImport.upload')}
           </button>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+        {error && <div className={styles.errorMessage}>{error}</div>}
+        {success && <div className={styles.successMessage}>{success}</div>}
       </div>
 
       {/* Imports List */}
-      <div className="imports-section">
-        <div className="imports-header">
+      <div className={styles.importsSection}>
+        <div className={styles.importsHeader}>
           <h3>{t('invoiceImport.importsTitle')}</h3>
-          <button onClick={loadImports} className="refresh-button">
+          <button onClick={loadImports} className={styles.refreshButton}>
             {t('invoiceImport.refresh')}
           </button>
         </div>
 
         {loading ? (
-          <div className="loading">{t('invoiceImport.loading')}</div>
+          <div className={styles.loading}>{t('invoiceImport.loading')}</div>
         ) : (imports ?? []).length === 0 ? (
-          <div className="no-imports">{t('invoiceImport.noImports')}</div>
+          <div className={styles.noImports}>{t('invoiceImport.noImports')}</div>
         ) : (
-          <div className="imports-list">
+          <div className={styles.importsList}>
             {(imports ?? []).map((importItem) => (
-              <div key={importItem.id} className="import-item">
-                <div className="import-header">
-                  <div className="import-info">
+              <div key={importItem.id} className={styles.importItem}>
+                <div className={styles.importHeader}>
+                  <div className={styles.importInfo}>
                     <h4>{importItem.originalFileName}</h4>
-                    <span className={`status-badge ${getStatusColor(importItem.status)}`}>
+                    <span className={`${styles.statusBadge} ${getStatusColor(importItem.status)}`}>
                       {getStatusText(importItem.status)}
                     </span>
-                    <span className="source-badge">
+                    <span className={styles.sourceBadge}>
                       {getSourceText(importItem.source)}
                     </span>
                   </div>
-                  <div className="import-actions">
+                  <div className={styles.importActions}>
                     {importItem.status === ImportStatus.MANUAL_REVIEW && (
                       <button
                         onClick={() => handleManualReview(importItem)}
-                        className="review-button"
+                        className={styles.reviewButton}
                       >
                         {t('invoiceImport.review')}
                       </button>
                     )}
                     <button
                       onClick={() => handleDeleteImport(importItem.id)}
-                      className="delete-button"
+                      className={styles.deleteButton}
                     >
                       {t('invoiceImport.delete')}
                     </button>
                   </div>
                 </div>
 
-                <div className="import-details">
-                  <div className="detail-row">
+                <div className={styles.importDetails}>
+                  <div className={styles.detailRow}>
                     <span>{t('invoiceImport.importedAt')}:</span>
                     <span>{formatDateTime(importItem.importedAt)}</span>
                   </div>
                   
                   {importItem.processedAt && (
-                    <div className="detail-row">
+                    <div className={styles.detailRow}>
                       <span>{t('invoiceImport.processedAt')}:</span>
                       <span>{formatDateTime(importItem.processedAt)}</span>
                     </div>
                   )}
 
                   {importItem.totalAmount && (
-                    <div className="detail-row">
+                    <div className={styles.detailRow}>
                       <span>{t('invoiceImport.totalAmount')}:</span>
                       <span>R$ {importItem.totalAmount.toFixed(2)}</span>
                     </div>
                   )}
 
                   {importItem.dueDate && (
-                    <div className="detail-row">
+                    <div className={styles.detailRow}>
                       <span>{t('invoiceImport.dueDate')}:</span>
                       <span>{formatDate(importItem.dueDate)}</span>
                     </div>
                   )}
 
                   {importItem.errorMessage && (
-                    <div className="error-detail">
+                    <div className={styles.errorDetail}>
                       <span>{t('invoiceImport.error')}:</span>
                       <span>{importItem.errorMessage}</span>
                     </div>
                   )}
 
                   {importItem.extractedText && (
-                    <div className="extracted-text">
+                    <div className={styles.extractedText}>
                       <span>{t('invoiceImport.extractedText')}:</span>
                       <pre>{importItem.extractedText}</pre>
                     </div>
@@ -445,75 +445,75 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
           <h3>{t('invoiceImport.manualReview')}</h3>
-          <button onClick={onClose} className="close-button">&times;</button>
+          <button onClick={onClose} className={styles.closeButton}>&times;</button>
         </div>
 
-        <div className="modal-body">
-          <div className="form-group">
+        <div className={styles.modalBody}>
+          <div className={styles.formGroup}>
             <label>{t('invoiceImport.totalAmount')}:</label>
             <input
               type="number"
               step="0.01"
               value={totalAmount}
               onChange={(e) => setTotalAmount(Number(e.target.value))}
-              className="input-field"
+              className={styles.inputField}
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label>{t('invoiceImport.dueDate')}:</label>
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="input-field"
+              className={styles.inputField}
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label>{t('invoiceImport.bankName')}:</label>
             <input
               type="text"
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
-              className="input-field"
+              className={styles.inputField}
               placeholder={t('invoiceImport.bankNamePlaceholder')}
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label>{t('invoiceImport.cardLastFourDigits')}:</label>
             <input
               type="text"
               value={cardLastFourDigits}
               onChange={(e) => setCardLastFourDigits(e.target.value)}
-              className="input-field"
+              className={styles.inputField}
               placeholder={t('invoiceImport.cardLastFourDigitsPlaceholder')}
               maxLength={4}
             />
           </div>
 
-          <div className="items-section">
-            <div className="items-header">
+          <div className={styles.itemsSection}>
+            <div className={styles.itemsHeader}>
               <h4>{t('invoiceImport.items')}</h4>
-              <button onClick={addItem} className="add-item-button">
+              <button onClick={addItem} className={styles.addItemButton}>
                 {t('invoiceImport.addItem')}
               </button>
             </div>
 
             {items.map((item, index) => (
-              <div key={index} className="item-row">
-                <div className="item-fields">
+              <div key={index} className={styles.itemRow}>
+                <div className={styles.itemFields}>
                   <input
                     type="text"
                     value={item.description}
                     onChange={(e) => updateItem(index, 'description', e.target.value)}
                     placeholder={t('invoiceImport.itemDescription')}
-                    className="input-field"
+                    className={styles.inputField}
                   />
                   <input
                     type="number"
@@ -521,12 +521,12 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
                     value={item.amount}
                     onChange={(e) => updateItem(index, 'amount', Number(e.target.value))}
                     placeholder={t('invoiceImport.itemAmount')}
-                    className="input-field"
+                    className={styles.inputField}
                   />
                   <select
                     value={item.categoryId || ''}
                     onChange={(e) => updateItem(index, 'categoryId', e.target.value ? Number(e.target.value) : undefined)}
-                    className="select-field"
+                    className={styles.selectField}
                   >
                     <option value="">{t('invoiceImport.selectCategory')}</option>
                     {categories.map((category) => (
@@ -539,14 +539,14 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
                     type="date"
                     value={item.purchaseDate}
                     onChange={(e) => updateItem(index, 'purchaseDate', e.target.value)}
-                    className="input-field"
+                    className={styles.inputField}
                   />
                   <input
                     type="number"
                     value={item.installments || 1}
                     onChange={(e) => updateItem(index, 'installments', Number(e.target.value))}
                     placeholder={t('invoiceImport.installments')}
-                    className="input-field"
+                    className={styles.inputField}
                     min="1"
                   />
                   <input
@@ -554,13 +554,13 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
                     value={item.totalInstallments || 1}
                     onChange={(e) => updateItem(index, 'totalInstallments', Number(e.target.value))}
                     placeholder={t('invoiceImport.totalInstallments')}
-                    className="input-field"
+                    className={styles.inputField}
                     min="1"
                   />
                 </div>
                 <button
                   onClick={() => removeItem(index)}
-                  className="remove-item-button"
+                  className={styles.removeItemButton}
                 >
                   {t('invoiceImport.removeItem')}
                 </button>
@@ -568,17 +568,17 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
             ))}
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className={styles.errorMessage}>{error}</div>}
         </div>
 
-        <div className="modal-footer">
-          <button onClick={onClose} className="cancel-button">
+        <div className={styles.modalFooter}>
+          <button onClick={onClose} className={styles.cancelButton}>
             {t('invoiceImport.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="submit-button"
+            className={styles.submitButton}
           >
             {loading ? t('invoiceImport.submitting') : t('invoiceImport.submit')}
           </button>

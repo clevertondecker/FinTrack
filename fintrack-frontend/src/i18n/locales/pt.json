@@ -63,6 +63,12 @@
   "dashboard": {
     "title": "Painel",
     "welcome": "Bem-vindo",
+    "description": "Gerencie suas finanças de forma inteligente e organizada",
+    "quickActions": "Ações Rápidas",
+    "manageCreditCards": "Gerencie seus cartões de crédito",
+    "manageInvoices": "Visualize e gerencie suas faturas",
+    "importInvoices": "Importe faturas de PDF e imagens",
+    "manageShares": "Gerencie itens divididos com outros usuários",
     "creditCards": "Cartões de Crédito",
     "invoices": "Faturas",
     "myShares": "Minhas Divisões",

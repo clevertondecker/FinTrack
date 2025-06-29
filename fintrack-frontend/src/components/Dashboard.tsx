@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import CreditCards from './CreditCards';
 import Invoices from './Invoices';
 import MyShares from './MyShares';
 import InvoiceImport from './InvoiceImport';
 import Layout from './layout/Layout';
+import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -16,10 +17,13 @@ const Dashboard: React.FC = () => {
 
   // Atualizar view baseado no estado da navegação
   useEffect(() => {
-    if (location.state?.view) {
-      setActiveView(location.state.view);
-    }
-  }, [location.state]);
+    const path = location.pathname;
+    if (path.includes('/credit-cards')) setActiveView('creditCards');
+    else if (path.includes('/invoices')) setActiveView('invoices');
+    else if (path.includes('/import-invoices')) setActiveView('importInvoices');
+    else if (path.includes('/my-shares')) setActiveView('myShares');
+    else setActiveView('main');
+  }, [location]);
 
   let title = t('dashboard.welcome') + (user?.name ? `, ${user.name}!` : '');
   if (activeView === 'creditCards') title = t('creditCards.title');
@@ -28,53 +32,43 @@ const Dashboard: React.FC = () => {
   if (activeView === 'myShares') title = t('shares.title');
 
   return (
-    <Layout title={title} userName={user?.name}>
+    <Layout title={title}>
+      {/* Main Dashboard View */}
       {activeView === 'main' && (
-        <div className="dashboard-grid grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="dashboard-card bg-white rounded-lg shadow p-6 flex flex-col items-start">
-            <h3 className="text-lg font-semibold mb-2">{t('dashboard.creditCards')}</h3>
-            <p className="text-textSecondary mb-4">{t('dashboard.creditCardsDescription')}</p>
-            <button 
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition"
-              onClick={() => setActiveView('creditCards')}
-            >
-              {t('dashboard.viewCreditCards')}
-            </button>
+        <div className="dashboard-main">
+          <div className="welcome-section">
+            <h1>{t('dashboard.welcome')}{user?.name ? `, ${user.name}!` : ''}</h1>
+            <p>{t('dashboard.description')}</p>
           </div>
-          <div className="dashboard-card bg-white rounded-lg shadow p-6 flex flex-col items-start">
-            <h3 className="text-lg font-semibold mb-2">{t('dashboard.invoices')}</h3>
-            <p className="text-textSecondary mb-4">{t('dashboard.invoicesDescription')}</p>
-            <button 
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition"
-              onClick={() => setActiveView('invoices')}
-            >
-              {t('dashboard.viewInvoices')}
-            </button>
+          
+          <div className="quick-actions">
+            <h2>{t('dashboard.quickActions')}</h2>
+            <div className="actions-grid">
+              <div className="action-card" onClick={() => setActiveView('creditCards')}>
+                <div className="action-icon">💳</div>
+                <h3>{t('creditCards.title')}</h3>
+                <p>{t('dashboard.manageCreditCards')}</p>
+              </div>
+              
+              <div className="action-card" onClick={() => setActiveView('invoices')}>
+                <div className="action-icon">📄</div>
+                <h3>{t('invoices.title')}</h3>
+                <p>{t('dashboard.manageInvoices')}</p>
+              </div>
+              
+              <div className="action-card" onClick={() => setActiveView('importInvoices')}>
+                <div className="action-icon">📤</div>
+                <h3>{t('invoiceImport.title')}</h3>
+                <p>{t('dashboard.importInvoices')}</p>
+              </div>
+              
+              <div className="action-card" onClick={() => setActiveView('myShares')}>
+                <div className="action-icon">👥</div>
+                <h3>{t('shares.title')}</h3>
+                <p>{t('dashboard.manageShares')}</p>
+              </div>
+            </div>
           </div>
-          <div className="dashboard-card bg-white rounded-lg shadow p-6 flex flex-col items-start">
-            <h3 className="text-lg font-semibold mb-2">{t('dashboard.myShares')}</h3>
-            <p className="text-textSecondary mb-4">{t('dashboard.mySharesDescription')}</p>
-            <button 
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition"
-              onClick={() => setActiveView('myShares')}
-            >
-              {t('dashboard.viewShares')}
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {activeView !== 'main' && (
-        <div className="mb-6">
-          <button 
-            onClick={() => setActiveView('main')}
-            className="flex items-center gap-2 text-primary hover:text-primary/80 transition mb-4"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {t('common.back')}
-          </button>
         </div>
       )}
       

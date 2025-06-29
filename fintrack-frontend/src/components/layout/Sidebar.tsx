@@ -17,7 +17,26 @@ export default function Sidebar() {
   ];
 
   const handleMenuClick = (view: string) => {
-    navigate('/dashboard', { state: { view } });
+    // Usar URLs específicas para cada seção
+    switch (view) {
+      case 'main':
+        navigate('/dashboard');
+        break;
+      case 'creditCards':
+        navigate('/dashboard/credit-cards');
+        break;
+      case 'invoices':
+        navigate('/dashboard/invoices');
+        break;
+      case 'importInvoices':
+        navigate('/dashboard/import-invoices');
+        break;
+      case 'myShares':
+        navigate('/dashboard/my-shares');
+        break;
+      default:
+        navigate('/dashboard');
+    }
   };
 
   return (

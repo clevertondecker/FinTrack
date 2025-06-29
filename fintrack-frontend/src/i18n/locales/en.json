@@ -63,6 +63,12 @@
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome",
+    "description": "Manage your finances intelligently and organized",
+    "quickActions": "Quick Actions",
+    "manageCreditCards": "Manage your credit cards",
+    "manageInvoices": "View and manage your invoices",
+    "importInvoices": "Import invoices from PDF and images",
+    "manageShares": "Manage items shared with other users",
     "creditCards": "Credit Cards",
     "invoices": "Invoices",
     "myShares": "My Shares",
