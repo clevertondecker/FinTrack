@@ -302,7 +302,8 @@
     "saving": "Salvando...",
     "totalShared": "Total dividido",
     "remaining": "Restante",
-    "shareItem": "Dividir item"
+    "shareItem": "Dividir item",
+    "totalExceedsAmount": "O valor total dividido não pode exceder o valor do item"
   },
   "language": {
     "en": "English",

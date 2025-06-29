@@ -159,10 +159,18 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
   // NOVA FUNÇÃO: Dividir igualmente
   const handleDivideEqually = () => {
     if (selectedUsers.length === 0) return;
-    const equalValue = (itemAmount / selectedUsers.length).toFixed(2);
+    const baseValue = Math.floor((itemAmount / selectedUsers.length) * 100) / 100; // valor base arredondado para baixo
+    let total = 0;
     const newValues: { [key: number]: string } = {};
-    selectedUsers.forEach(userId => {
-      newValues[userId] = equalValue;
+
+    selectedUsers.forEach((userId, idx) => {
+      if (idx === selectedUsers.length - 1) {
+        // O último recebe o restante para fechar o valor exato
+        newValues[userId] = (itemAmount - total).toFixed(2);
+      } else {
+        newValues[userId] = baseValue.toFixed(2);
+        total += baseValue;
+      }
     });
     setInputValues(newValues);
   };
