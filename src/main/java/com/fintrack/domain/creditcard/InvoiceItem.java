@@ -61,7 +61,7 @@ public class InvoiceItem {
      *
      * @param theInvoice the invoice this item belongs to. Must not be null.
      * @param theDescription the item's description. Must not be null or blank.
-     * @param theAmount the item's amount. Must be positive.
+     * @param theAmount the item's amount. Must be zero or positive.
      * @param theCategory the item's category. Can be null.
      * @param thePurchaseDate the date of purchase. Must not be null.
      * @param theInstallments the current installment number. Must be positive.
@@ -73,7 +73,7 @@ public class InvoiceItem {
         Validate.notNull(theInvoice, "Invoice must not be null.");
         Validate.notBlank(theDescription, "Description must not be null or blank.");
         Validate.notNull(theAmount, "Amount must not be null.");
-        Validate.isTrue(theAmount.compareTo(BigDecimal.ZERO) > 0, "Amount must be positive.");
+        Validate.isTrue(theAmount.compareTo(BigDecimal.ZERO) >= 0, "Amount must be zero or positive.");
         Validate.notNull(thePurchaseDate, "Purchase date must not be null.");
         Validate.notNull(theInstallments, "Installments must not be null.");
         Validate.isTrue(theInstallments > 0, "Installments must be positive.");
@@ -96,7 +96,7 @@ public class InvoiceItem {
      *
      * @param invoice the invoice this item belongs to. Cannot be null.
      * @param description the item's description. Cannot be null or blank.
-     * @param amount the item's amount. Must be positive.
+     * @param amount the item's amount. Must be zero or positive.
      * @param category the item's category. Can be null.
      * @param purchaseDate the date of purchase. Cannot be null.
      * @param installments the current installment number. Must be positive.
@@ -114,7 +114,7 @@ public class InvoiceItem {
      *
      * @param invoice the invoice this item belongs to. Cannot be null.
      * @param description the item's description. Cannot be null or blank.
-     * @param amount the item's amount. Must be positive.
+     * @param amount the item's amount. Must be zero or positive.
      * @param category the item's category. Can be null.
      * @param purchaseDate the date of purchase. Cannot be null.
      * @return a validated InvoiceItem entity. Never null.

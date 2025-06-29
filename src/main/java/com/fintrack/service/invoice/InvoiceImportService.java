@@ -169,7 +169,11 @@ public class InvoiceImportService {
             invoiceImportRepository.save(importRecord);
 
             // Parse the file based on source
+            logger.info("Parsing file for import: {}", importId);
             ParsedInvoiceData parsedData = parseFile(importRecord);
+            logger.info("Parsed data for import {}: {} items, total: {}, dueDate: {}", 
+                importId, parsedData.items() != null ? parsedData.items().size() : 0, 
+                parsedData.totalAmount(), parsedData.dueDate());
 
             // Update import record with parsed data
             updateImportWithParsedData(importRecord, parsedData);
@@ -180,9 +184,11 @@ public class InvoiceImportService {
                 logger.info("Import {} marked for manual review due to low confidence: {}", importId, parsedData.confidence());
             } else {
                 // Create invoice automatically
+                logger.info("Creating invoice for import: {}", importId);
                 Invoice invoice = createInvoiceFromParsedData(importRecord, parsedData);
                 importRecord.markAsCompleted(invoice);
-                logger.info("Import {} completed successfully, created invoice: {}", importId, invoice.getId());
+                logger.info("Import {} completed successfully, created invoice: {} with {} items", 
+                    importId, invoice.getId(), invoice.getItems().size());
             }
 
             invoiceImportRepository.save(importRecord);
@@ -316,32 +322,59 @@ public class InvoiceImportService {
      * @return the created invoice. Never null.
      */
     private Invoice createInvoiceFromParsedData(InvoiceImport importRecord, ParsedInvoiceData parsedData) {
-        // This is a simplified implementation
-        // In a real scenario, you would need to handle more complex logic
-        // such as finding existing invoices, handling duplicates, etc.
-        
         logger.info("Creating invoice from parsed data for import: {}", importRecord.getId());
         
-        // For now, we'll create a basic invoice structure
-        // In production, this would integrate with your existing invoice service
         CreditCard creditCard = importRecord.getCreditCard();
         if (creditCard == null) {
             throw new IllegalStateException("Credit card not found for import: " + importRecord.getId());
         }
         
-        // Create a basic invoice - this is a placeholder implementation
-        // In production, you would use your existing invoice creation logic
         LocalDate dueDate = parsedData.dueDate() != null ? parsedData.dueDate() : LocalDate.now().plusDays(30);
         YearMonth month = YearMonth.from(dueDate);
         
-        Invoice invoice = Invoice.of(
-            creditCard,
-            month,
-            dueDate
-        );
+        // Buscar se já existe fatura para o cartão e mês
+        List<Invoice> existingInvoices = invoiceRepository.findByCreditCardAndMonth(creditCard, month);
+        Invoice invoice;
+        if (!existingInvoices.isEmpty()) {
+            invoice = existingInvoices.get(0);
+            logger.info("Found existing invoice {} for card {} and month {}", invoice.getId(), creditCard.getId(), month);
+        } else {
+            invoice = Invoice.of(
+                creditCard,
+                month,
+                dueDate
+            );
+            invoice = invoiceRepository.save(invoice);
+            logger.info("Created new invoice {} for card {} and month {}", invoice.getId(), creditCard.getId(), month);
+        }
         
-        // Salva o invoice antes de associar
-        invoice = invoiceRepository.save(invoice);
+        // Adiciona os itens extraídos do PDF
+        if (parsedData.items() != null && !parsedData.items().isEmpty()) {
+            logger.info("Adding {} items to invoice {}", parsedData.items().size(), invoice.getId());
+            
+            for (ParsedInvoiceData.ParsedInvoiceItem parsedItem : parsedData.items()) {
+                try {
+                    com.fintrack.domain.creditcard.InvoiceItem invoiceItem = com.fintrack.domain.creditcard.InvoiceItem.of(
+                        invoice,
+                        parsedItem.description(),
+                        parsedItem.amount(),
+                        null, // category - será null por enquanto
+                        parsedItem.purchaseDate() != null ? parsedItem.purchaseDate() : LocalDate.now(),
+                        parsedItem.installments() != null ? parsedItem.installments() : 1,
+                        parsedItem.totalInstallments() != null ? parsedItem.totalInstallments() : 1
+                    );
+                    invoice.addItem(invoiceItem);
+                    logger.debug("Added item: {} - R$ {}", parsedItem.description(), parsedItem.amount());
+                } catch (Exception e) {
+                    logger.warn("Error adding item to invoice: {}", parsedItem.description(), e);
+                }
+            }
+            invoice = invoiceRepository.save(invoice);
+            logger.info("Invoice {} created/updated with {} items", invoice.getId(), invoice.getItems().size());
+        } else {
+            logger.warn("No items found in parsed data for import: {}", importRecord.getId());
+        }
+        
         return invoice;
     }
 

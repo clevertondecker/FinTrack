@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -36,6 +37,13 @@ public class PdfInvoiceParser {
     private static final Pattern DUE_DATE_PATTERN = Pattern.compile("(?:vencimento|due date|vence em)\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_PATTERN = Pattern.compile("(?:total|valor total|amount)\\s*:?\\s*R\\$\\s*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern BANK_PATTERN = Pattern.compile("(?:banco|bank)\\s*:?\\s*([A-Za-z\\s]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SANTANDER_ITEM_PATTERN = Pattern.compile(
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)(?:\\s+(\\d{2}/\\d{2,4}))?\\s+([\\d.,]+)$"
+    );
+
+    private static final List<String> IGNORE_KEYWORDS = List.of(
+        "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas", "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar", "central", "atendimento", "seguro", "prestamista", "valor parcelado"
+    );
 
     /**
      * Parses a PDF file and extracts invoice data.
@@ -212,6 +220,16 @@ public class PdfInvoiceParser {
         return null;
     }
 
+    private boolean isValidItemLine(String line) {
+        String lower = line.toLowerCase();
+        for (String keyword : IGNORE_KEYWORDS) {
+            if (lower.contains(keyword)) return false;
+        }
+        // Ignorar linhas muito curtas ou muito longas
+        if (lower.length() < 4 || lower.length() > 80) return false;
+        return true;
+    }
+
     /**
      * Extracts individual items from the text.
      * This is a simplified implementation - in a real scenario, this would be much more complex.
@@ -221,40 +239,45 @@ public class PdfInvoiceParser {
      */
     private List<ParsedInvoiceItem> extractItems(String text) {
         List<ParsedInvoiceItem> items = new ArrayList<>();
+        logger.info("Extracting items from text ({} characters)", text.length());
 
-        // Split text into lines and look for item patterns
         String[] lines = text.split("\n");
-        
+        logger.info("Text has {} lines", lines.length);
+
+        int currentYear = Year.now().getValue();
         for (String line : lines) {
             line = line.trim();
-            if (line.isEmpty()) continue;
-
-            // Look for lines that contain amounts (potential items)
-            Matcher amountMatcher = AMOUNT_PATTERN.matcher(line);
-            if (amountMatcher.find()) {
+            Matcher matcher = SANTANDER_ITEM_PATTERN.matcher(line);
+            if (matcher.find()) {
+                String dateStr = matcher.group(1);
+                String description = matcher.group(2).trim();
+                String parcela = matcher.group(3); // pode ser null
+                String amountStr = matcher.group(4).replace(".", "").replace(",", ".");
                 try {
-                    String amountStr = amountMatcher.group(1).replace(".", "").replace(",", ".");
                     BigDecimal amount = new BigDecimal(amountStr);
-                    
-                    // Extract description (everything before the amount)
-                    String description = line.substring(0, amountMatcher.start()).trim();
-                    if (description.length() > 3) {
-                        items.add(new ParsedInvoiceItem(
-                            description,
-                            amount,
-                            null, // purchase date
-                            null, // category
-                            null, // installments
-                            null, // total installments
-                            0.7 // confidence
-                        ));
+                    LocalDate purchaseDate = LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    Integer installments = 1;
+                    Integer totalInstallments = 1;
+                    if (parcela != null && parcela.matches("\\d{2}/\\d{2,4}")) {
+                        String[] parts = parcela.split("/");
+                        try {
+                            installments = Integer.parseInt(parts[0]);
+                            totalInstallments = Integer.parseInt(parts[1]);
+                        } catch (Exception e) {
+                            logger.warn("Erro ao processar parcela: {}", parcela, e);
+                        }
                     }
-                } catch (NumberFormatException e) {
-                    logger.warn("Error parsing item amount: {}", line, e);
+                    ParsedInvoiceItem item = new ParsedInvoiceItem(
+                        description, amount, purchaseDate, null, installments, totalInstallments, 0.9
+                    );
+                    items.add(item);
+                    logger.debug("Found item: '{}' - {} - {} - R$ {}", dateStr, description, parcela, amount);
+                } catch (Exception e) {
+                    logger.warn("Erro ao processar item: {}", line, e);
                 }
             }
         }
-
+        logger.info("Extracted {} items from PDF (Santander parser)", items.size());
         return items;
     }
 
