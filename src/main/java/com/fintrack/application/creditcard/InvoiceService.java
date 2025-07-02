@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -35,17 +36,20 @@ public class InvoiceService {
     private final CreditCardJpaRepository creditCardRepository;
     private final CategoryJpaRepository categoryRepository;
     private final UserRepository userRepository;
+    private final InvoiceCalculationService invoiceCalculationService;
 
     public InvoiceService(@Qualifier("invoiceJpaRepository") final InvoiceRepository theInvoiceRepository,
                          @Qualifier("invoiceItemJpaRepository") final InvoiceItemRepository theInvoiceItemRepository,
                          final CreditCardJpaRepository theCreditCardRepository,
                          final CategoryJpaRepository theCategoryRepository,
-                         final UserRepository theUserRepository) {
+                         final UserRepository theUserRepository,
+                         final InvoiceCalculationService theInvoiceCalculationService) {
         invoiceRepository = theInvoiceRepository;
         invoiceItemRepository = theInvoiceItemRepository;
         creditCardRepository = theCreditCardRepository;
         categoryRepository = theCategoryRepository;
         userRepository = theUserRepository;
+        invoiceCalculationService = theInvoiceCalculationService;
     }
 
     /**
@@ -281,7 +285,32 @@ public class InvoiceService {
             invoice.getPaidAmount(),
             currentStatus.name(),
             invoice.getCreatedAt(),
-            invoice.getUpdatedAt()
+            invoice.getUpdatedAt(),
+            invoice.getTotalAmount() // Default to total amount when no user is specified
+        );
+    }
+
+    /**
+     * Converts an Invoice to a InvoiceResponse DTO with user-specific calculations.
+     */
+    public InvoiceResponse toInvoiceResponse(Invoice invoice, User user) {
+        // Use dynamic calculation for real-time consistency
+        InvoiceStatus currentStatus = invoice.calculateCurrentStatus();
+        
+        // Calculate the amount the user is responsible for
+        BigDecimal userShare = invoiceCalculationService.calculateUserShare(invoice, user);
+        
+        return new InvoiceResponse(
+            invoice.getId(),
+            invoice.getCreditCard().getId(),
+            invoice.getCreditCard().getName(),
+            invoice.getDueDate(),
+            invoice.getTotalAmount(),
+            invoice.getPaidAmount(),
+            currentStatus.name(),
+            invoice.getCreatedAt(),
+            invoice.getUpdatedAt(),
+            userShare
         );
     }
 
@@ -341,7 +370,10 @@ public class InvoiceService {
             item.getPurchaseDate().toString(),
             item.getCreatedAt(),
             item.getInstallments(),
-            item.getTotalInstallments()
+            item.getTotalInstallments(),
+            !item.getShares().isEmpty(),
+            item.getSharedAmount(),
+            item.getUnsharedAmount()
         );
     }
 

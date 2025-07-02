@@ -49,6 +49,9 @@ class InvoiceServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private InvoiceCalculationService invoiceCalculationService;
+
     private InvoiceService invoiceService;
 
     private User testUser;
@@ -62,7 +65,7 @@ class InvoiceServiceTest {
     void setUp() throws Exception {
         invoiceService = new InvoiceService(
             invoiceRepository, invoiceItemRepository, creditCardRepository,
-            categoryRepository, userRepository);
+            categoryRepository, userRepository, invoiceCalculationService);
 
         testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");

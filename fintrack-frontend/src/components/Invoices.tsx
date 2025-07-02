@@ -65,6 +65,18 @@ const Invoices: React.FC = () => {
   const [showAddMore, setShowAddMore] = useState(false);
   const [quickAddMode, setQuickAddMode] = useState(false);
 
+  // Funções auxiliares para formatação de valores
+  const formatInvoiceAmount = (invoice: Invoice): string => {
+    if (invoice.userShare !== null && invoice.userShare !== undefined && invoice.userShare !== invoice.totalAmount) {
+      return `${formatCurrency(invoice.userShare)} (${t('invoices.myShare')})`;
+    }
+    return formatCurrency(invoice.totalAmount);
+  };
+
+  const getInvoiceUserAmount = (invoice: Invoice): number => {
+    return invoice.userShare !== null && invoice.userShare !== undefined ? invoice.userShare : (invoice.totalAmount || 0);
+  };
+
   useEffect(() => {
     loadInvoices();
     loadCreditCards();
@@ -177,29 +189,30 @@ const Invoices: React.FC = () => {
     };
 
     invoices.forEach(invoice => {
-      const total = invoice.totalAmount || 0;
+      // Use userShare if available, otherwise use totalAmount
+      const userAmount = invoice.userShare !== null && invoice.userShare !== undefined ? invoice.userShare : (invoice.totalAmount || 0);
       const paid = invoice.paidAmount || 0;
       
-      summary.totalAmount += total;
+      summary.totalAmount += userAmount;
       summary.totalPaid += paid;
-      summary.totalRemaining += (total - paid);
+      summary.totalRemaining += (userAmount - paid);
 
       switch (invoice.status) {
         case 'OVERDUE':
           summary.overdueCount++;
-          summary.overdueAmount += total;
+          summary.overdueAmount += userAmount;
           break;
         case 'OPEN':
           summary.openCount++;
-          summary.openAmount += total;
+          summary.openAmount += userAmount;
           break;
         case 'PARTIAL':
           summary.partialCount++;
-          summary.partialAmount += total;
+          summary.partialAmount += userAmount;
           break;
         case 'PAID':
           summary.paidCount++;
-          summary.paidAmount += total;
+          summary.paidAmount += userAmount;
           break;
         case 'CLOSED':
           // Faturas fechadas não são contabilizadas no resumo
@@ -652,7 +665,7 @@ const Invoices: React.FC = () => {
             <div className="group-header">
               <h2>⚠️ {t('invoices.groups.overdue')} ({groupedInvoices.overdue.length})</h2>
               <div className="group-summary">
-                {formatCurrency(groupedInvoices.overdue.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+                {formatCurrency(groupedInvoices.overdue.reduce((sum, inv) => sum + getInvoiceUserAmount(inv), 0))}
               </div>
             </div>
             <div className="invoices-grid">
@@ -671,7 +684,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -681,7 +694,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency((invoice.totalAmount || 0) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -725,7 +738,7 @@ const Invoices: React.FC = () => {
             <div className="group-header">
               <h2>⏰ {t('invoices.groups.open')} ({groupedInvoices.open.length})</h2>
               <div className="group-summary">
-                {formatCurrency(groupedInvoices.open.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+                {formatCurrency(groupedInvoices.open.reduce((sum, inv) => sum + getInvoiceUserAmount(inv), 0))}
               </div>
             </div>
             <div className="invoices-grid">
@@ -744,7 +757,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -754,7 +767,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency((invoice.totalAmount || 0) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -796,7 +809,7 @@ const Invoices: React.FC = () => {
             <div className="group-header">
               <h2>🔄 {t('invoices.groups.partial')} ({groupedInvoices.partial.length})</h2>
               <div className="group-summary">
-                {formatCurrency(groupedInvoices.partial.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+                {formatCurrency(groupedInvoices.partial.reduce((sum, inv) => sum + getInvoiceUserAmount(inv), 0))}
               </div>
             </div>
             <div className="invoices-grid">
@@ -815,7 +828,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -825,7 +838,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency((invoice.totalAmount || 0) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
                     </div>
                     
                     <div className="progress-bar">
@@ -872,7 +885,7 @@ const Invoices: React.FC = () => {
             <div className="group-header">
               <h2>✅ {t('invoices.groups.paid')} ({groupedInvoices.paid.length})</h2>
               <div className="group-summary">
-                {formatCurrency(groupedInvoices.paid.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+                {formatCurrency(groupedInvoices.paid.reduce((sum, inv) => sum + getInvoiceUserAmount(inv), 0))}
               </div>
             </div>
             <div className="invoices-grid">
@@ -891,7 +904,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -933,7 +946,7 @@ const Invoices: React.FC = () => {
             <div className="group-header">
               <h2>✅ Faturas Fechadas ({groupedInvoices.closed.length})</h2>
               <div className="group-summary">
-                {formatCurrency(groupedInvoices.closed.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0))}
+                {formatCurrency(groupedInvoices.closed.reduce((sum, inv) => sum + getInvoiceUserAmount(inv), 0))}
               </div>
             </div>
             <div className="invoices-grid">
@@ -951,7 +964,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatCurrency(invoice.totalAmount)}</span>
+                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -961,7 +974,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency((invoice.totalAmount || 0) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -1065,7 +1078,14 @@ const Invoices: React.FC = () => {
                         <div className="items-list">
                           {invoiceItems.map(item => (
                             <div key={item.id} className="item-row">
-                              <div className="item-description">{item.description}</div>
+                              <div className="item-description">
+                                {item.description}
+                                {item.isShared && (
+                                  <span className="shared-indicator" title={t('invoices.itemShared')}>
+                                    👥
+                                  </span>
+                                )}
+                              </div>
                               <div className="item-category">{item.category || t('invoices.noCategory')}</div>
                               <div className="item-date">{formatDate(item.purchaseDate)}</div>
                               <div className="item-amount">{formatCurrency(item.amount)}</div>
@@ -1263,9 +1283,9 @@ const Invoices: React.FC = () => {
             <div className="modal-content">
               <div className="pay-info">
                 <p><strong>{t('invoices.creditCardLabel')}:</strong> {invoiceToPay.creditCardName}</p>
-                <p><strong>{t('invoices.totalAmountLabel')}:</strong> {formatCurrency(invoiceToPay.totalAmount)}</p>
+                <p><strong>{t('invoices.totalAmountLabel')}:</strong> {formatInvoiceAmount(invoiceToPay)}</p>
                 <p><strong>{t('invoices.paidAmountLabel')}:</strong> {formatCurrency(invoiceToPay.paidAmount)}</p>
-                <p><strong>{t('invoices.remainingAmountLabel')}:</strong> {formatCurrency((invoiceToPay.totalAmount || 0) - (invoiceToPay.paidAmount || 0))}</p>
+                <p><strong>{t('invoices.remainingAmountLabel')}:</strong> {formatCurrency(getInvoiceUserAmount(invoiceToPay) - (invoiceToPay.paidAmount || 0))}</p>
               </div>
 
               <form onSubmit={handlePayInvoice} className="pay-form">

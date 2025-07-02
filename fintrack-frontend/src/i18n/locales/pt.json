@@ -169,6 +169,8 @@
     "totalAmountLabel": "Valor Total",
     "paidAmountLabel": "Valor Pago",
     "remainingAmountLabel": "Restante",
+    "myShare": "Minha parte",
+    "itemShared": "Item dividido",
     "createdAtLabel": "Criada em",
     "viewButton": "Ver Detalhes",
     "payButton": "Pagar",

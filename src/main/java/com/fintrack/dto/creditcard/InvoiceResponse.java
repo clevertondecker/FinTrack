@@ -16,5 +16,6 @@ public record InvoiceResponse(
     BigDecimal paidAmount,
     String status,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    BigDecimal userShare
 ) {} 

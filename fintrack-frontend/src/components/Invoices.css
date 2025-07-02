@@ -1409,7 +1409,18 @@
   min-width: 0;
 }
 
-.item-description { justify-content: flex-start; }
+.item-description { 
+  justify-content: flex-start; 
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shared-indicator {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  cursor: help;
+}
 .item-category, .item-date, .item-installments { justify-content: center; }
 .item-amount, .item-installments, .item-actions { justify-content: flex-end; }
 

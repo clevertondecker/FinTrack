@@ -15,5 +15,8 @@ public record InvoiceItemResponse(
     String purchaseDate,
     LocalDateTime createdAt,
     Integer installments,
-    Integer totalInstallments
+    Integer totalInstallments,
+    Boolean isShared,
+    BigDecimal sharedAmount,
+    BigDecimal unsharedAmount
 ) {} 

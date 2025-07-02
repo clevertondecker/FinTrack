@@ -147,6 +147,7 @@ class InvoiceControllerTest {
         // Given
         List<Invoice> invoices = List.of(testInvoice);
         InvoiceResponse invoiceResponse = new InvoiceResponse(
+            
             testInvoice.getId(),
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
@@ -155,7 +156,8 @@ class InvoiceControllerTest {
             testInvoice.getPaidAmount(),
             testInvoice.getStatus().name(),
             testInvoice.getCreatedAt(),
-            testInvoice.getUpdatedAt()
+            testInvoice.getUpdatedAt(),
+            testInvoice.getTotalAmount()
         );
         List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
 
@@ -181,6 +183,7 @@ class InvoiceControllerTest {
         Long creditCardId = 1L;
         List<Invoice> invoices = List.of(testInvoice);
         InvoiceResponse invoiceResponse = new InvoiceResponse(
+            
             testInvoice.getId(),
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
@@ -189,7 +192,8 @@ class InvoiceControllerTest {
             testInvoice.getPaidAmount(),
             testInvoice.getStatus().name(),
             testInvoice.getCreatedAt(),
-            testInvoice.getUpdatedAt()
+            testInvoice.getUpdatedAt(),
+            testInvoice.getTotalAmount()
         );
         List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
 
@@ -232,6 +236,7 @@ class InvoiceControllerTest {
         // Given
         Long invoiceId = 1L;
         InvoiceResponse invoiceResponse = new InvoiceResponse(
+            
             testInvoice.getId(),
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
@@ -240,12 +245,13 @@ class InvoiceControllerTest {
             testInvoice.getPaidAmount(),
             testInvoice.getStatus().name(),
             testInvoice.getCreatedAt(),
-            testInvoice.getUpdatedAt()
+            testInvoice.getUpdatedAt(),
+            testInvoice.getTotalAmount()
         );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
-        when(invoiceService.toInvoiceResponse(eq(testInvoice))).thenReturn(invoiceResponse);
+        when(invoiceService.toInvoiceResponse(eq(testInvoice), eq(testUser))).thenReturn(invoiceResponse);
 
         // When & Then
         mockMvc.perform(get("/api/invoices/{id}", invoiceId)

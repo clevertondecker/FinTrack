@@ -8,6 +8,7 @@ export interface Invoice {
   status: string;
   createdAt: string;
   updatedAt?: string;
+  userShare?: number | null;
 }
 
 export interface InvoiceItem {
@@ -20,6 +21,9 @@ export interface InvoiceItem {
   createdAt: string;
   installments?: number;
   totalInstallments?: number;
+  isShared?: boolean;
+  sharedAmount?: number;
+  unsharedAmount?: number;
 }
 
 export interface CreateInvoiceRequest {

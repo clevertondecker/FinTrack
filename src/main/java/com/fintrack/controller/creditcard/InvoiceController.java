@@ -88,7 +88,9 @@ public class InvoiceController {
         User user = userOpt.get();
 
         List<Invoice> invoices = invoiceService.getUserInvoices(user);
-        List<InvoiceResponse> invoiceResponses = invoiceService.toInvoiceResponseList(invoices);
+        List<InvoiceResponse> invoiceResponses = invoices.stream()
+            .map(invoice -> invoiceService.toInvoiceResponse(invoice, user))
+            .toList();
 
         InvoiceListResponse response = new InvoiceListResponse(
             "Invoices retrieved successfully",
@@ -118,7 +120,9 @@ public class InvoiceController {
         User user = userOpt.get();
 
         List<Invoice> invoices = invoiceService.getInvoicesByCreditCard(creditCardId, user);
-        List<InvoiceResponse> invoiceResponses = invoiceService.toInvoiceResponseList(invoices);
+        List<InvoiceResponse> invoiceResponses = invoices.stream()
+            .map(invoice -> invoiceService.toInvoiceResponse(invoice, user))
+            .toList();
 
         String creditCardName = invoices.isEmpty() ? "" : invoices.get(0).getCreditCard().getName();
 
@@ -152,7 +156,7 @@ public class InvoiceController {
         User user = userOpt.get();
 
         Invoice invoice = invoiceService.getInvoice(id, user);
-        InvoiceResponse invoiceResponse = invoiceService.toInvoiceResponse(invoice);
+        InvoiceResponse invoiceResponse = invoiceService.toInvoiceResponse(invoice, user);
 
         InvoiceDetailResponse response = new InvoiceDetailResponse(
             "Invoice retrieved successfully",

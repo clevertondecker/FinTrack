@@ -172,7 +172,10 @@ class InvoiceItemControllerTest {
             testInvoiceItem.getPurchaseDate().toString(),
             testInvoiceItem.getCreatedAt(),
             testInvoiceItem.getInstallments(),
-            testInvoiceItem.getTotalInstallments()
+            testInvoiceItem.getTotalInstallments(),
+            false,
+            testInvoiceItem.getAmount(),
+            BigDecimal.ZERO
         );
         List<InvoiceItemResponse> invoiceItemResponses = List.of(invoiceItemResponse);
 
@@ -226,7 +229,10 @@ class InvoiceItemControllerTest {
             testInvoiceItem.getPurchaseDate().toString(),
             testInvoiceItem.getCreatedAt(),
             testInvoiceItem.getInstallments(),
-            testInvoiceItem.getTotalInstallments()
+            testInvoiceItem.getTotalInstallments(),
+            false,
+            testInvoiceItem.getAmount(),
+            BigDecimal.ZERO
         );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
