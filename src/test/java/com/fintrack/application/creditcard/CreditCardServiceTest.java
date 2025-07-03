@@ -117,7 +117,7 @@ class CreditCardServiceTest {
         @DisplayName("Should create credit card successfully")
         void shouldCreateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 1L);
+                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null);
 
             when(bankRepository.findById(1L))
               .thenReturn(Optional.of(testBank));
@@ -136,7 +136,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 999L);
+                "Test Card", "1234", new BigDecimal("5000.00"), 999L, CardType.PHYSICAL, null, null);
 
             when(bankRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -263,7 +263,7 @@ class CreditCardServiceTest {
         @DisplayName("Should update credit card successfully")
         void shouldUpdateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -281,7 +281,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when credit card not found")
         void shouldThrowExceptionWhenCreditCardNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null);
 
             when(creditCardRepository.findByIdAndOwner(999L, testUser))
               .thenReturn(Optional.empty());
@@ -294,7 +294,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 999L);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 999L, CardType.PHYSICAL, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -310,7 +310,7 @@ class CreditCardServiceTest {
         void shouldUpdateCreditCardWithDifferentBank() {
             Bank newBank = Bank.of("IT", "Itaú");
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 2L);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 2L, CardType.PHYSICAL, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));

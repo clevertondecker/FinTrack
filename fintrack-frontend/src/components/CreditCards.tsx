@@ -17,7 +17,10 @@ const CreditCards: React.FC = () => {
     name: '',
     lastFourDigits: '',
     limit: 0,
-    bankId: 0
+    bankId: 0,
+    cardType: 'PHYSICAL',
+    parentCardId: undefined,
+    cardholderName: ''
   });
 
   useEffect(() => {
@@ -76,7 +79,7 @@ const CreditCards: React.FC = () => {
         await apiService.createCreditCard(formData);
       }
       
-      setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0 });
+      setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0, cardType: 'PHYSICAL', parentCardId: undefined, cardholderName: '' });
       setShowCreateForm(false);
       setEditingCard(null);
       await loadCreditCards();
@@ -93,7 +96,10 @@ const CreditCards: React.FC = () => {
       name: card.name,
       lastFourDigits: card.lastFourDigits,
       limit: card.limit,
-      bankId: banks.find(b => b.name === card.bankName)?.id || 0
+      bankId: banks.find(b => b.name === card.bankName)?.id || 0,
+      cardType: card.cardType,
+      parentCardId: card.parentCardId,
+      cardholderName: card.cardholderName || ''
     });
     setShowCreateForm(true);
   };
@@ -127,7 +133,7 @@ const CreditCards: React.FC = () => {
   const handleCancel = () => {
     setShowCreateForm(false);
     setEditingCard(null);
-    setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0 });
+    setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0, cardType: 'PHYSICAL', parentCardId: undefined, cardholderName: '' });
     setError(null);
   };
 
@@ -223,6 +229,55 @@ const CreditCards: React.FC = () => {
                 </select>
               </div>
 
+              <div className="form-group">
+                <label htmlFor="cardType">{t('creditCards.cardType')}</label>
+                <select
+                  id="cardType"
+                  name="cardType"
+                  value={formData.cardType}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="PHYSICAL">{t('creditCards.cardTypePhysical')}</option>
+                  <option value="VIRTUAL">{t('creditCards.cardTypeVirtual')}</option>
+                  <option value="ADDITIONAL">{t('creditCards.cardTypeAdditional')}</option>
+                </select>
+              </div>
+
+              {formData.cardType === 'ADDITIONAL' && (
+                <div className="form-group">
+                  <label htmlFor="parentCardId">{t('creditCards.parentCard')}</label>
+                  <select
+                    id="parentCardId"
+                    name="parentCardId"
+                    value={formData.parentCardId || ''}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">{t('creditCards.selectParentCard')}</option>
+                    {creditCards
+                      .filter(card => card.cardType !== 'ADDITIONAL')
+                      .map(card => (
+                        <option key={card.id} value={card.id}>
+                          {card.name} (**** {card.lastFourDigits})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="cardholderName">{t('creditCards.cardholderName')}</label>
+                <input
+                  type="text"
+                  id="cardholderName"
+                  name="cardholderName"
+                  value={formData.cardholderName}
+                  onChange={handleInputChange}
+                  placeholder={t('creditCards.cardholderNamePlaceholder')}
+                />
+              </div>
+
               <div className="form-actions">
                 <button type="submit" className="submit-button">
                   {editingCard ? t('creditCards.updateCard') : t('creditCards.createCard')}
@@ -243,7 +298,7 @@ const CreditCards: React.FC = () => {
           </div>
         ) : (
           creditCards.map(card => (
-            <div key={card.id} className={`credit-card ${!card.active ? 'inactive' : ''}`}>
+            <div key={card.id} className={`credit-card ${!card.active ? 'inactive' : ''}`} data-card-type={card.cardType}>
               <div className="card-header">
                 <h3>{card.name}</h3>
                 <span className={`status ${card.active ? 'active' : 'inactive'}`}>
@@ -261,6 +316,29 @@ const CreditCards: React.FC = () => {
                   <span className="label">{t('creditCards.bankLabel')}:</span>
                   <span className="value">{card.bankName}</span>
                 </div>
+                
+                <div className="detail-item">
+                  <span className="label">{t('creditCards.cardTypeLabel')}:</span>
+                  <span className="value card-type">
+                    {card.cardType === 'PHYSICAL' && t('creditCards.cardTypePhysical')}
+                    {card.cardType === 'VIRTUAL' && t('creditCards.cardTypeVirtual')}
+                    {card.cardType === 'ADDITIONAL' && t('creditCards.cardTypeAdditional')}
+                  </span>
+                </div>
+
+                {card.parentCardName && (
+                  <div className="detail-item">
+                    <span className="label">{t('creditCards.parentCardLabel')}:</span>
+                    <span className="value">{card.parentCardName}</span>
+                  </div>
+                )}
+
+                {card.cardholderName && (
+                  <div className="detail-item">
+                    <span className="label">{t('creditCards.cardholderNameLabel')}:</span>
+                    <span className="value">{card.cardholderName}</span>
+                  </div>
+                )}
                 
                 <div className="detail-item">
                   <span className="label">{t('creditCards.limitLabel')}:</span>

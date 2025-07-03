@@ -59,7 +59,9 @@ public class CreditCardController {
             creditCard.getName(),
             creditCard.getLastFourDigits(),
             creditCard.getLimit(),
-            creditCard.getBank().getName()
+            creditCard.getBank().getName(),
+            creditCard.getCardType(),
+            creditCard.getCardholderName()
         );
 
         return ResponseEntity.ok(response);
@@ -83,21 +85,9 @@ public class CreditCardController {
 
         // Get credit cards using service
         List<CreditCard> creditCards = creditCardService.getUserCreditCards(user);
-        List<Map<String, Object>> creditCardDtos = creditCardService.toCreditCardDtos(creditCards);
         
         // Convert to CreditCardResponse list
-        List<CreditCardResponse> creditCardResponses = creditCardDtos.stream()
-            .map(dto -> new CreditCardResponse(
-                (Long) dto.get("id"),
-                (String) dto.get("name"),
-                (String) dto.get("lastFourDigits"),
-                (java.math.BigDecimal) dto.get("limit"),
-                (Boolean) dto.get("active"),
-                (String) dto.get("bankName"),
-                (java.time.LocalDateTime) dto.get("createdAt"),
-                (java.time.LocalDateTime) dto.get("updatedAt")
-            ))
-            .toList();
+        List<CreditCardResponse> creditCardResponses = creditCardService.toCreditCardResponseList(creditCards);
 
         CreditCardListResponse response = new CreditCardListResponse(
             "Credit cards retrieved successfully",
@@ -128,18 +118,7 @@ public class CreditCardController {
 
         // Get credit card using service
         CreditCard creditCard = creditCardService.getCreditCard(id, user);
-        Map<String, Object> creditCardDto = creditCardService.toCreditCardDto(creditCard);
-
-        CreditCardResponse creditCardResponse = new CreditCardResponse(
-            (Long) creditCardDto.get("id"),
-            (String) creditCardDto.get("name"),
-            (String) creditCardDto.get("lastFourDigits"),
-            (java.math.BigDecimal) creditCardDto.get("limit"),
-            (Boolean) creditCardDto.get("active"),
-            (String) creditCardDto.get("bankName"),
-            (java.time.LocalDateTime) creditCardDto.get("createdAt"),
-            (java.time.LocalDateTime) creditCardDto.get("updatedAt")
-        );
+        CreditCardResponse creditCardResponse = creditCardService.toCreditCardResponse(creditCard);
 
         CreditCardDetailResponse response = new CreditCardDetailResponse(
             "Credit card retrieved successfully",
@@ -239,7 +218,9 @@ public class CreditCardController {
             creditCard.getName(),
             creditCard.getLastFourDigits(),
             creditCard.getLimit(),
-            creditCard.getBank().getName()
+            creditCard.getBank().getName(),
+            creditCard.getCardType(),
+            creditCard.getCardholderName()
         );
 
         return ResponseEntity.ok(response);

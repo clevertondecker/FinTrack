@@ -6,6 +6,12 @@ export interface CreditCard {
   bankName: string;
   bankCode?: string;
   active: boolean;
+  cardType: 'PHYSICAL' | 'VIRTUAL' | 'ADDITIONAL';
+  parentCardId?: number;
+  parentCardName?: string;
+  cardholderName?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateCreditCardRequest {
@@ -13,6 +19,9 @@ export interface CreateCreditCardRequest {
   lastFourDigits: string;
   limit: number;
   bankId: number;
+  cardType: 'PHYSICAL' | 'VIRTUAL' | 'ADDITIONAL';
+  parentCardId?: number;
+  cardholderName?: string;
 }
 
 export interface CreditCardResponse {

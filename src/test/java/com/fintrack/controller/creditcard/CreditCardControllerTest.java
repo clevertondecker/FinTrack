@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 import java.util.List;
@@ -32,6 +33,7 @@ import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.config.TestSecurityConfig;
+import com.fintrack.dto.creditcard.CreditCardResponse;
 
 @WebMvcTest(CreditCardController.class)
 @AutoConfigureMockMvc
@@ -138,11 +140,21 @@ public class CreditCardControllerTest {
         creditCardDto2.put("active", false);
         creditCardDto2.put("bankName", "Nubank");
 
-        List<Map<String, Object>> creditCardDtos = List.of(creditCardDto1, creditCardDto2);
+        CreditCardResponse creditCardResponse1 = new CreditCardResponse(
+            1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
+            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
+            LocalDateTime.now(), LocalDateTime.now()
+        );
+        CreditCardResponse creditCardResponse2 = new CreditCardResponse(
+            2L, "Inactive Card", "5678", new BigDecimal("3000.00"), false, "Nubank",
+            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
+            LocalDateTime.now(), LocalDateTime.now()
+        );
+        List<CreditCardResponse> creditCardResponses = List.of(creditCardResponse1, creditCardResponse2);
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(creditCardService.getUserCreditCards(eq(testUser))).thenReturn(creditCards);
-        when(creditCardService.toCreditCardDtos(eq(creditCards))).thenReturn(creditCardDtos);
+        when(creditCardService.toCreditCardResponseList(eq(creditCards))).thenReturn(creditCardResponses);
 
         // When & Then
         mockMvc.perform(get("/api/credit-cards")
@@ -170,17 +182,15 @@ public class CreditCardControllerTest {
     void shouldGetSpecificCreditCardSuccessfully() throws Exception {
         // Given
         Long creditCardId = 1L;
-        Map<String, Object> creditCardDto = new HashMap<>();
-        creditCardDto.put("id", 1L);
-        creditCardDto.put("name", "Test Card");
-        creditCardDto.put("lastFourDigits", "1234");
-        creditCardDto.put("limit", new BigDecimal("5000.00"));
-        creditCardDto.put("active", true);
-        creditCardDto.put("bankName", "Nubank");
+        CreditCardResponse creditCardResponse = new CreditCardResponse(
+            1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
+            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
+            LocalDateTime.now(), LocalDateTime.now()
+        );
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(creditCardService.getCreditCard(eq(creditCardId), eq(testUser))).thenReturn(testCreditCard);
-        when(creditCardService.toCreditCardDto(eq(testCreditCard))).thenReturn(creditCardDto);
+        when(creditCardService.toCreditCardResponse(eq(testCreditCard))).thenReturn(creditCardResponse);
 
         // When & Then
         mockMvc.perform(get("/api/credit-cards/{id}", creditCardId)
@@ -268,7 +278,8 @@ public class CreditCardControllerTest {
                 "name": "Updated Card",
                 "lastFourDigits": "5678",
                 "limit": 10000.00,
-                "bankId": 1
+                "bankId": 1,
+                "cardType": "PHYSICAL"
             }
             """;
 
@@ -300,7 +311,8 @@ public class CreditCardControllerTest {
                 "name": "Updated Card",
                 "lastFourDigits": "5678",
                 "limit": 10000.00,
-                "bankId": 1
+                "bankId": 1,
+                "cardType": "PHYSICAL"
             }
             """;
 
@@ -325,7 +337,8 @@ public class CreditCardControllerTest {
                 "name": "Updated Card",
                 "lastFourDigits": "5678",
                 "limit": 10000.00,
-                "bankId": 1
+                "bankId": 1,
+                "cardType": "PHYSICAL"
             }
             """;
 
@@ -348,7 +361,8 @@ public class CreditCardControllerTest {
                 "name": "Updated Card",
                 "lastFourDigits": "5678",
                 "limit": 10000.00,
-                "bankId": 999
+                "bankId": 999,
+                "cardType": "PHYSICAL"
             }
             """;
 

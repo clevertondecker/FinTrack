@@ -122,7 +122,17 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
-    }
+    },
+    "cardTypePhysical": "Physical",
+    "cardTypeVirtual": "Virtual",
+    "cardTypeAdditional": "Additional",
+    "parentCard": "Parent Card",
+    "parentCardLabel": "Parent Card",
+    "selectParentCard": "Select parent card",
+    "cardholderName": "Cardholder Name",
+    "cardholderNameLabel": "Cardholder",
+    "cardholderNamePlaceholder": "Name on the card",
+    "cardTypeLabel": "Type"
   },
   "invoices": {
     "title": "Invoices",

@@ -1,5 +1,6 @@
 package com.fintrack.dto.creditcard;
 
+import com.fintrack.domain.creditcard.CardType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -10,6 +11,10 @@ public record CreditCardResponse(
     BigDecimal limit,
     boolean active,
     String bankName,
+    CardType cardType,
+    Long parentCardId,
+    String parentCardName,
+    String cardholderName,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {} 

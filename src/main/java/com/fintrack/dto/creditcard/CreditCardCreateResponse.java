@@ -1,5 +1,6 @@
 package com.fintrack.dto.creditcard;
 
+import com.fintrack.domain.creditcard.CardType;
 import java.math.BigDecimal;
 
 public record CreditCardCreateResponse(
@@ -8,5 +9,7 @@ public record CreditCardCreateResponse(
     String name,
     String lastFourDigits,
     BigDecimal limit,
-    String bankName
+    String bankName,
+    CardType cardType,
+    String cardholderName
 ) {} 

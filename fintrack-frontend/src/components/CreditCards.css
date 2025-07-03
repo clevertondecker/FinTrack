@@ -240,6 +240,31 @@
   font-size: 1.1rem;
 }
 
+.value.card-type {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  background: #f0f4ff;
+  color: #667eea;
+}
+
+.credit-card[data-card-type="PHYSICAL"] .value.card-type {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.credit-card[data-card-type="VIRTUAL"] .value.card-type {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.credit-card[data-card-type="ADDITIONAL"] .value.card-type {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
 .card-actions {
   display: flex;
   gap: 12px;

@@ -46,6 +46,17 @@ public class CreditCard {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CardType cardType = CardType.PHYSICAL;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_card_id")
+    private CreditCard parentCard;
+
+    @Column(length = 100)
+    private String cardholderName;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -59,9 +70,13 @@ public class CreditCard {
      * @param theLimit the credit card's limit. Must be positive.
      * @param theOwner the credit card's owner. Must not be null.
      * @param theBank the bank that issued the card. Must not be null.
+     * @param theCardType the type of the card. Must not be null.
+     * @param theParentCard the parent card for additional cards. Can be null.
+     * @param theCardholderName the name on the card. Can be null.
      */
     private CreditCard(final String theName, final String theLastFourDigits,
-                      final BigDecimal theLimit, final User theOwner, final Bank theBank) {
+                      final BigDecimal theLimit, final User theOwner, final Bank theBank,
+                      final CardType theCardType, final CreditCard theParentCard, final String theCardholderName) {
         Validate.notBlank(theName, "Credit card name must not be null or blank.");
         Validate.notBlank(theLastFourDigits, "Last four digits must not be null or blank.");
         Validate.isTrue(theLastFourDigits.length() == 4, "Last four digits must be exactly 4 characters.");
@@ -70,12 +85,16 @@ public class CreditCard {
         Validate.isTrue(theLimit.compareTo(BigDecimal.ZERO) > 0, "Credit card limit must be positive.");
         Validate.notNull(theOwner, "Credit card owner must not be null.");
         Validate.notNull(theBank, "Bank must not be null.");
+        Validate.notNull(theCardType, "Card type must not be null.");
 
         name = theName;
         lastFourDigits = theLastFourDigits;
         creditLimit = theLimit;
         owner = theOwner;
         bank = theBank;
+        cardType = theCardType;
+        parentCard = theParentCard;
+        cardholderName = theCardholderName;
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
@@ -92,7 +111,26 @@ public class CreditCard {
      */
     public static CreditCard of(final String name, final String lastFourDigits,
                                final BigDecimal limit, final User owner, final Bank bank) {
-        return new CreditCard(name, lastFourDigits, limit, owner, bank);
+        return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null);
+    }
+
+    /**
+     * Static factory method to create a new CreditCard instance with specific type.
+     *
+     * @param name the credit card's name. Cannot be null or blank.
+     * @param lastFourDigits the last four digits of the card. Must be exactly 4 digits.
+     * @param limit the credit card's limit. Must be positive.
+     * @param owner the credit card's owner. Cannot be null.
+     * @param bank the bank that issued the card. Cannot be null.
+     * @param cardType the type of the card. Cannot be null.
+     * @param parentCard the parent card for additional cards. Can be null.
+     * @param cardholderName the name on the card. Can be null.
+     * @return a validated CreditCard entity. Never null.
+     */
+    public static CreditCard of(final String name, final String lastFourDigits,
+                               final BigDecimal limit, final User owner, final Bank bank,
+                               final CardType cardType, final CreditCard parentCard, final String cardholderName) {
+        return new CreditCard(name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName);
     }
 
     /**
@@ -143,6 +181,37 @@ public class CreditCard {
     public void updateBank(final Bank newBank) {
         Validate.notNull(newBank, "Bank must not be null.");
         bank = newBank;
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the credit card's type.
+     *
+     * @param newCardType the new card type. Cannot be null.
+     */
+    public void updateCardType(final CardType newCardType) {
+        Validate.notNull(newCardType, "Card type must not be null.");
+        cardType = newCardType;
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the credit card's parent card.
+     *
+     * @param newParentCard the new parent card. Can be null.
+     */
+    public void updateParentCard(final CreditCard newParentCard) {
+        parentCard = newParentCard;
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the credit card's cardholder name.
+     *
+     * @param newCardholderName the new cardholder name. Can be null.
+     */
+    public void updateCardholderName(final String newCardholderName) {
+        cardholderName = newCardholderName;
         updatedAt = LocalDateTime.now();
     }
 
@@ -209,6 +278,27 @@ public class CreditCard {
      */
     public boolean isActive() { return active; }
 
+    /**
+     * Gets the credit card's type.
+     *
+     * @return the credit card's type. Never null.
+     */
+    public CardType getCardType() { return cardType; }
+
+    /**
+     * Gets the parent card for additional cards.
+     *
+     * @return the parent card. May be null for physical and virtual cards.
+     */
+    public CreditCard getParentCard() { return parentCard; }
+
+    /**
+     * Gets the name on the card.
+     *
+     * @return the cardholder name. May be null.
+     */
+    public String getCardholderName() { return cardholderName; }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -230,6 +320,9 @@ public class CreditCard {
                 ", limit=" + creditLimit +
                 ", owner=" + owner +
                 ", bank=" + bank +
+                ", cardType=" + cardType +
+                ", parentCard=" + (parentCard != null ? parentCard.getId() : "null") +
+                ", cardholderName='" + cardholderName + '\'' +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", active=" + active +
