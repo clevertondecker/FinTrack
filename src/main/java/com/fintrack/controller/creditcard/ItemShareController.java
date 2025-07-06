@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -281,6 +282,11 @@ public class ItemShareController {
         Invoice invoice = item.getInvoice();
         CreditCard creditCard = invoice.getCreditCard();
         
+        // Corrigir cálculo: não somar +1
+        int remainingInstallments = Math.max(0, item.getTotalInstallments() - item.getInstallments());
+        BigDecimal totalItemAmount = item.getAmount().multiply(BigDecimal.valueOf(item.getTotalInstallments()));
+        BigDecimal remainingItemAmount = item.getAmount().multiply(BigDecimal.valueOf(remainingInstallments));
+        
         return new MyShareResponse(
             share.getId(),
             invoice.getId(),
@@ -297,7 +303,12 @@ public class ItemShareController {
             creditCard.getOwner().getName(),
             invoice.getDueDate(),
             invoice.getStatus().name(),
-            share.getCreatedAt()
+            share.getCreatedAt(),
+            item.getInstallments(),
+            item.getTotalInstallments(),
+            remainingInstallments,
+            totalItemAmount,
+            remainingItemAmount
         );
     }
 }

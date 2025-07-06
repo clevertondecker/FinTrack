@@ -312,6 +312,16 @@ const MyShares: React.FC = () => {
                       <div className="share-main-info">
                         <div className="item-description">
                           <h4>{share.itemDescription}</h4>
+                          {share.totalInstallments > 1 && (
+                            <span className="installment-info">
+                              Parcela {share.installments} de {share.totalInstallments}
+                              {share.remainingInstallments > 0 && (
+                                <span className="remaining-installments">
+                                  • Faltam {share.remainingInstallments} parcela{share.remainingInstallments > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </span>
+                          )}
                           <div className="item-meta">
                             <span className="invoice-info">
                               Fatura #{share.invoiceId} • Vencimento: {formatDate(share.invoiceDueDate)}
@@ -328,6 +338,20 @@ const MyShares: React.FC = () => {
                               <span className="label">Valor total:</span>
                               <span className="value">{formatCurrency(share.itemAmount)}</span>
                             </div>
+                            {share.totalInstallments > 1 && (
+                              <>
+                                <div className="total-item-amount">
+                                  <span className="label">Valor total do item:</span>
+                                  <span className="value">{formatCurrency(share.totalItemAmount)}</span>
+                                </div>
+                                {share.remainingInstallments > 0 && (
+                                  <div className="remaining-item-amount">
+                                    <span className="label">Valor restante:</span>
+                                    <span className="value remaining">{formatCurrency(share.remainingItemAmount)}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
                             <div className="my-share">
                               <span className="label">Minha parte:</span>
                               <span className="value highlight">

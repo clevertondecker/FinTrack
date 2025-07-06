@@ -64,6 +64,11 @@ export interface MyShareResponse {
   invoiceDueDate: string;
   invoiceStatus: string;
   shareCreatedAt: string;
+  installments: number;
+  totalInstallments: number;
+  remainingInstallments: number;
+  totalItemAmount: number;
+  remainingItemAmount: number;
 }
 
 export interface MySharesResponse {

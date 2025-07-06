@@ -23,5 +23,10 @@ public record MyShareResponse(
     String creditCardOwnerName,
     LocalDate invoiceDueDate,
     String invoiceStatus,
-    LocalDateTime shareCreatedAt
+    LocalDateTime shareCreatedAt,
+    Integer installments,
+    Integer totalInstallments,
+    Integer remainingInstallments,
+    BigDecimal totalItemAmount,
+    BigDecimal remainingItemAmount
 ) {} 
