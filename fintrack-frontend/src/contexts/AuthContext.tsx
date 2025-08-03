@@ -21,6 +21,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  const updateAuthContext = async (newToken: string) => {
+    try {
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      
+      // Fetch user data
+      const userData = await apiService.getCurrentUser();
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to update auth context:', error);
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('token');
@@ -44,12 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.login({ email, password });
-      localStorage.setItem('token', response.token);
-      setToken(response.token);
-      
-      // Fetch user data
-      const userData = await apiService.getCurrentUser();
-      setUser(userData);
+      await updateAuthContext(response.token);
     } catch (error: any) {
       if (error.response && error.response.status === 401) {
         throw new Error('E-mail ou senha incorretos.');
@@ -79,6 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
+    updateAuthContext,
     isAuthenticated: !!token,
   };
 

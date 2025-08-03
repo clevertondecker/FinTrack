@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import OAuth2Redirect from './components/OAuth2Redirect';
 import './i18n'; // Import i18n configuration
 import './App.css';
 
@@ -16,6 +17,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/oauth2/redirect" element={<OAuth2Redirect />} />
             <Route 
               path="/dashboard" 
               element={
