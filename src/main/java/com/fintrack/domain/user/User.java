@@ -41,46 +41,83 @@ public class User {
     @Column(name = "role")
     private Set<Role> roles = new HashSet<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider provider = AuthProvider.LOCAL;
+
     /**
      * Protected constructor for JPA only.
      */
     protected User() {}
 
     /**
-     * Private constructor for User. Use the static factory method to create instances.
+     * Private constructor for User. Use the static factory methods to create instances.
      *
-     * @param theName the user's name. Must not be null or blank.
-     * @param theEmail the user's email. Must be a valid Email.
-     * @param thePassword the user's password. Must not be null or blank.
-     * @param theRoles the user's roles. Must not be null or empty.
+     * @param name the user's name. Must not be null or blank.
+     * @param email the user's email. Must be a valid Email.
+     * @param password the user's password. Must not be null or blank.
+     * @param roles the user's roles. Must not be null or empty.
+     * @param provider the authentication provider. Must not be null.
      */
-    private User(final String theName, final Email theEmail,
-                 final String thePassword, final Set<Role> theRoles) {
-        Validate.notBlank(theName, "Name must not be null or blank.");
-        Validate.notNull(theEmail, "Email must not be null.");
-        Validate.notBlank(thePassword, "Password must not be null or blank.");
-        Validate.notNull(theRoles, "Roles must not be null.");
+    private User(final String name, final Email email,
+                 final String password, final Set<Role> roles, final AuthProvider provider) {
+        Validate.notBlank(name, "Name must not be null or blank.");
+        Validate.notNull(email, "Email must not be null.");
+        Validate.notNull(roles, "Roles must not be null.");
+        Validate.notNull(provider, "Provider must not be null.");
+        
+        // Only validate password for local users
+        if (provider == AuthProvider.LOCAL) {
+            Validate.notBlank(password, "Password must not be null or blank.");
+        }
 
-        name = theName;
-        email = theEmail;
-        password = thePassword;
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        roles = theRoles;
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.roles = roles;
+        this.provider = provider;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
-     * Static factory method to create a new User instance.
+     * Creates a new local user with email/password authentication.
      *
      * @param name the user's name. Cannot be null or blank.
      * @param email the user's email as a string. Cannot be null.
      * @param password the user's password. Cannot be null or blank.
      * @param roles the user's roles. Must not be null or empty.
-     * @return a validated User entity. Never null.
+     * @return a validated User entity with LOCAL provider. Never null.
      */
+    public static User createLocalUser(final String name, final String email,
+                                      final String password, final Set<Role> roles) {
+        return new User(name, Email.of(email), password, roles, AuthProvider.LOCAL);
+    }
+
+    /**
+     * Creates a new OAuth2 user without password.
+     *
+     * @param name the user's name. Cannot be null or blank.
+     * @param email the user's email as a string. Cannot be null.
+     * @param roles the user's roles. Must not be null or empty.
+     * @param provider the OAuth2 provider. Must be an OAuth2 provider.
+     * @return a validated User entity with OAuth2 provider. Never null.
+     * @throws IllegalArgumentException if provider is not an OAuth2 provider.
+     */
+    public static User createOAuth2User(final String name, final String email,
+                                       final Set<Role> roles, final AuthProvider provider) {
+        Validate.isTrue(provider.isOAuth2(), "Provider must be an OAuth2 provider");
+        return new User(name, Email.of(email), "", roles, provider);
+    }
+
+    /**
+     * @deprecated Use {@link #createLocalUser(String, String, String, Set)} instead.
+     * This method is kept for backward compatibility.
+     */
+    @Deprecated
     public static User of(final String name, final String email,
                           final String password, final Set<Role> roles) {
-        return new User(name, Email.of(email), password, roles);
+        return createLocalUser(name, email, password, roles);
     }
 
     /**
@@ -131,6 +168,45 @@ public class User {
      * @return the user's roles. Never null, may be empty.
      */
     public Set<Role> getRoles() { return roles; }
+
+    /**
+     * Gets the user's authentication provider.
+     *
+     * @return the authentication provider. Never null.
+     */
+    public AuthProvider getProvider() { 
+        return provider; 
+    }
+
+    /**
+     * Checks if this user was created through OAuth2 authentication.
+     *
+     * @return true if the user is an OAuth2 user, false otherwise.
+     */
+    public boolean isOAuth2User() {
+        return provider.isOAuth2();
+    }
+
+    /**
+     * Checks if this user was created through local authentication.
+     *
+     * @return true if the user is a local user, false otherwise.
+     */
+    public boolean isLocalUser() {
+        return provider == AuthProvider.LOCAL;
+    }
+
+    /**
+     * Sets the user's authentication provider.
+     * This method should be used with caution as it can change the authentication flow.
+     *
+     * @param provider the authentication provider. Cannot be null.
+     * @throws IllegalArgumentException if provider is null.
+     */
+    public void setProvider(AuthProvider provider) {
+        Validate.notNull(provider, "Provider must not be null.");
+        this.provider = provider;
+    }
 
     @Override
     public boolean equals(Object o) {

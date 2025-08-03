@@ -130,11 +130,13 @@ class CreditCardTest {
 
         @Test
         @DisplayName("Should activate credit card")
-        void shouldActivateCreditCard() {
+        void shouldActivateCreditCard() throws InterruptedException {
             CreditCard creditCard = CreditCard.of("Nubank", "1234", new BigDecimal("5000.00"), testUser, testBank);
             creditCard.deactivate();
             LocalDateTime beforeActivation = creditCard.getUpdatedAt();
-
+            
+            Thread.sleep(1); // Small delay to ensure timestamp difference
+            
             creditCard.activate();
 
             assertTrue(creditCard.isActive());
@@ -210,10 +212,12 @@ class CreditCardTest {
 
         @Test
         @DisplayName("Should update updatedAt when activating")
-        void shouldUpdateUpdatedAtWhenActivating() {
+        void shouldUpdateUpdatedAtWhenActivating() throws InterruptedException {
             CreditCard creditCard = CreditCard.of("Nubank", "1234", new BigDecimal("5000.00"), testUser, testBank);
             creditCard.deactivate();
             LocalDateTime deactivatedAt = creditCard.getUpdatedAt();
+            
+            Thread.sleep(1); // Small delay to ensure timestamp difference
             
             creditCard.activate();
             

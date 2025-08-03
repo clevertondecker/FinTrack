@@ -1,14 +1,10 @@
 package com.fintrack.infrastructure.security;
 
+import com.fintrack.domain.user.*;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import com.fintrack.domain.user.Email;
-import com.fintrack.domain.user.Role;
-import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
 
 /**
  * Custom implementation of UserDetailsService for Spring Security.
@@ -37,18 +33,61 @@ public class CustomUserDetailsService implements UserDetailsService {
    *
    * @throws UsernameNotFoundException if user is not found.
    */
-  @Override
+    @Override
   public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-    User user = repo.findByEmail(Email.of(email))
-      .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+    User user = findUserByEmail(email);
+    String encodedPassword = encodePasswordForUser(user);
+    
+    return createUserDetails(user, encodedPassword);
+  }
+
+  /**
+   * Finds a user by email address.
+   *
+   * @param email the email address to search for. Cannot be blank or null.
+   *
+   * @return the user entity. Cannot be null.
+   *
+   * @throws UsernameNotFoundException if user is not found.
+   */
+  private User findUserByEmail(String email) throws UsernameNotFoundException {
+    return repo.findByEmail(Email.of(email))
+      .orElseThrow(() ->
+              new UsernameNotFoundException("User not found with email: " + email));
+  }
+
+  /**
+   * Encodes the password based on the user's authentication provider.
+   *
+   * @param user the user entity. Cannot be null.
+   *
+   * @return the encoded password string. Never blank.
+   */
+  private String encodePasswordForUser(User user) {
+    if (user.isOAuth2User()) {
+      return "{noop}"; // No-op password encoder for OAuth2 users
+    }
+    return user.getPassword();
+  }
+
+  /**
+   * Creates UserDetails from user entity and encoded password.
+   *
+   * @param user the user entity
+   *
+   * @param encodedPassword the encoded password
+   *
+   * @return UserDetails object
+   */
+  private UserDetails createUserDetails(User user, String encodedPassword) {
+    String[] authorities = user.getRoles().stream()
+      .map(Role::name)
+      .toArray(String[]::new);
 
     return org.springframework.security.core.userdetails.User
       .withUsername(user.getEmail().getEmail())
-      .password(user.getPassword())
-      .authorities(
-        user.getRoles().stream()
-          .map(Role::name)
-          .toArray(String[]::new))
+      .password(encodedPassword)
+      .authorities(authorities)
       .build();
   }
 }

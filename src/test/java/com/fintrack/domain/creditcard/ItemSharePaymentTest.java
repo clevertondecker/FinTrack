@@ -152,11 +152,14 @@ class ItemSharePaymentTest {
 
         @Test
         @DisplayName("Should update timestamp when marking as unpaid")
-        void shouldUpdateTimestampWhenMarkingAsUnpaid() {
+        void shouldUpdateTimestampWhenMarkingAsUnpaid() throws InterruptedException {
             ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"), new BigDecimal("50.00"));
             LocalDateTime paymentDate = LocalDateTime.now();
             share.markAsPaid("PIX", paymentDate);
             LocalDateTime beforeUnpaid = share.getUpdatedAt();
+
+            // Add small delay to ensure timestamp difference
+            Thread.sleep(1);
 
             share.markAsUnpaid();
 
