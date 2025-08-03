@@ -93,4 +93,14 @@ public interface InvoiceImportJpaRepository extends JpaRepository<InvoiceImport,
      */
     @Query("SELECT ii FROM InvoiceImport ii WHERE ii.user = :user AND ii.status = 'MANUAL_REVIEW' ORDER BY ii.importedAt DESC")
     List<InvoiceImport> findManualReviewImportsByUser(@Param("user") User user);
+
+    /**
+     * Finds all imports that reference a specific invoice.
+     * This is used to clear references before deleting invoices.
+     *
+     * @param invoiceId the invoice ID to find references for. Cannot be null.
+     * @return a list of imports that reference the invoice. Never null, may be empty.
+     */
+    @Query("SELECT ii FROM InvoiceImport ii WHERE ii.createdInvoice.id = :invoiceId")
+    List<InvoiceImport> findByCreatedInvoiceId(@Param("invoiceId") Long invoiceId);
 } 

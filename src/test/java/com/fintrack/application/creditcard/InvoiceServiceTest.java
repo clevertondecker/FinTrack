@@ -29,6 +29,7 @@ import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("InvoiceService Tests")
@@ -52,6 +53,9 @@ class InvoiceServiceTest {
     @Mock
     private InvoiceCalculationService invoiceCalculationService;
 
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
     private InvoiceService invoiceService;
 
     private User testUser;
@@ -65,7 +69,7 @@ class InvoiceServiceTest {
     void setUp() throws Exception {
         invoiceService = new InvoiceService(
             invoiceRepository, invoiceItemRepository, creditCardRepository,
-            categoryRepository, userRepository, invoiceCalculationService);
+            categoryRepository, userRepository, invoiceCalculationService, jdbcTemplate);
 
         testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");

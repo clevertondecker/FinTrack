@@ -11,6 +11,7 @@ import com.fintrack.dto.creditcard.InvoicePaymentRequest;
 import com.fintrack.dto.creditcard.InvoicePaymentResponse;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.user.User;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,9 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -189,7 +187,15 @@ public class InvoiceController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
-        invoiceService.deleteInvoice(id);
+        try {
+            // Delete the invoice using the service
+            // If there are foreign key constraints, they will be handled by the service
+            invoiceService.deleteInvoice(id);
+            
+        } catch (Exception e) {
+            // If there are still foreign key constraints, provide a helpful error message
+            throw new RuntimeException("Cannot delete invoice. It may be referenced by other data. Error: " + e.getMessage());
+        }
         return ResponseEntity.noContent().build();
     }
 }

@@ -37,8 +37,34 @@ public class PdfInvoiceParser {
     private static final Pattern DUE_DATE_PATTERN = Pattern.compile("(?:vencimento|due date|vence em)\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_PATTERN = Pattern.compile("(?:total|valor total|amount)\\s*:?\\s*R\\$\\s*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern BANK_PATTERN = Pattern.compile("(?:banco|bank)\\s*:?\\s*([A-Za-z\\s]+)", Pattern.CASE_INSENSITIVE);
+    /**
+     * Pattern to capture international transactions with values in reais and dollars.
+     * Format: Date Description Foreign_Currency_Value CURRENCY_NAME Reais_Value Dollar_Value
+     * Example: "06/07 COT(WEB) 2.310,00 PESO URUGU 330,67 57,55"
+     * Groups: 1=Date, 2=Description, 3=Foreign_Currency_Value, 4=Reais_Value, 5=Dollar_Value
+     */
+    private static final Pattern INTERNATIONAL_ITEM_PATTERN = Pattern.compile(
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+([\\d.,]+)\\s+[A-Z\\s]+\\s+([\\d.,]+)\\s+([\\d.,]+)$"
+    );
+
+    /**
+     * Pattern to capture IOF (Imposto sobre Operações Financeiras) charges.
+     * Format: IOF DESPESA NO EXTERIOR amount
+     * Example: "IOF DESPESA NO EXTERIOR 13,54"
+     * Groups: 1=Amount
+     */
+    private static final Pattern IOF_PATTERN = Pattern.compile(
+        "^IOF\\s+DESPESA\\s+NO\\s+EXTERIOR\\s+([\\d.,]+)$"
+    );
+    
+    // Padrão para itens normais (apenas valor em reais)
     private static final Pattern SANTANDER_ITEM_PATTERN = Pattern.compile(
-        "^.*?(\\d{2}/\\d{2})\\s+(.+?)(?:\\s+(\\d{2}/\\d{2,4}))?\\s+(-?[\\d.,]+)$"
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+(-?[\\d.,]+)$"
+    );
+
+    // Padrão para itens com parcelamento (formato: LIBERTY DUTY FREE 02/04 123,45)
+    private static final Pattern PARCELED_ITEM_PATTERN = Pattern.compile(
+        "^(.+?)\\s+(\\d{2}/\\d{2})\\s+(-?[\\d.,]+)$"
     );
 
     private static final List<String> IGNORE_KEYWORDS = List.of(
@@ -80,7 +106,7 @@ public class PdfInvoiceParser {
      * @param text the text extracted from the PDF. Cannot be null.
      * @return the parsed invoice data. Never null.
      */
-    private ParsedInvoiceData extractInvoiceData(String text) {
+    public ParsedInvoiceData extractInvoiceData(String text) {
         Validate.notNull(text, "Text must not be null.");
 
         String creditCardName = extractCreditCardName(text);
@@ -242,6 +268,30 @@ public class PdfInvoiceParser {
         return true;
     }
 
+    private boolean shouldSkipLine(String line) {
+        String lower = line.toLowerCase();
+        for (String keyword : IGNORE_KEYWORDS) {
+            if (lower.contains(keyword)) return true;
+        }
+        return false;
+    }
+
+    private LocalDate parseDate(String dateStr) {
+        int currentYear = Year.now().getValue();
+        try {
+            return LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } catch (DateTimeParseException e) {
+            logger.warn("Error parsing date '{}' with current year {}: {}", dateStr, currentYear, e);
+            // Fallback to parsing with current year if the date is ambiguous
+            try {
+                return LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            } catch (DateTimeParseException fallbackE) {
+                logger.warn("Error parsing date '{}' with current year {}: {}", dateStr, currentYear, fallbackE);
+                return null; // Indicate failure
+            }
+        }
+    }
+
     /**
      * Extracts individual items from the text.
      * This is a simplified implementation - in a real scenario, this would be much more complex.
@@ -251,50 +301,156 @@ public class PdfInvoiceParser {
      */
     private List<ParsedInvoiceItem> extractItems(String text) {
         List<ParsedInvoiceItem> items = new ArrayList<>();
-        logger.info("Extracting items from text ({} characters)", text.length());
-
         String[] lines = text.split("\n");
+        
         logger.info("Text has {} lines", lines.length);
-
-        int currentYear = Year.now().getValue();
+        
+        // Track ignored lines for debugging
+        List<String> ignoredLines = new ArrayList<>();
+        List<String> processedLines = new ArrayList<>();
+        
         for (String line : lines) {
             line = line.trim();
-            Matcher matcher = SANTANDER_ITEM_PATTERN.matcher(line);
-            if (matcher.find()) {
-                String dateStr = matcher.group(1);
-                String description = matcher.group(2).trim();
-                String parcela = matcher.group(3); // pode ser null
-                String amountStr = matcher.group(4).replace(".", "").replace(",", ".");
-                try {
-                    BigDecimal amount = new BigDecimal(amountStr);
-                    // Ignorar itens negativos com palavras-chave de pagamento/crédito
-                    if (amount.compareTo(BigDecimal.ZERO) < 0 && !isValidNegativeItem(description)) {
-                        logger.info("Ignoring negative item by keyword: {} - {}", description, amount);
-                        continue;
-                    }
-                    LocalDate purchaseDate = LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                    Integer installments = 1;
-                    Integer totalInstallments = 1;
-                    if (parcela != null && parcela.matches("\\d{2}/\\d{2,4}")) {
-                        String[] parts = parcela.split("/");
-                        try {
-                            installments = Integer.parseInt(parts[0]);
-                            totalInstallments = Integer.parseInt(parts[1]);
-                        } catch (Exception e) {
-                            logger.warn("Erro ao processar parcela: {}", parcela, e);
-                        }
-                    }
-                    ParsedInvoiceItem item = new ParsedInvoiceItem(
-                        description, amount, purchaseDate, null, installments, totalInstallments, 0.9
-                    );
-                    items.add(item);
-                    logger.debug("Found item: '{}' - {} - {} - R$ {}", dateStr, description, parcela, amount);
-                } catch (Exception e) {
-                    logger.warn("Erro ao processar item: {}", line, e);
-                }
+            logger.debug("Processing line: '{}'", line);
+            
+            // Skip empty lines
+            if (line.isEmpty()) {
+                logger.debug("Skipping empty line");
+                continue;
             }
+            
+            // Skip lines with keywords that should be ignored
+            if (shouldSkipLine(line)) {
+                logger.debug("Skipping line with keywords: '{}'", line);
+                ignoredLines.add("IGNORED (keywords): " + line);
+                continue;
+            }
+            
+            // First try the pattern for international transactions (with reais and dollar values)
+                           // Test IOF pattern first
+               Matcher iofMatcher = IOF_PATTERN.matcher(line);
+               logger.debug("Testing IOF pattern on line: '{}'", line);
+               if (iofMatcher.find()) {
+                   logger.debug("IOF pattern matched!");
+                   String amountStr = iofMatcher.group(1).replace(".", "").replace(",", ".");
+                   
+                   logger.debug("IOF pattern matched: amount={}", amountStr);
+                   
+                   try {
+                       BigDecimal amount = new BigDecimal(amountStr);
+                       // Use today's date for IOF charges since they don't have specific dates
+                       LocalDate date = LocalDate.now();
+                       
+                       items.add(new ParsedInvoiceItem("IOF DESPESA NO EXTERIOR", amount, date, null, 1, 1, 0.9));
+                       logger.debug("Added IOF item: IOF DESPESA NO EXTERIOR - R$ {}", amount);
+                       processedLines.add("IOF: " + line + " -> R$ " + amount);
+                   } catch (Exception e) {
+                       logger.warn("Erro ao processar IOF: {}", line, e);
+                       ignoredLines.add("ERROR (IOF): " + line + " - " + e.getMessage());
+                   }
+                   continue;
+               }
+
+               Matcher internationalMatcher = INTERNATIONAL_ITEM_PATTERN.matcher(line);
+               logger.debug("Testing international pattern on line: '{}'", line);
+               if (internationalMatcher.find()) {
+                   logger.debug("International pattern matched!");
+                   String dateStr = internationalMatcher.group(1);
+                   String description = internationalMatcher.group(2).trim();
+                   String foreignAmountStr = internationalMatcher.group(3).replace(".", "").replace(",", ".");
+                   String realAmountStr = internationalMatcher.group(4).replace(".", "").replace(",", ".");
+                   String dollarAmountStr = internationalMatcher.group(5).replace(".", "").replace(",", ".");
+                   
+                   logger.debug("International pattern matched: date={}, desc={}, foreign={}, real={}, dollar={}", 
+                       dateStr, description, foreignAmountStr, realAmountStr, dollarAmountStr);
+                   
+                   try {
+                       // Use the reais value (priority) instead of the dollar value
+                       // This fixes the bug where the system was incorrectly using the dollar value
+                       BigDecimal amount = new BigDecimal(realAmountStr);
+                       LocalDate date = parseDate(dateStr);
+                       
+                       items.add(new ParsedInvoiceItem(description, amount, date, null, 1, 1, 0.9));
+                       logger.debug("Added international item: {} - R$ {}", description, amount);
+                       processedLines.add("INTERNATIONAL: " + line + " -> R$ " + amount);
+                   } catch (Exception e) {
+                       logger.warn("Erro ao processar item internacional: {}", line, e);
+                       ignoredLines.add("ERROR (international): " + line + " - " + e.getMessage());
+                   }
+                   continue;
+               }
+            
+                           // Try parceled item pattern
+               Matcher parceledMatcher = PARCELED_ITEM_PATTERN.matcher(line);
+               if (parceledMatcher.find()) {
+                   logger.debug("Parceled pattern matched!");
+                   String description = parceledMatcher.group(1).trim();
+                   String installmentStr = parceledMatcher.group(2);
+                   String amountStr = parceledMatcher.group(3).replace(".", "").replace(",", ".");
+                   
+                   logger.debug("Parceled pattern matched: desc={}, installment={}, amount={}", 
+                       description, installmentStr, amountStr);
+                   
+                   try {
+                       BigDecimal amount = new BigDecimal(amountStr);
+                       // Parse installment info (e.g., "02/04" -> current=2, total=4)
+                       String[] parts = installmentStr.split("/");
+                       int currentInstallment = Integer.parseInt(parts[0]);
+                       int totalInstallments = Integer.parseInt(parts[1]);
+                       
+                       // Use today's date for parceled items since they don't have specific dates
+                       LocalDate date = LocalDate.now();
+                       
+                       items.add(new ParsedInvoiceItem(description, amount, date, null, currentInstallment, totalInstallments, 0.9));
+                       logger.debug("Added parceled item: {} - R$ {} (parcela {}/{})", description, amount, currentInstallment, totalInstallments);
+                       processedLines.add("PARCELED: " + line + " -> R$ " + amount + " (parcela " + currentInstallment + "/" + totalInstallments + ")");
+                   } catch (Exception e) {
+                       logger.warn("Erro ao processar item parcelado: {}", line, e);
+                       ignoredLines.add("ERROR (parceled): " + line + " - " + e.getMessage());
+                   }
+                   continue;
+               }
+
+               // If not a parceled transaction, try the normal pattern
+               Matcher matcher = SANTANDER_ITEM_PATTERN.matcher(line);
+               if (matcher.find()) {
+                   logger.debug("Normal pattern matched!");
+                   String dateStr = matcher.group(1);
+                   String description = matcher.group(2).trim();
+                   String amountStr = matcher.group(3).replace(".", "").replace(",", ".");
+                   
+                   logger.debug("Normal pattern matched: date={}, desc={}, amount={}", 
+                       dateStr, description, amountStr);
+                   
+                   try {
+                       BigDecimal amount = new BigDecimal(amountStr);
+                       LocalDate date = parseDate(dateStr);
+                       
+                       items.add(new ParsedInvoiceItem(description, amount, date, null, 1, 1, 0.9));
+                       logger.debug("Added normal item: {} - R$ {}", description, amount);
+                       processedLines.add("NORMAL: " + line + " -> R$ " + amount);
+                   } catch (Exception e) {
+                       logger.warn("Erro ao processar item normal: {}", line, e);
+                       ignoredLines.add("ERROR (normal): " + line + " - " + e.getMessage());
+                   }
+               } else {
+                   logger.warn("No pattern matched for line: '{}'", line);
+                   ignoredLines.add("NO PATTERN: " + line);
+               }
         }
+        
+        // Log summary for debugging
         logger.info("Extracted {} items from PDF (Santander parser)", items.size());
+        logger.info("Processed {} lines, ignored {} lines", processedLines.size(), ignoredLines.size());
+        
+        if (!ignoredLines.isEmpty()) {
+            logger.warn("=== IGNORED LINES ===");
+            for (String ignored : ignoredLines) {
+                logger.warn(ignored);
+            }
+            logger.warn("=====================");
+        }
+        
         return items;
     }
 

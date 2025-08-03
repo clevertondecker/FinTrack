@@ -4,6 +4,7 @@ import com.fintrack.domain.creditcard.*;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
+
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
@@ -11,9 +12,11 @@ import com.fintrack.dto.creditcard.InvoiceItemResponse;
 import com.fintrack.dto.creditcard.InvoicePaymentRequest;
 import com.fintrack.dto.creditcard.InvoicePaymentResponse;
 import com.fintrack.infrastructure.persistence.creditcard.*;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
@@ -37,19 +40,22 @@ public class InvoiceService {
     private final CategoryJpaRepository categoryRepository;
     private final UserRepository userRepository;
     private final InvoiceCalculationService invoiceCalculationService;
+    private final JdbcTemplate jdbcTemplate;
 
     public InvoiceService(@Qualifier("invoiceJpaRepository") final InvoiceRepository theInvoiceRepository,
                          @Qualifier("invoiceItemJpaRepository") final InvoiceItemRepository theInvoiceItemRepository,
                          final CreditCardJpaRepository theCreditCardRepository,
                          final CategoryJpaRepository theCategoryRepository,
                          final UserRepository theUserRepository,
-                         final InvoiceCalculationService theInvoiceCalculationService) {
+                         final InvoiceCalculationService theInvoiceCalculationService,
+                         final JdbcTemplate theJdbcTemplate) {
         invoiceRepository = theInvoiceRepository;
         invoiceItemRepository = theInvoiceItemRepository;
         creditCardRepository = theCreditCardRepository;
         categoryRepository = theCategoryRepository;
         userRepository = theUserRepository;
         invoiceCalculationService = theInvoiceCalculationService;
+        jdbcTemplate = theJdbcTemplate;
     }
 
     /**
@@ -414,7 +420,31 @@ public class InvoiceService {
         );
     }
 
+    /**
+     * Deletes an invoice by ID. Handles foreign key constraints by cleaning up related data first.
+     *
+     * @param id the invoice ID to delete. Cannot be null.
+     * @throws IllegalArgumentException if invoice not found.
+     */
     public void deleteInvoice(Long id) {
+        // First, check if invoice exists
+        Invoice invoice = invoiceRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Invoice not found with ID: " + id));
+        
+        // Clean up related data to avoid foreign key constraint violations
+        
+        // 1. Clear invoice import references using SQL nativo
+        jdbcTemplate.update("UPDATE invoice_imports SET created_invoice_id = NULL WHERE created_invoice_id = ?", id);
+        
+        // 2. Remove invoice items and their shares
+        List<InvoiceItem> items = invoiceItemRepository.findByInvoice(invoice);
+        for (InvoiceItem item : items) {
+            // Remove any shares associated with this item
+            item.getShares().clear();
+            invoiceItemRepository.delete(item);
+        }
+        
+        // 3. Finally delete the invoice
         invoiceRepository.deleteById(id);
     }
 }

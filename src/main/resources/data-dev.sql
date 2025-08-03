@@ -1,5 +1,5 @@
 -- Populate banks with test data
-INSERT INTO banks (code, name) VALUES 
+INSERT IGNORE INTO banks (code, name) VALUES 
 ('NU', 'Nubank'),
 ('ITAU', 'Itaú Unibanco'),
 ('SAN', 'Santander'),
@@ -9,11 +9,10 @@ INSERT INTO banks (code, name) VALUES
 ('INTER', 'Banco Inter'),
 ('C6', 'C6 Bank'),
 ('PICPAY', 'PicPay'),
-('MERCADOPAGO', 'Mercado Pago')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
+('MERCADOPAGO', 'Mercado Pago');
 
 -- Populate categories with default data
-INSERT INTO categories (name, color) VALUES 
+INSERT IGNORE INTO categories (name, color) VALUES 
 ('Alimentação', '#FF6B6B'),
 ('Transporte', '#4ECDC4'),
 ('Saúde', '#45B7D1'),
@@ -29,5 +28,4 @@ INSERT INTO categories (name, color) VALUES
 ('Combustível', '#2ECC71'),
 ('Farmácia', '#E67E22'),
 ('Shopping', '#9B59B6'),
-('Outros', '#95A5A6')
-ON DUPLICATE KEY UPDATE name = VALUES(name), color = VALUES(color); 
+('Outros', '#95A5A6'); 
