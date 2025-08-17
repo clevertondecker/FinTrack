@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.invoice.InvoiceImport;
 import com.fintrack.domain.invoice.ImportSource;
 import com.fintrack.domain.invoice.ImportStatus;
@@ -26,14 +27,23 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.fintrack.domain.creditcard.InvoiceItem.of;
 
 /**
  * Service for handling invoice imports from various sources.
@@ -43,6 +53,24 @@ import java.util.UUID;
 public class InvoiceImportService {
 
     private static final Logger logger = LoggerFactory.getLogger(InvoiceImportService.class);
+    
+    /** Delimiter used to separate fields when computing item signatures. */
+    private static final String SIGNATURE_DELIMITER = "|";
+    
+    /** Default amount string representation for null values. */
+    private static final String DEFAULT_AMOUNT = "0.00";
+    
+    /** Default number of installments when not specified. */
+    private static final int DEFAULT_INSTALLMENTS = 1;
+    
+    /** Default number of days to add to current date for due date calculation. */
+    private static final int DEFAULT_DUE_DATE_DAYS = 30;
+    
+    /** Confidence threshold below which imports require manual review. */
+    private static final double MANUAL_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
+    
+    /** Hexadecimal mask for byte-to-hex conversion in SHA-256 computation. */
+    private static final int HEX_MASK = 0xff;
 
     private final InvoiceImportJpaRepository invoiceImportRepository;
     private final CreditCardJpaRepository creditCardRepository;
@@ -179,24 +207,40 @@ public class InvoiceImportService {
             updateImportWithParsedData(importRecord, parsedData);
 
             // Determine if manual review is needed
-            if (parsedData.confidence() < 0.7) {
+            if (requiresManualReview(parsedData.confidence())) {
                 importRecord.markForManualReview();
                 logger.info("Import {} marked for manual review due to low confidence: {}", importId, parsedData.confidence());
             } else {
                 // Create invoice automatically
                 logger.info("Creating invoice for import: {}", importId);
                 Invoice invoice = createInvoiceFromParsedData(importRecord, parsedData);
-                importRecord.markAsCompleted(invoice);
-                logger.info("Import {} completed successfully, created invoice: {} with {} items", 
+                handleImportCompletion(importRecord, invoice);
+                logger.info("Import {} completed successfully, invoice: {} with {} items", 
                     importId, invoice.getId(), invoice.getItems().size());
             }
 
             invoiceImportRepository.save(importRecord);
 
+        } catch (IOException e) {
+            logger.error("Error parsing file for import: {}", importId, e);
+            handleImportError(importId, "File parsing failed: " + e.getMessage());
+        } catch (RuntimeException e) {
+            logger.error("Runtime error processing import: {}", importId, e);
+            handleImportError(importId, "Processing failed: " + e.getMessage());
         } catch (Exception e) {
-            logger.error("Error processing import: {}", importId, e);
-            handleImportError(importId, e.getMessage());
+            logger.error("Unexpected error processing import: {}", importId, e);
+            handleImportError(importId, "Unexpected error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Determines if an import requires manual review based on confidence score.
+     *
+     * @param confidence the parsing confidence score (0.0 to 1.0). Can be null.
+     * @return true if manual review is required, false otherwise
+     */
+    private boolean requiresManualReview(Double confidence) {
+        return confidence == null || confidence < MANUAL_REVIEW_CONFIDENCE_THRESHOLD;
     }
 
     /**
@@ -300,7 +344,8 @@ public class InvoiceImportService {
      * @param importRecord the import record. Cannot be null.
      * @param parsedData the parsed data. Cannot be null.
      */
-    private void updateImportWithParsedData(InvoiceImport importRecord, ParsedInvoiceData parsedData) {
+    private void updateImportWithParsedData(
+            InvoiceImport importRecord, ParsedInvoiceData parsedData) {
         try {
             importRecord.setParsedData(objectMapper.writeValueAsString(parsedData));
             importRecord.setTotalAmount(parsedData.totalAmount());
@@ -321,61 +366,388 @@ public class InvoiceImportService {
      * @param parsedData the parsed data. Cannot be null.
      * @return the created invoice. Never null.
      */
-    private Invoice createInvoiceFromParsedData(InvoiceImport importRecord, ParsedInvoiceData parsedData) {
+    private Invoice createInvoiceFromParsedData(
+            InvoiceImport importRecord, ParsedInvoiceData parsedData) {
         logger.info("Creating invoice from parsed data for import: {}", importRecord.getId());
         
+        CreditCard creditCard = validateCreditCard(importRecord);
+        LocalDate dueDate = resolveDueDate(parsedData);
+        Invoice invoice = findOrCreateInvoice(creditCard, dueDate);
+        
+        addItemsToInvoice(invoice, parsedData.items());
+        
+        return invoiceRepository.save(invoice);
+    }
+
+    /**
+     * Validates that the import record has a valid credit card associated.
+     *
+     * @param importRecord the import record to validate. Cannot be null.
+     * @return the validated credit card. Never null.
+     * @throws IllegalStateException if no credit card is found for the import
+     */
+    private CreditCard validateCreditCard(InvoiceImport importRecord) {
         CreditCard creditCard = importRecord.getCreditCard();
         if (creditCard == null) {
             throw new IllegalStateException("Credit card not found for import: " + importRecord.getId());
         }
-        
-        LocalDate dueDate = parsedData.dueDate() != null ? parsedData.dueDate() : LocalDate.now().plusDays(30);
+        return creditCard;
+    }
+
+    /**
+     * Resolves the due date from parsed data, using default if not provided.
+     *
+     * @param parsedData the parsed invoice data. Cannot be null.
+     * @return the resolved due date. Never null.
+     */
+    private LocalDate resolveDueDate(ParsedInvoiceData parsedData) {
+        return parsedData.dueDate() != null 
+            ? parsedData.dueDate() 
+            : LocalDate.now().plusDays(DEFAULT_DUE_DATE_DAYS);
+    }
+
+    /**
+     * Finds an existing invoice for the given credit card and month, or creates a new one.
+     *
+     * @param creditCard the credit card to find/create invoice for. Cannot be null.
+     * @param dueDate the due date to determine the invoice month. Cannot be null.
+     * @return the existing or newly created invoice. Never null.
+     */
+    private Invoice findOrCreateInvoice(CreditCard creditCard, LocalDate dueDate) {
         YearMonth month = YearMonth.from(dueDate);
         
-        // Buscar se já existe fatura para o cartão e mês
-        List<Invoice> existingInvoices = invoiceRepository.findByCreditCardAndMonth(creditCard, month);
-        Invoice invoice;
-        if (!existingInvoices.isEmpty()) {
-            invoice = existingInvoices.get(0);
-            logger.info("Found existing invoice {} for card {} and month {}", invoice.getId(), creditCard.getId(), month);
-        } else {
-            invoice = Invoice.of(
-                creditCard,
-                month,
-                dueDate
+        return invoiceRepository.findByCreditCardAndMonth(creditCard, month)
+            .stream()
+            .findFirst()
+            .map(invoice -> {
+                logger.info("Found existing invoice {} for card {} and month {}", 
+                    invoice.getId(), creditCard.getId(), month);
+                return invoice;
+            })
+            .orElseGet(() -> {
+                Invoice newInvoice = Invoice.of(creditCard, month, dueDate);
+                Invoice saved = invoiceRepository.save(newInvoice);
+                logger.info("Created new invoice {} for card {} and month {}", 
+                    saved.getId(), creditCard.getId(), month);
+                return saved;
+            });
+    }
+
+    /**
+     * Adds parsed items to an invoice with duplicate detection and removal.
+     * Items are deduplicated based on their computed signature to prevent
+     * adding the same item multiple times during re-imports.
+     *
+     * @param invoice the invoice to add items to. Cannot be null.
+     * @param parsedItems the list of parsed items to add. Can be null or empty.
+     */
+    private void addItemsToInvoice(
+            Invoice invoice, List<ParsedInvoiceData.ParsedInvoiceItem> parsedItems) {
+        if (parsedItems == null || parsedItems.isEmpty()) {
+            logger.warn("No items found in parsed data for invoice: {}", invoice.getId());
+            return;
+        }
+
+        logger.info("Adding {} items to invoice {} (with in-memory dedup)",
+                parsedItems.size(), invoice.getId());
+
+        Set<String> existingSignatures = buildExistingSignatures(invoice);
+        ItemAdditionResult result =
+                processItems(invoice, parsedItems, existingSignatures);
+
+        logger.info("Invoice {} updated. Items added: {}, skipped (duplicates): {}, total now: {}",
+            invoice.getId(), result.added(), result.skipped(), invoice.getItems().size());
+    }
+
+    /**
+     * Builds a set of signatures for all existing items in the invoice.
+     * Used to identify duplicate items during import processing.
+     *
+     * @param invoice the invoice to extract signatures from. Cannot be null.
+     * @return a set of unique item signatures. Never null, may be empty.
+     */
+    private Set<String> buildExistingSignatures(Invoice invoice) {
+        return invoice.getItems().stream()
+            .map(this::safeComputeSignature)
+            .filter(sig -> !sig.isEmpty())
+            .collect(Collectors.toSet());
+    }
+
+    /**
+     * Safely computes a signature for an existing invoice item.
+     * Returns empty string if signature computation fails to avoid breaking the import process.
+     *
+     * @param item the invoice item to compute signature for. Cannot be null.
+     * @return the computed signature or empty string if computation fails. Never null.
+     */
+    private String safeComputeSignature(InvoiceItem item) {
+        try {
+            return computeItemSignature(
+                item.getDescription(),
+                item.getAmount(),
+                item.getPurchaseDate(),
+                item.getInstallments(),
+                item.getTotalInstallments()
             );
-            invoice = invoiceRepository.save(invoice);
-            logger.info("Created new invoice {} for card {} and month {}", invoice.getId(), creditCard.getId(), month);
+        } catch (Exception ex) {
+            logger.debug("Failed to compute signature for existing item {}: {}",
+                    item.getId(), ex.getMessage());
+            return "";
         }
-        
-        // Adiciona os itens extraídos do PDF
-        if (parsedData.items() != null && !parsedData.items().isEmpty()) {
-            logger.info("Adding {} items to invoice {}", parsedData.items().size(), invoice.getId());
-            
-            for (ParsedInvoiceData.ParsedInvoiceItem parsedItem : parsedData.items()) {
-                try {
-                    com.fintrack.domain.creditcard.InvoiceItem invoiceItem = com.fintrack.domain.creditcard.InvoiceItem.of(
-                        invoice,
-                        parsedItem.description(),
-                        parsedItem.amount(),
-                        null, // category - será null por enquanto
-                        parsedItem.purchaseDate() != null ? parsedItem.purchaseDate() : LocalDate.now(),
-                        parsedItem.installments() != null ? parsedItem.installments() : 1,
-                        parsedItem.totalInstallments() != null ? parsedItem.totalInstallments() : 1
-                    );
-                    invoice.addItem(invoiceItem);
-                    logger.debug("Added item: {} - R$ {}", parsedItem.description(), parsedItem.amount());
-                } catch (Exception e) {
-                    logger.warn("Error adding item to invoice: {}", parsedItem.description(), e);
+    }
+
+    /**
+     * Processes parsed items and adds non-duplicate ones to the invoice.
+     * Each item is checked against existing signatures to prevent duplicates.
+     *
+     * @param invoice the invoice to add items to. Cannot be null.
+     * @param parsedItems the list of parsed items to process. Cannot be null or empty.
+     * @param existingSignatures the set of existing item signatures for duplicate detection. Cannot be null.
+     * @return the result containing counts of added and skipped items. Never null.
+     */
+    private ItemAdditionResult processItems(Invoice invoice, 
+                                          List<ParsedInvoiceData.ParsedInvoiceItem> parsedItems,
+                                          Set<String> existingSignatures) {
+        int added = 0;
+        int skipped = 0;
+
+        for (ParsedInvoiceData.ParsedInvoiceItem parsedItem : parsedItems) {
+            try {
+                ItemProcessingResult result =
+                        processItem(invoice, parsedItem, existingSignatures);
+                if (result.wasAdded()) {
+                    added++;
+                } else {
+                    skipped++;
+                    logger.debug("Skipped duplicate item by signature: {}", parsedItem.description());
                 }
+                
+            } catch (RuntimeException e) {
+                logger.warn("Error adding item to invoice: {} - {}",
+                        parsedItem.description(), e.getMessage());
+            } catch (Exception e) {
+                logger.warn("Unexpected error adding item to invoice: {}", parsedItem.description(), e);
             }
-            invoice = invoiceRepository.save(invoice);
-            logger.info("Invoice {} created/updated with {} items", invoice.getId(), invoice.getItems().size());
-        } else {
-            logger.warn("No items found in parsed data for import: {}", importRecord.getId());
+        }
+
+        return new ItemAdditionResult(added, skipped);
+    }
+
+    /**
+     * Processes a single parsed item, checking for duplicates and adding if new.
+     *
+     * @param invoice the invoice to add the item to. Cannot be null.
+     * @param parsedItem the parsed item to process. Cannot be null.
+     * @param existingSignatures the set of existing signatures. Cannot be null.
+     * @return the processing result indicating if item was added. Never null.
+     */
+    private ItemProcessingResult processItem(Invoice invoice,
+                                           ParsedInvoiceData.ParsedInvoiceItem parsedItem,
+                                           Set<String> existingSignatures) {
+        String signature = computeItemSignature(parsedItem);
+        
+        if (existingSignatures.contains(signature)) {
+            return ItemProcessingResult.skipped();
+        }
+
+        InvoiceItem invoiceItem = createInvoiceItem(invoice, parsedItem);
+        invoice.addItem(invoiceItem);
+        return ItemProcessingResult.added();
+    }
+
+    /**
+     * Creates an InvoiceItem from parsed invoice item data.
+     * Resolves null values to appropriate defaults for dates and installments.
+     *
+     * @param invoice the invoice this item belongs to. Cannot be null.
+     * @param parsedItem the parsed item data. Cannot be null.
+     * @return the created invoice item. Never null.
+     */
+    private InvoiceItem createInvoiceItem(Invoice invoice, ParsedInvoiceData.ParsedInvoiceItem parsedItem) {
+        return of(
+            invoice,
+            parsedItem.description(),
+            parsedItem.amount(),
+            null,
+            resolveDate(parsedItem.purchaseDate()),
+            resolveInstallments(parsedItem.installments()),
+            resolveInstallments(parsedItem.totalInstallments())
+        );
+    }
+
+    /**
+     * Resolves a date value, using current date as default if null.
+     *
+     * @param date the date to resolve. Can be null.
+     * @return the resolved date. Never null.
+     */
+    private LocalDate resolveDate(LocalDate date) {
+        return date != null ? date : LocalDate.now();
+    }
+
+    /**
+     * Resolves an installments value, using default if null.
+     *
+     * @param installments the installments value to resolve. Can be null.
+     * @return the resolved installments value. Never null, always positive.
+     */
+    private int resolveInstallments(Integer installments) {
+        return installments != null ? installments : DEFAULT_INSTALLMENTS;
+    }
+
+    /**
+     * Result record containing counts of items processed during import.
+     *
+     * @param added the number of new items successfully added to the invoice
+     * @param skipped the number of duplicate items that were skipped
+     */
+    private record ItemAdditionResult(int added, int skipped) {}
+
+    /**
+     * Result record for individual item processing.
+     *
+     * @param wasAdded true if the item was added, false if skipped
+     */
+    private record ItemProcessingResult(boolean wasAdded) {
+        
+        /**
+         * Creates a result indicating the item was added.
+         *
+         * @return a result with wasAdded = true
+         */
+        static ItemProcessingResult added() {
+            return new ItemProcessingResult(true);
         }
         
-        return invoice;
+        /**
+         * Creates a result indicating the item was skipped.
+         *
+         * @return a result with wasAdded = false
+         */
+        static ItemProcessingResult skipped() {
+            return new ItemProcessingResult(false);
+        }
+    }
+
+    /**
+     * Computes a stable signature for an invoice item based on normalized fields.
+     * This is used to avoid inserting duplicate items when re-importing.
+     */
+    private String computeItemSignature(String description,
+                                        BigDecimal amount,
+                                        LocalDate purchaseDate,
+                                        int installment,
+                                        int totalInstallments) {
+        String normalizedDescription = normalizeDescription(description);
+        String normalizedAmount = normalizeAmount(amount);
+        String normalizedDate = purchaseDate != null ? purchaseDate.toString() : "";
+
+        String base = String.join(SIGNATURE_DELIMITER,
+            normalizedDescription,
+            normalizedAmount,
+            normalizedDate,
+            String.valueOf(installment),
+            String.valueOf(totalInstallments)
+        );
+
+        return sha256(base);
+    }
+
+    /**
+     * Computes a signature for a parsed invoice item using resolved default values.
+     * This overloaded method handles null values by resolving them to defaults.
+     *
+     * @param parsedItem the parsed invoice item. Cannot be null.
+     * @return the computed signature. Never null or empty.
+     */
+    private String computeItemSignature(ParsedInvoiceData.ParsedInvoiceItem parsedItem) {
+        return computeItemSignature(
+            parsedItem.description(),
+            parsedItem.amount(),
+            resolveDate(parsedItem.purchaseDate()),
+            resolveInstallments(parsedItem.installments()),
+            resolveInstallments(parsedItem.totalInstallments())
+        );
+    }
+
+    /**
+     * Normalizes a BigDecimal amount to a consistent string representation.
+     * Uses default value for null amounts and ensures 2 decimal places.
+     *
+     * @param amount the amount to normalize. Can be null.
+     * @return the normalized amount string. Never null.
+     */
+    private String normalizeAmount(BigDecimal amount) {
+        return amount == null
+            ? DEFAULT_AMOUNT
+            : amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    /**
+     * Normalizes a description string for consistent signature generation.
+     * Converts to lowercase, trims whitespace, and collapses multiple spaces.
+     *
+     * @param description the description to normalize. Can be null.
+     * @return the normalized description. Never null.
+     */
+    private String normalizeDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+        String trimmed = description.trim().toLowerCase();
+        // collapse multiple whitespaces into single space
+        return trimmed.replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Computes SHA-256 hash of the input string for signature generation.
+     * Falls back to raw input if SHA-256 is not available (highly unlikely).
+     *
+     * @param input the string to hash. Cannot be null.
+     * @return the SHA-256 hash as hex string, or raw input as fallback. Never null.
+     */
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                String h = Integer.toHexString(HEX_MASK & b);
+                if (h.length() == 1) {
+                    hex.append('0');
+                }
+                hex.append(h);
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // Fallback to raw input if SHA-256 is unavailable (highly unlikely)
+            logger.warn("SHA-256 not available, using raw signature input");
+            return input;
+        }
+    }
+
+    /**
+     * Handles the completion of an import by checking for existing imports that reference
+     * the same invoice and reusing them to avoid unique constraint violations.
+     *
+     * @param importRecord the current import record. Cannot be null.
+     * @param invoice the invoice that was created/updated. Cannot be null.
+     */
+    private void handleImportCompletion(InvoiceImport importRecord, Invoice invoice) {
+        List<InvoiceImport> existingImports =
+                invoiceImportRepository.findByCreatedInvoiceId(invoice.getId());
+        
+        if (existingImports.isEmpty()) {
+            // No existing import references this invoice, safe to mark as completed
+            importRecord.markAsCompleted(invoice);
+            logger.info("Import {} marked as completed with invoice {}",
+                    importRecord.getId(), invoice.getId());
+        } else {
+            // Invoice already referenced by another import, mark as completed without reference
+            importRecord.markAsCompletedWithoutInvoiceReference();
+            logger.info("Import {} completed successfully. Invoice {} already referenced by import {}", 
+                importRecord.getId(), invoice.getId(), existingImports.get(0).getId());
+        }
     }
 
     /**

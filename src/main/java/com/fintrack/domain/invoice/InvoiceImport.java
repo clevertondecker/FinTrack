@@ -151,6 +151,17 @@ public class InvoiceImport {
     }
 
     /**
+     * Marks the import as completed without referencing a specific invoice.
+     * Used when the invoice is already referenced by another import to avoid
+     * unique constraint violations.
+     */
+    public void markAsCompletedWithoutInvoiceReference() {
+        status = ImportStatus.COMPLETED;
+        processedAt = LocalDateTime.now();
+        // Do not set createdInvoice to avoid unique constraint violation
+    }
+
+    /**
      * Sets the extracted text from the file.
      *
      * @param extractedText the extracted text. Can be null.
