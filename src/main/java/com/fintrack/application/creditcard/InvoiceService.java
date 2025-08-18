@@ -276,6 +276,65 @@ public class InvoiceService {
     }
 
     /**
+     * Updates the category of an invoice item.
+     * This is typically used to categorize items that were imported without a category.
+     *
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param itemId the invoice item ID. Cannot be null.
+     * @param categoryId the new category ID. Can be null to remove category.
+     * @param user the authenticated user. Cannot be null.
+     * @return the updated invoice item. Never null.
+     * @throws IllegalArgumentException if item/category not found or doesn't belong to user.
+     */
+    public InvoiceItem updateInvoiceItemCategory(Long invoiceId, Long itemId, Long categoryId, User user) {
+        InvoiceItem item = findAndValidateInvoiceItem(invoiceId, itemId, user);
+        Category category = resolveCategoryById(categoryId);
+        
+        item.updateCategory(category);
+        
+        return invoiceItemRepository.save(item);
+    }
+
+    /**
+     * Finds and validates an invoice item belongs to the specified invoice and user.
+     *
+     * @param invoiceId the invoice ID. Cannot be null.
+     * @param itemId the invoice item ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the validated invoice item. Never null.
+     * @throws IllegalArgumentException if item not found or validation fails.
+     */
+    private InvoiceItem findAndValidateInvoiceItem(Long invoiceId, Long itemId, User user) {
+        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
+        if (itemOpt.isEmpty()) {
+            throw new IllegalArgumentException("Invoice item not found");
+        }
+        
+        InvoiceItem item = itemOpt.get();
+        if (!item.getInvoice().getId().equals(invoiceId)) {
+            throw new IllegalArgumentException("Item does not belong to the specified invoice");
+        }
+        
+        return item;
+    }
+
+    /**
+     * Resolves a category by ID, returning null if ID is null.
+     *
+     * @param categoryId the category ID to resolve. Can be null.
+     * @return the resolved category or null. Can be null.
+     * @throws IllegalArgumentException if category ID is provided but not found.
+     */
+    private Category resolveCategoryById(Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        
+        return categoryRepository.findById(categoryId)
+            .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+    }
+
+    /**
      * Converts an Invoice to a InvoiceResponse DTO.
      */
     public InvoiceResponse toInvoiceResponse(Invoice invoice) {

@@ -195,6 +195,16 @@ public class InvoiceItem {
     }
 
     /**
+     * Updates the category of this invoice item.
+     * This is typically used after import to categorize items that were imported without a category.
+     *
+     * @param newCategory the new category to assign. Can be null to remove category.
+     */
+    public void updateCategory(final Category newCategory) {
+        this.category = newCategory;
+    }
+
+    /**
      * Gets the invoice item's unique identifier.
      *
      * @return the invoice item's ID. May be null if not persisted.

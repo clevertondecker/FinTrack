@@ -215,6 +215,8 @@
     "shareSuccess": "Item dividido com sucesso",
     "shareError": "Erro ao dividir item",
     "removeItem": "Remover item da fatura",
+    "errorUpdatingCategory": "Erro ao atualizar categoria do item",
+    "updatingCategory": "Atualizando categoria...",
     "filters": {
       "title": "Filtros",
       "status": "Status",

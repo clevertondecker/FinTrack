@@ -6,6 +6,7 @@ import com.fintrack.dto.creditcard.InvoiceItemCreateResponse;
 import com.fintrack.dto.creditcard.InvoiceItemListResponse;
 import com.fintrack.dto.creditcard.InvoiceItemDetailResponse;
 import com.fintrack.dto.creditcard.InvoiceItemResponse;
+import com.fintrack.dto.creditcard.UpdateInvoiceItemCategoryRequest;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.user.User;
@@ -167,5 +168,40 @@ public class InvoiceItemController {
             "itemId", itemId,
             "invoiceTotalAmount", updatedInvoice.getTotalAmount()
         ));
+    }
+
+    /**
+     * Updates the category of an invoice item.
+     *
+     * @param invoiceId the invoice ID.
+     * @param itemId the invoice item ID.
+     * @param request the update category request.
+     * @param userDetails the authenticated user details.
+     * @return a response with the updated invoice item information.
+     */
+    @PutMapping("/{invoiceId}/items/{itemId}/category")
+    public ResponseEntity<InvoiceItemDetailResponse> updateInvoiceItemCategory(
+            @PathVariable Long invoiceId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody UpdateInvoiceItemCategoryRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        User user = userOpt.get();
+
+        InvoiceItem updatedItem =
+                invoiceService.updateInvoiceItemCategory(
+                        invoiceId, itemId, request.categoryId(), user);
+        InvoiceItemResponse itemResponse = invoiceService.toInvoiceItemResponse(updatedItem);
+
+        InvoiceItemDetailResponse response = new InvoiceItemDetailResponse(
+            "Invoice item category updated successfully",
+            itemResponse
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

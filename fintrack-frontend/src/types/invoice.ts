@@ -108,6 +108,11 @@ export interface CreateInvoiceItemResponse {
   invoiceTotalAmount: number;
 }
 
+export interface InvoiceItemDetailResponse {
+  message: string;
+  item: InvoiceItem;
+}
+
 export enum InvoiceStatus {
   OPEN = 'OPEN',
   PAID = 'PAID',

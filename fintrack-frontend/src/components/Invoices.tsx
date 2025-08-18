@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
-import { Invoice, InvoiceItem, CreateInvoiceRequest, CreateInvoiceItemRequest, InvoiceFilters, InvoiceSummary, GroupedInvoices, Category } from '../types/invoice';
+import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, GroupedInvoices, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
 import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate } from '../utils/invoiceUtils';
 import ShareItemModal from './ShareItemModal';
@@ -35,6 +35,7 @@ const Invoices: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const [updatingCategoryItemId, setUpdatingCategoryItemId] = useState<number | null>(null);
   const [summary, setSummary] = useState<InvoiceSummary>({
     totalInvoices: 0,
     totalAmount: 0,
@@ -432,6 +433,43 @@ const Invoices: React.FC = () => {
     }
   };
 
+  // Memoize category lookup for performance
+  const categoryMap = useMemo(() => {
+    return new Map(categories.map(category => [category.id, category.name]));
+  }, [categories]);
+
+  // Extract error message helper for better reusability
+  const extractErrorMessage = useCallback((err: any, defaultMessage: string): string => {
+    return err.response?.data?.error || err.message || defaultMessage;
+  }, []);
+
+  const handleUpdateItemCategory = useCallback(async (itemId: number, categoryId: number | null) => {
+    if (!selectedInvoice) return;
+    
+    setUpdatingCategoryItemId(itemId);
+    setItemError(null);
+    
+    try {
+      await apiService.updateInvoiceItemCategory(selectedInvoice.id, itemId, categoryId);
+      
+      // Optimistic update with memoized category lookup
+      setInvoiceItems(prevItems => 
+        prevItems.map(item => 
+          item.id === itemId 
+            ? { ...item, category: categoryId ? categoryMap.get(categoryId) || null : null }
+            : item
+        )
+      );
+      
+    } catch (err: any) {
+      const errorMessage = extractErrorMessage(err, t('invoices.errorUpdatingCategory'));
+      setItemError(errorMessage);
+      setTimeout(() => setItemError(null), 5000);
+    } finally {
+      setUpdatingCategoryItemId(null);
+    }
+  }, [selectedInvoice, categoryMap, t, extractErrorMessage]);
+
   const handleOpenPayModal = (invoice: Invoice) => {
     setInvoiceToPay(invoice);
     setPayAmount(((invoice.totalAmount || 0) - (invoice.paidAmount || 0)).toFixed(2));
@@ -489,6 +527,38 @@ const Invoices: React.FC = () => {
   if (loading) {
     return <div className="loading">{t('invoices.loading')}</div>;
   }
+
+  // Category Dropdown Component for better separation of concerns
+  const CategoryDropdown: React.FC<{
+    item: InvoiceItem;
+    categories: Category[];
+    onCategoryChange: (itemId: number, categoryId: number | null) => void;
+    isUpdating: boolean;
+  }> = ({ item, categories, onCategoryChange, isUpdating }) => {
+    const currentCategoryId = categories.find(c => c.name === item.category)?.id || '';
+
+    return (
+      <>
+        <select
+          value={currentCategoryId}
+          onChange={(e) => onCategoryChange(item.id, e.target.value ? Number(e.target.value) : null)}
+          disabled={isUpdating}
+          className="category-select"
+          title={item.category || t('invoices.noCategory')}
+        >
+          <option value="">{t('invoices.noCategory')}</option>
+          {categories.map(category => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+        {isUpdating && (
+          <span className="updating-indicator" title={t('invoices.updatingCategory')}>⏳</span>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="invoices-container">
@@ -1086,7 +1156,14 @@ const Invoices: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              <div className="item-category">{item.category || t('invoices.noCategory')}</div>
+                              <div className="item-category">
+                                <CategoryDropdown
+                                  item={item}
+                                  categories={categories}
+                                  onCategoryChange={handleUpdateItemCategory}
+                                  isUpdating={updatingCategoryItemId === item.id}
+                                />
+                              </div>
                               <div className="item-date">{formatDate(item.purchaseDate)}</div>
                               <div className="item-amount">{formatCurrency(item.amount)}</div>
                               <div className="item-installments">

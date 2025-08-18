@@ -215,6 +215,8 @@
     "shareSuccess": "Item shared successfully",
     "shareError": "Error sharing item",
     "removeItem": "Remove item from invoice",
+    "errorUpdatingCategory": "Error updating item category",
+    "updatingCategory": "Updating category...",
     "noCategory": "No category",
     "filters": {
       "title": "Filters",

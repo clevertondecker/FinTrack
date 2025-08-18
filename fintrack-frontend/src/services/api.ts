@@ -11,6 +11,7 @@ import {
   CreateInvoiceItemRequest,
   CreateInvoiceResponse,
   CreateInvoiceItemResponse,
+  InvoiceItemDetailResponse,
   Category
 } from '../types/invoice';
 import {
@@ -245,6 +246,15 @@ class ApiService {
   // Deleta uma fatura (apenas para admin)
   async deleteInvoice(invoiceId: number): Promise<void> {
     await this.api.delete(`/invoices/${invoiceId}`);
+  }
+
+  // Atualiza a categoria de um item de fatura
+  async updateInvoiceItemCategory(invoiceId: number, itemId: number, categoryId: number | null): Promise<InvoiceItemDetailResponse> {
+    const response = await this.api.put<InvoiceItemDetailResponse>(
+      `/invoices/${invoiceId}/items/${itemId}/category`,
+      { categoryId }
+    );
+    return response.data;
   }
 }
 
