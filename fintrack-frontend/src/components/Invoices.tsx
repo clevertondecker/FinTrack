@@ -114,7 +114,16 @@ const Invoices: React.FC = () => {
   const loadCategories = async () => {
     try {
       const response = await apiService.getCategories();
-      setCategories(response.categories);
+      
+      const uniqueByName = new Map<string, Category>();
+      response.categories.forEach(category => {
+        if (!uniqueByName.has(category.name)) {
+          uniqueByName.set(category.name, category);
+        }
+      });
+      
+      const uniqueCategories = Array.from(uniqueByName.values());
+      setCategories(uniqueCategories);
     } catch (err) {
       console.error('Error loading categories:', err);
     }
@@ -438,6 +447,20 @@ const Invoices: React.FC = () => {
     return new Map(categories.map(category => [category.id, category.name]));
   }, [categories]);
 
+  // Memoize sorted categories to prevent re-renders and duplicates
+  const sortedCategories = useMemo(() => {
+    // Remove duplicates by NAME (not ID) since we have duplicate names with different IDs
+    const uniqueByName = new Map<string, Category>();
+    categories.forEach(category => {
+      if (!uniqueByName.has(category.name)) {
+        uniqueByName.set(category.name, category);
+      }
+    });
+    
+    const uniqueCategories = Array.from(uniqueByName.values());
+    return uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
   // Extract error message helper for better reusability
   const extractErrorMessage = useCallback((err: any, defaultMessage: string): string => {
     return err.response?.data?.error || err.message || defaultMessage;
@@ -528,37 +551,7 @@ const Invoices: React.FC = () => {
     return <div className="loading">{t('invoices.loading')}</div>;
   }
 
-  // Category Dropdown Component for better separation of concerns
-  const CategoryDropdown: React.FC<{
-    item: InvoiceItem;
-    categories: Category[];
-    onCategoryChange: (itemId: number, categoryId: number | null) => void;
-    isUpdating: boolean;
-  }> = ({ item, categories, onCategoryChange, isUpdating }) => {
-    const currentCategoryId = categories.find(c => c.name === item.category)?.id || '';
 
-    return (
-      <>
-        <select
-          value={currentCategoryId}
-          onChange={(e) => onCategoryChange(item.id, e.target.value ? Number(e.target.value) : null)}
-          disabled={isUpdating}
-          className="category-select"
-          title={item.category || t('invoices.noCategory')}
-        >
-          <option value="">{t('invoices.noCategory')}</option>
-          {categories.map(category => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        {isUpdating && (
-          <span className="updating-indicator" title={t('invoices.updatingCategory')}>⏳</span>
-        )}
-      </>
-    );
-  };
 
   return (
     <div className="invoices-container">
@@ -1157,12 +1150,23 @@ const Invoices: React.FC = () => {
                                 )}
                               </div>
                               <div className="item-category">
-                                <CategoryDropdown
-                                  item={item}
-                                  categories={categories}
-                                  onCategoryChange={handleUpdateItemCategory}
-                                  isUpdating={updatingCategoryItemId === item.id}
-                                />
+                                <select
+                                  value={categories.find(c => c.name === item.category)?.id || ''}
+                                  onChange={(e) => handleUpdateItemCategory(item.id, e.target.value ? Number(e.target.value) : null)}
+                                  disabled={updatingCategoryItemId === item.id}
+                                  className="category-select"
+                                  title={item.category || t('invoices.noCategory')}
+                                >
+                                  <option value="">{t('invoices.noCategory')}</option>
+                                  {sortedCategories.map(category => (
+                                    <option key={category.id} value={category.id}>
+                                      {category.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {updatingCategoryItemId === item.id && (
+                                  <span className="updating-indicator" title={t('invoices.updatingCategory')}>⏳</span>
+                                )}
                               </div>
                               <div className="item-date">{formatDate(item.purchaseDate)}</div>
                               <div className="item-amount">{formatCurrency(item.amount)}</div>
