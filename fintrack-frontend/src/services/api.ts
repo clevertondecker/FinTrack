@@ -204,6 +204,18 @@ class ApiService {
     return response.data;
   }
 
+  async markSharesAsPaidBulk(
+    shareIds: number[],
+    request: MarkShareAsPaidRequest
+  ): Promise<{ message: string; updatedCount: number; updatedShares: ItemShareResponse[] }> {
+    const body = { shareIds, paymentMethod: request.paymentMethod, paidAt: request.paidAt };
+    const response = await this.api.post<{ message: string; updatedCount: number; updatedShares: ItemShareResponse[] }>(
+      '/invoices/shares/mark-as-paid-bulk',
+      body
+    );
+    return response.data;
+  }
+
   async payInvoice(invoiceId: number, data: InvoicePaymentRequest): Promise<InvoicePaymentResponse> {
     const response = await this.api.post<InvoicePaymentResponse>(`/invoices/${invoiceId}/pay`, data);
     return response.data;

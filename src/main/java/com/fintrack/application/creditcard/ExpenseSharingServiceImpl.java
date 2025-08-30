@@ -30,13 +30,14 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     private final ItemShareRepository itemShareRepository;
     private final UserRepository userRepository;
 
-    public ExpenseSharingServiceImpl(ItemShareRepository itemShareRepository, UserRepository userRepository) {
+    public ExpenseSharingServiceImpl(final ItemShareRepository itemShareRepository,
+                                     final UserRepository userRepository) {
         this.itemShareRepository = itemShareRepository;
         this.userRepository = userRepository;
     }
 
     @Override
-    public void shareItem(InvoiceItem item, Map<User, BigDecimal> shares) {
+    public void shareItem(final InvoiceItem item, final Map<User, BigDecimal> shares) {
         validateShares(shares);
         
         // Remove existing shares
@@ -55,7 +56,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public void updateShares(InvoiceItem item, Map<User, BigDecimal> newShares) {
+    public void updateShares(final InvoiceItem item, final Map<User, BigDecimal> newShares) {
         validateShares(newShares);
         
         // Remove existing shares
@@ -74,7 +75,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public void removeShares(InvoiceItem item) {
+    public void removeShares(final InvoiceItem item) {
         List<ItemShare> existingShares = itemShareRepository.findByInvoiceItem(item);
         for (ItemShare share : existingShares) {
             item.removeShare(share);
@@ -83,7 +84,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public List<ItemShare> getSharesForUser(User user, YearMonth month) {
+    public List<ItemShare> getSharesForUser(final User user, final YearMonth month) {
         return itemShareRepository.findByUserAndMonth(user, month);
     }
 
@@ -93,7 +94,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
      * @param user the user to get shares for. Must not be null.
      * @return a list of item shares for the user. Never null, may be empty.
      */
-    public List<ItemShare> getSharesForUser(User user) {
+    public List<ItemShare> getSharesForUser(final User user) {
         return itemShareRepository.findByUser(user);
     }
 
@@ -104,7 +105,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public boolean validateShares(Map<User, BigDecimal> shares) {
+    public boolean validateShares(final Map<User, BigDecimal> shares) {
         if (shares == null || shares.isEmpty()) {
             throw new IllegalArgumentException("Shares cannot be null or empty");
         }
@@ -133,7 +134,8 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public Map<User, BigDecimal> calculateShareAmounts(InvoiceItem item, Map<User, BigDecimal> shares) {
+    public Map<User, BigDecimal> calculateShareAmounts(final InvoiceItem item,
+                                                       final Map<User, BigDecimal> shares) {
         validateShares(shares);
         
         Map<User, BigDecimal> amounts = new HashMap<>();
@@ -154,7 +156,8 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
      * @param userShares a list of user share information. Must not be null.
      * @return a list of created item shares. Never null.
      */
-    public List<ItemShare> createSharesFromUserIds(InvoiceItem item, List<CreateItemShareRequest.UserShare> userShares) {
+    public List<ItemShare> createSharesFromUserIds(final InvoiceItem item,
+                                                   final List<CreateItemShareRequest.UserShare> userShares) {
         if (userShares == null || userShares.isEmpty()) {
             throw new IllegalArgumentException("User shares cannot be null or empty");
         }
@@ -189,7 +192,8 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public ItemShare markShareAsPaid(Long shareId, String paymentMethod, LocalDateTime paidAt, User user) {
+    public ItemShare markShareAsPaid(final Long shareId, final String paymentMethod,
+                                     final LocalDateTime paidAt, final User user) {
         ItemShare share = itemShareRepository.findById(shareId)
             .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
         
@@ -202,7 +206,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public ItemShare markShareAsUnpaid(Long shareId, User user) {
+    public ItemShare markShareAsUnpaid(final Long shareId, final User user) {
         ItemShare share = itemShareRepository.findById(shareId)
             .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
         
@@ -213,4 +217,27 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         share.markAsUnpaid();
         return itemShareRepository.save(share);
     }
-} 
+
+    @Override
+    public List<ItemShare> markSharesAsPaidBulk(
+            final List<Long> shareIds, final String paymentMethod,
+            final LocalDateTime paidAt, final User user) {
+        List<ItemShare> updated = new ArrayList<>();
+        if (shareIds == null || shareIds.isEmpty()) {
+            return updated;
+        }
+        for (ItemShare share : itemShareRepository.findAllById(shareIds)) {
+            if (!share.getUser().equals(user)) {
+                // Skip shares that don't belong to the user
+                continue;
+            }
+            if (share.isPaid()) {
+                // Skip shares already paid to avoid overriding existing payment info
+                continue;
+            }
+            share.markAsPaid(paymentMethod, paidAt);
+            updated.add(itemShareRepository.save(share));
+        }
+        return updated;
+    }
+}

@@ -89,10 +89,15 @@ public interface ExpenseSharingService {
      * Marks a share as paid with payment details.
      *
      * @param shareId the ID of the share to mark as paid. Must not be null.
+     * 
      * @param paymentMethod the method used for payment. Must not be null or blank.
+     * 
      * @param paidAt the date and time when the payment was made. Must not be null.
+     * 
      * @param user the user making the payment. Must not be null.
+     * 
      * @return the updated share. Never null.
+     * 
      * @throws IllegalArgumentException if the share is not found or does not belong to the user.
      */
     ItemShare markShareAsPaid(Long shareId, String paymentMethod, LocalDateTime paidAt, User user);
@@ -114,4 +119,19 @@ public interface ExpenseSharingService {
      * @return a list of item shares for the user. Never null, may be empty.
      */
     List<ItemShare> getSharesForUser(User user);
+
+    /**
+     * Marks multiple shares as paid in bulk.
+     *
+     * @param shareIds the IDs of the shares to mark as paid. Must not be null or empty.
+     * 
+     * @param paymentMethod the payment method. Must not be null or blank.
+     * 
+     * @param paidAt the payment date-time. Must not be null.
+     * 
+     * @param user the authenticated user. Must not be null.
+     * 
+     * @return the list of updated shares. Never null, may be empty.
+     */
+    List<ItemShare> markSharesAsPaidBulk(List<Long> shareIds, String paymentMethod, LocalDateTime paidAt, User user);
 }

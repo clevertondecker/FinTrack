@@ -254,6 +254,41 @@ public class ItemShareController {
     }
 
     /**
+     * Bulk marks multiple shares as paid.
+     */
+    public static record BulkMarkSharesAsPaidRequest(
+        java.util.List<Long> shareIds,
+        String paymentMethod,
+        java.time.LocalDateTime paidAt
+    ) {}
+
+    @PostMapping("/shares/mark-as-paid-bulk")
+    @Transactional
+    public ResponseEntity<java.util.Map<String, Object>> markSharesAsPaidBulk(
+            @Valid @RequestBody BulkMarkSharesAsPaidRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        User user = userOpt.get();
+
+        List<ItemShare> updated = expenseSharingService.markSharesAsPaidBulk(
+            request.shareIds(), request.paymentMethod(), request.paidAt(), user);
+
+        List<ItemShareResponse> responses = updated.stream()
+            .map(this::toItemShareResponse)
+            .toList();
+
+        return ResponseEntity.ok(java.util.Map.of(
+            "message", "Shares marked as paid successfully",
+            "updatedCount", responses.size(),
+            "updatedShares", responses
+        ));
+    }
+
+    /**
      * Converts an ItemShare to an ItemShareResponse DTO.
      *
      * @param share the item share to convert.

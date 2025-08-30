@@ -25,6 +25,9 @@ const MyShares: React.FC = () => {
   const [selectedShare, setSelectedShare] = useState<MyShareResponse | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedShareIds, setSelectedShareIds] = useState<number[]>([]);
+  const [bulkPaymentMethod, setBulkPaymentMethod] = useState('PIX');
+  const [bulkPaymentDate, setBulkPaymentDate] = useState(new Date().toISOString().slice(0, 16));
 
   // Atualizar idioma quando mudar
   useEffect(() => {
@@ -162,6 +165,44 @@ const MyShares: React.FC = () => {
     return methodMap[method] || method;
   };
 
+  const toggleSelectShare = (id: number) => {
+    setSelectedShareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAll = () => {
+    if (!shares) return;
+    const ids = filterShares(shares.shares)
+      .map(s => s.shareId);
+    setSelectedShareIds(ids);
+  };
+
+  const handleClearSelection = () => setSelectedShareIds([]);
+
+  const handleBulkMarkAsPaid = async () => {
+    if (selectedShareIds.length === 0) return;
+    if (!shares) return;
+    // Envia apenas itens ainda pendentes, mesmo que a seleção inclua pagos
+    const idsToSend = selectedShareIds.filter(id => {
+      const s = shares.shares.find(sh => sh.shareId === id);
+      return s && !s.isPaid;
+    });
+    if (idsToSend.length === 0) {
+      setError('Nenhum item pendente para marcar como pago');
+      return;
+    }
+    try {
+      await apiService.markSharesAsPaidBulk(idsToSend, {
+        paymentMethod: bulkPaymentMethod,
+        paidAt: new Date(bulkPaymentDate).toISOString()
+      });
+      await loadMyShares();
+      setSelectedShareIds([]);
+    } catch (err: any) {
+      console.error('Error marking shares as paid in bulk:', err);
+      setError(err.response?.data?.message || 'Erro ao marcar pagamentos em lote');
+    }
+  };
+
   if (loading) {
     return (
       <div className="my-shares-container">
@@ -206,6 +247,20 @@ const MyShares: React.FC = () => {
           >
             {showFilters ? 'Ocultar Filtros' : 'Filtros'}
           </button>
+          <button 
+            className="select-all-button"
+            onClick={handleSelectAll}
+          >
+            Selecionar todos (filtrados)
+          </button>
+          {selectedShareIds.length > 0 && (
+            <button 
+              className="clear-selection-button"
+              onClick={handleClearSelection}
+            >
+              Limpar seleção ({selectedShareIds.length})
+            </button>
+          )}
         </div>
         <div className="shares-summary">
           <span className="total-shares">
@@ -216,6 +271,26 @@ const MyShares: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {selectedShareIds.length > 0 && (
+        <div className="bulk-actions" style={{ margin: '12px 0', padding: '12px', border: '1px solid #eee', borderRadius: 8 }}>
+          <span style={{ marginRight: 12 }}>{selectedShareIds.length} selecionado(s)</span>
+          <label style={{ marginRight: 8 }}>Método:</label>
+          <select value={bulkPaymentMethod} onChange={(e) => setBulkPaymentMethod(e.target.value)} style={{ marginRight: 12 }}>
+            <option value="PIX">PIX</option>
+            <option value="BANK_TRANSFER">Transferência Bancária</option>
+            <option value="CASH">Dinheiro</option>
+            <option value="CREDIT_CARD">Cartão de Crédito</option>
+            <option value="DEBIT_CARD">Cartão de Débito</option>
+            <option value="OTHER">Outro</option>
+          </select>
+          <label style={{ marginRight: 8 }}>Data:</label>
+          <input type="datetime-local" value={bulkPaymentDate} onChange={(e) => setBulkPaymentDate(e.target.value)} style={{ marginRight: 12 }} />
+          <button className="mark-paid-bulk-button" onClick={handleBulkMarkAsPaid}>
+            Marcar Selecionados como Pago
+          </button>
+        </div>
+      )}
 
       {/* Filters Section */}
       {showFilters && (
@@ -309,6 +384,13 @@ const MyShares: React.FC = () => {
                 <div className="shares-list">
                   {group.shares.map((share) => (
                     <div key={share.shareId} className="share-item">
+                      <div className="share-select" style={{ marginRight: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedShareIds.includes(share.shareId)}
+                          onChange={() => toggleSelectShare(share.shareId)}
+                        />
+                      </div>
                       <div className="share-main-info">
                         <div className="item-description">
                           <h4>{share.itemDescription}</h4>
