@@ -30,7 +30,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -387,7 +386,8 @@ public class InvoiceImportService {
         
         CreditCard creditCard = validateCreditCard(importRecord);
         LocalDate dueDate = resolveDueDate(parsedData);
-        Invoice invoice = findOrCreateInvoice(creditCard, dueDate);
+        YearMonth invoiceMonth = parsedData.invoiceMonth() != null ? parsedData.invoiceMonth() : YearMonth.from(dueDate);
+        Invoice invoice = findOrCreateInvoice(creditCard, invoiceMonth, dueDate);
         
         addItemsToInvoice(invoice, parsedData.items());
         
@@ -425,11 +425,11 @@ public class InvoiceImportService {
      * Finds an existing invoice for the given credit card and month, or creates a new one.
      *
      * @param creditCard the credit card to find/create invoice for. Cannot be null.
+     * @param month the month to determine the invoice. Cannot be null.
      * @param dueDate the due date to determine the invoice month. Cannot be null.
      * @return the existing or newly created invoice. Never null.
      */
-    private Invoice findOrCreateInvoice(CreditCard creditCard, LocalDate dueDate) {
-        YearMonth month = YearMonth.from(dueDate);
+    private Invoice findOrCreateInvoice(CreditCard creditCard, YearMonth month, LocalDate dueDate) {
         
         return invoiceRepository.findByCreditCardAndMonth(creditCard, month)
             .stream()
