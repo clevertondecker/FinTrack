@@ -346,4 +346,32 @@ public class ItemShareController {
             remainingItemAmount
         );
     }
+
+    /**
+     * Recalculates all shares to fix rounding issues.
+     * This endpoint recalculates all existing shares, ensuring the sum of shares
+     * equals the item amount exactly by adjusting the last share.
+     *
+     * @param userDetails the authenticated user details.
+     * @return a response with the number of items recalculated.
+     */
+    @PostMapping("/shares/recalculate-all")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> recalculateAllShares(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        int recalculated = expenseSharingService.recalculateAllShares();
+
+        Map<String, Object> response = Map.of(
+            "message", "Shares recalculated successfully",
+            "itemsRecalculated", recalculated
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }

@@ -107,12 +107,18 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
                 .toList();
     }
 
-    @Override
-    default List<Invoice> findByMonth(YearMonth month) {
-        return findAll().stream()
-                .filter(invoice -> invoice.getMonth().equals(month))
-                .toList();
-    }
+    /**
+     * Finds all invoices for a specific month across all credit cards.
+     * Uses JPQL query for better performance, filtering by the invoice month field.
+     * Uses JOIN FETCH to eagerly load items for performance.
+     *
+     * @param month the month to find invoices for. Cannot be null.
+     * @return a list of invoices for the month with items loaded. Never null, may be empty.
+     */
+    @Query("SELECT DISTINCT i FROM Invoice i " +
+           "LEFT JOIN FETCH i.items " +
+           "WHERE i.month = :month")
+    List<Invoice> findByMonth(@Param("month") YearMonth month);
 
     @Override
     default boolean existsByIdAndCreditCard(Long id, CreditCard creditCard) {

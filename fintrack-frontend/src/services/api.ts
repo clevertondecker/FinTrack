@@ -31,6 +31,10 @@ import {
   ManualReviewRequest,
   ManualReviewResponse
 } from '../types/invoiceImport';
+import {
+  ExpenseReportResponse,
+  CategoryExpenseSummary
+} from '../types/expenseReport';
 
 class ApiService {
   private api: AxiosInstance;
@@ -266,6 +270,24 @@ class ApiService {
       `/invoices/${invoiceId}/items/${itemId}/category`,
       { categoryId }
     );
+    return response.data;
+  }
+
+  // Expense Report endpoints
+  async getExpensesByCategory(month?: string, categoryId?: number): Promise<ExpenseReportResponse> {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (categoryId) params.append('categoryId', categoryId.toString());
+    
+    const queryString = params.toString();
+    const url = `/expenses/by-category${queryString ? `?${queryString}` : ''}`;
+    const response = await this.api.get<ExpenseReportResponse>(url);
+    return response.data;
+  }
+
+  async getExpenseSummary(month?: string): Promise<CategoryExpenseSummary[]> {
+    const url = month ? `/expenses/summary?month=${month}` : '/expenses/summary';
+    const response = await this.api.get<CategoryExpenseSummary[]>(url);
     return response.data;
   }
 }

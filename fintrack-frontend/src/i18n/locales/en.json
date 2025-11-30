@@ -381,5 +381,25 @@
       "email": "Email",
       "manual": "Manual"
     }
+  },
+  "expenseReport": {
+    "title": "Expenses by Category",
+    "loading": "Loading report...",
+    "errorLoadingReport": "Error loading expense report",
+    "retry": "Retry",
+    "noData": "No data available",
+    "noExpensesForMonth": "No expenses found for this month",
+    "month": "Month",
+    "category": "Category",
+    "allCategories": "All Categories",
+    "totalAmount": "Total",
+    "totalCategories": "Categories",
+    "totalTransactions": "Transactions",
+    "ofTotal": "of total",
+    "transactions": "transactions",
+    "detailsNotAvailable": "Transaction details not available at the moment",
+    "noDetailsAvailable": "No details available",
+    "shared": "Shared",
+    "unshared": "Unshared"
   }
 } 

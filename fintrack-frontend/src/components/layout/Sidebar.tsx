@@ -13,7 +13,7 @@ export default function Sidebar() {
     { icon: <FileText size={22} />, label: t('sidebar.invoices'), view: 'invoices' },
     { icon: <Upload size={22} />, label: t('sidebar.importInvoices'), view: 'importInvoices' },
     { icon: <Users size={22} />, label: t('sidebar.shares'), view: 'myShares' },
-    { icon: <BarChart2 size={22} />, label: t('sidebar.reports'), view: 'reports', disabled: true },
+    { icon: <BarChart2 size={22} />, label: t('sidebar.reports'), view: 'expenseReport', disabled: false },
   ];
 
   const handleMenuClick = (view: string) => {
@@ -33,6 +33,9 @@ export default function Sidebar() {
         break;
       case 'myShares':
         navigate('/dashboard/my-shares');
+        break;
+      case 'expenseReport':
+        navigate('/dashboard/expense-report');
         break;
       default:
         navigate('/dashboard');

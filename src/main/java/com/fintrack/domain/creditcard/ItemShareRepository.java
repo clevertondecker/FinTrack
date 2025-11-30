@@ -46,15 +46,24 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @param month the month to find shares for.
      * @return a list of shares for the user in the month. Never null, may be empty.
      */
-    @Query("SELECT is FROM ItemShare is " +
-           "JOIN is.invoiceItem ii " +
-           "JOIN ii.invoice i " +
-           "WHERE is.user = :user " +
-           "AND YEAR(i.dueDate) = :year " +
-           "AND MONTH(i.dueDate) = :month")
-    List<ItemShare> findByUserAndMonth(@Param("user") User user, 
+    /**
+     * Finds all shares for a specific user in a given month.
+     * Filters by invoice month field, not due date.
+     * Note: This method signature is kept for backward compatibility but the query uses YearMonth.
+     * The default method findByUserAndMonth(YearMonth) should be used instead.
+     *
+     * @param user the user to find shares for. Must not be null.
+     * @param year the year (not used, kept for compatibility).
+     * @param month the month (not used, kept for compatibility).
+     * @return a list of shares for the user in the month. Never null, may be empty.
+     * @deprecated Use findByUserAndMonth(User, YearMonth) instead.
+     */
+    @Deprecated
+    default List<ItemShare> findByUserAndMonth(@Param("user") User user, 
                                       @Param("year") int year, 
-                                      @Param("month") int month);
+                                      @Param("month") int month) {
+        return findByUserAndMonthWithYearMonth(user, YearMonth.of(year, month));
+    }
 
     /**
      * Finds a share by user and invoice item.
@@ -107,6 +116,47 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @return a list of shares for the user in the month. Never null, may be empty.
      */
     default List<ItemShare> findByUserAndMonth(User user, YearMonth month) {
-        return findByUserAndMonth(user, month.getYear(), month.getMonthValue());
+        return findByUserAndMonthWithYearMonth(user, month);
     }
+
+    /**
+     * Finds all shares for a specific user in a given month using YearMonth.
+     * Filters by invoice month field, not due date.
+     *
+     * @param user the user to find shares for. Must not be null.
+     * @param month the month to find shares for. Must not be null.
+     * @return a list of shares for the user in the month. Never null, may be empty.
+     */
+    @Query("SELECT is FROM ItemShare is " +
+           "JOIN is.invoiceItem ii " +
+           "JOIN ii.invoice i " +
+           "WHERE is.user = :user " +
+           "AND i.month = :month")
+    List<ItemShare> findByUserAndMonthWithYearMonth(@Param("user") User user,
+                                                    @Param("month") YearMonth month);
+
+    /**
+     * Finds all shares for a specific user in a given month, including category information.
+     * Uses JOIN FETCH to eagerly load category data for performance.
+     *
+     * @param user the user to find shares for. Must not be null.
+     * @param month the month to find shares for. Must not be null.
+     * @return a list of shares for the user in the month with category information loaded. Never null, may be empty.
+     */
+    /**
+     * Finds all shares for a specific user in a given month with category information using YearMonth.
+     * Filters by invoice month field, not due date.
+     *
+     * @param user the user to find shares for. Must not be null.
+     * @param month the month to find shares for. Must not be null.
+     * @return a list of shares for the user in the month with category information. Never null, may be empty.
+     */
+    @Query("SELECT is FROM ItemShare is " +
+           "JOIN FETCH is.invoiceItem ii " +
+           "LEFT JOIN FETCH ii.category " +
+           "JOIN ii.invoice i " +
+           "WHERE is.user = :user " +
+           "AND i.month = :month")
+    List<ItemShare> findByUserAndMonthWithCategory(@Param("user") User user,
+                                                   @Param("month") YearMonth month);
 } 

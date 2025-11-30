@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of ExpenseSharingService.
@@ -37,19 +38,16 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
+
     public void shareItem(final InvoiceItem item, final Map<User, BigDecimal> shares) {
         validateShares(shares);
         
         // Remove existing shares
         removeShares(item);
         
-        // Create new shares
-        for (Map.Entry<User, BigDecimal> entry : shares.entrySet()) {
-            User user = entry.getKey();
-            BigDecimal percentage = entry.getValue();
-            BigDecimal amount = item.getAmount().multiply(percentage).setScale(2, RoundingMode.HALF_UP);
-            
-            ItemShare share = ItemShare.of(user, item, percentage, amount, false);
+        // Create shares with rounding adjustment to ensure sum equals item amount
+        List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, false);
+        for (ItemShare share : shareList) {
             item.addShare(share);
             itemShareRepository.save(share);
         }
@@ -62,13 +60,9 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         // Remove existing shares
         removeShares(item);
         
-        // Create new shares
-        for (Map.Entry<User, BigDecimal> entry : newShares.entrySet()) {
-            User user = entry.getKey();
-            BigDecimal percentage = entry.getValue();
-            BigDecimal amount = item.getAmount().multiply(percentage).setScale(2, RoundingMode.HALF_UP);
-            
-            ItemShare share = ItemShare.of(user, item, percentage, amount, false);
+        // Create shares with rounding adjustment to ensure sum equals item amount
+        List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, newShares, false);
+        for (ItemShare share : shareList) {
             item.addShare(share);
             itemShareRepository.save(share);
         }
@@ -175,14 +169,17 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         // Remove existing shares
         removeShares(item);
         
-        // Create new shares
-        List<ItemShare> createdShares = new ArrayList<>();
+        // Convert to Map with responsible flag for adjustment method
+        Map<User, Boolean> responsibleMap = new HashMap<>();
         for (CreateItemShareRequest.UserShare userShare : userShares) {
             User user = userRepository.findById(userShare.userId()).get();
-            BigDecimal percentage = userShare.percentage();
-            BigDecimal amount = item.getAmount().multiply(percentage).setScale(2, RoundingMode.HALF_UP);
-            
-            ItemShare share = ItemShare.of(user, item, percentage, amount, userShare.responsible());
+            responsibleMap.put(user, userShare.responsible());
+        }
+        
+        // Create shares with rounding adjustment to ensure sum equals item amount
+        List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, responsibleMap);
+        List<ItemShare> createdShares = new ArrayList<>();
+        for (ItemShare share : shareList) {
             item.addShare(share);
             ItemShare savedShare = itemShareRepository.save(share);
             createdShares.add(savedShare);
@@ -239,5 +236,211 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             updated.add(itemShareRepository.save(share));
         }
         return updated;
+    }
+
+    /**
+     * Creates shares with rounding adjustment to ensure the sum of all shares
+     * equals exactly the item amount, compensating for rounding differences.
+     *
+     * @param item the invoice item to share. Must not be null.
+     * @param shares the map of users to their share percentages. Must not be null.
+     * @param defaultResponsible the default responsible flag for shares. Used when responsibleMap is null.
+     * @return a list of created item shares with adjusted amounts. Never null.
+     */
+    private List<ItemShare> createSharesWithRoundingAdjustment(
+            final InvoiceItem item,
+            final Map<User, BigDecimal> shares,
+            final boolean defaultResponsible) {
+        return createSharesWithRoundingAdjustment(item, shares, null, defaultResponsible);
+    }
+
+    /**
+     * Creates shares with rounding adjustment to ensure the sum of all shares
+     * equals exactly the item amount, compensating for rounding differences.
+     *
+     * @param item the invoice item to share. Must not be null.
+     * @param shares the map of users to their share percentages. Must not be null.
+     * @param responsibleMap the map of users to their responsible flags. Can be null.
+     * @return a list of created item shares with adjusted amounts. Never null.
+     */
+    private List<ItemShare> createSharesWithRoundingAdjustment(
+            final InvoiceItem item,
+            final Map<User, BigDecimal> shares,
+            final Map<User, Boolean> responsibleMap) {
+        return createSharesWithRoundingAdjustment(item, shares, responsibleMap, false);
+    }
+
+    /**
+     * Creates shares with rounding adjustment to ensure the sum of all shares
+     * equals exactly the item amount, compensating for rounding differences.
+     *
+     * @param item the invoice item to share. Must not be null.
+     * @param shares the map of users to their share percentages. Must not be null.
+     * @param responsibleMap the map of users to their responsible flags. Can be null.
+     * @param defaultResponsible the default responsible flag when responsibleMap doesn't contain a user.
+     * @return a list of created item shares with adjusted amounts. Never null.
+     */
+    private List<ItemShare> createSharesWithRoundingAdjustment(
+            final InvoiceItem item,
+            final Map<User, BigDecimal> shares,
+            final Map<User, Boolean> responsibleMap,
+            final boolean defaultResponsible) {
+        
+        List<ItemShare> shareList = new ArrayList<>();
+        List<Map.Entry<User, BigDecimal>> entries = new ArrayList<>(shares.entrySet());
+        BigDecimal totalCalculated = BigDecimal.ZERO;
+        
+        // Calculate all shares except the last one
+        for (int i = 0; i < entries.size() - 1; i++) {
+            Map.Entry<User, BigDecimal> entry = entries.get(i);
+            User user = entry.getKey();
+            BigDecimal percentage = entry.getValue();
+            BigDecimal amount = item.getAmount().multiply(percentage).setScale(2, RoundingMode.HALF_UP);
+            
+            totalCalculated = totalCalculated.add(amount);
+            
+            boolean responsible = responsibleMap != null && responsibleMap.containsKey(user)
+                ? responsibleMap.get(user)
+                : defaultResponsible;
+            ItemShare share = ItemShare.of(user, item, percentage, amount, responsible);
+            shareList.add(share);
+        }
+        
+        // Handle the last entry - adjust amount to ensure total equals item amount
+        if (!entries.isEmpty()) {
+            Map.Entry<User, BigDecimal> lastEntry = entries.get(entries.size() - 1);
+            User lastUser = lastEntry.getKey();
+            BigDecimal lastPercentage = lastEntry.getValue();
+            
+            // Calculate the last share amount to ensure total equals item amount
+            BigDecimal lastAmount = item.getAmount().subtract(totalCalculated).setScale(2, RoundingMode.HALF_UP);
+            
+            // Ensure the last amount is not negative (should not happen, but safety check)
+            if (lastAmount.compareTo(BigDecimal.ZERO) < 0) {
+                // If negative, it means we over-calculated. Adjust by reducing from the last calculated share.
+                BigDecimal adjustment = lastAmount.abs();
+                if (!shareList.isEmpty()) {
+                    ItemShare lastCreatedShare = shareList.get(shareList.size() - 1);
+                    BigDecimal adjustedAmount = lastCreatedShare.getAmount().subtract(adjustment).setScale(2, RoundingMode.HALF_UP);
+                    // Recreate the last share with adjusted amount
+                    shareList.remove(shareList.size() - 1);
+                    ItemShare adjustedShare = ItemShare.of(
+                        lastCreatedShare.getUser(),
+                        item,
+                        lastCreatedShare.getPercentage(),
+                        adjustedAmount,
+                        lastCreatedShare.isResponsible()
+                    );
+                    shareList.add(adjustedShare);
+                    lastAmount = BigDecimal.ZERO;
+                }
+            }
+            
+            boolean lastResponsible = responsibleMap != null && responsibleMap.containsKey(lastUser)
+                ? responsibleMap.get(lastUser)
+                : defaultResponsible;
+            ItemShare lastShare = ItemShare.of(lastUser, item, lastPercentage, lastAmount, lastResponsible);
+            shareList.add(lastShare);
+        }
+        
+        return shareList;
+    }
+
+    /**
+     * Recalculates all existing shares to fix rounding issues.
+     * This method maintains the percentage distribution but adjusts amounts
+     * to ensure the sum equals the item amount exactly.
+     *
+     * @return the number of items that were recalculated.
+     */
+    public int recalculateAllShares() {
+        // Get all shares and group by invoice item
+        List<ItemShare> allShares = itemShareRepository.findAll();
+        Map<InvoiceItem, List<ItemShare>> sharesByItem = allShares.stream()
+                .collect(Collectors.groupingBy(ItemShare::getInvoiceItem));
+
+        int recalculated = 0;
+
+        for (Map.Entry<InvoiceItem, List<ItemShare>> entry : sharesByItem.entrySet()) {
+            InvoiceItem item = entry.getKey();
+            List<ItemShare> shares = entry.getValue();
+
+            if (shares.isEmpty()) {
+                continue;
+            }
+
+            // Build map of user to percentage and responsible flag
+            Map<User, BigDecimal> percentageMap = new HashMap<>();
+            Map<User, Boolean> responsibleMap = new HashMap<>();
+            for (ItemShare share : shares) {
+                percentageMap.put(share.getUser(), share.getPercentage());
+                responsibleMap.put(share.getUser(), share.isResponsible());
+            }
+
+            // Recalculate amounts with rounding adjustment
+            BigDecimal totalCalculated = BigDecimal.ZERO;
+            List<ItemShare> sharesList = new ArrayList<>(shares);
+            
+            // Calculate all shares except the last one
+            for (int i = 0; i < sharesList.size() - 1; i++) {
+                ItemShare share = sharesList.get(i);
+                BigDecimal newAmount = item.getAmount().multiply(share.getPercentage())
+                        .setScale(2, RoundingMode.HALF_UP);
+                totalCalculated = totalCalculated.add(newAmount);
+                
+                // Update amount if different
+                if (share.getAmount().compareTo(newAmount) != 0) {
+                    // Create new share with updated amount (preserving payment info)
+                    ItemShare updatedShare = ItemShare.of(
+                        share.getUser(),
+                        item,
+                        share.getPercentage(),
+                        newAmount,
+                        share.isResponsible()
+                    );
+                    // Preserve payment information
+                    if (share.isPaid()) {
+                        updatedShare.markAsPaid(share.getPaymentMethod(), share.getPaidAt());
+                    }
+                    // Update in database
+                    item.removeShare(share);
+                    itemShareRepository.delete(share);
+                    item.addShare(updatedShare);
+                    itemShareRepository.save(updatedShare);
+                    sharesList.set(i, updatedShare);
+                }
+            }
+
+            // Adjust the last share to ensure total equals item amount
+            if (!sharesList.isEmpty()) {
+                ItemShare lastShare = sharesList.get(sharesList.size() - 1);
+                BigDecimal lastAmount = item.getAmount().subtract(totalCalculated)
+                        .setScale(2, RoundingMode.HALF_UP);
+                
+                // Update last share if amount changed
+                if (lastShare.getAmount().compareTo(lastAmount) != 0) {
+                    ItemShare updatedLastShare = ItemShare.of(
+                        lastShare.getUser(),
+                        item,
+                        lastShare.getPercentage(),
+                        lastAmount,
+                        lastShare.isResponsible()
+                    );
+                    // Preserve payment information
+                    if (lastShare.isPaid()) {
+                        updatedLastShare.markAsPaid(lastShare.getPaymentMethod(), lastShare.getPaidAt());
+                    }
+                    // Update in database
+                    item.removeShare(lastShare);
+                    itemShareRepository.delete(lastShare);
+                    item.addShare(updatedLastShare);
+                    itemShareRepository.save(updatedLastShare);
+                }
+            }
+
+            recalculated++;
+        }
+
+        return recalculated;
     }
 }

@@ -383,5 +383,25 @@
       "email": "Email",
       "manual": "Manual"
     }
+  },
+  "expenseReport": {
+    "title": "Gastos por Categoria",
+    "loading": "Carregando relatório...",
+    "errorLoadingReport": "Erro ao carregar relatório de gastos",
+    "retry": "Tentar Novamente",
+    "noData": "Nenhum dado disponível",
+    "noExpensesForMonth": "Nenhum gasto encontrado para este mês",
+    "month": "Mês",
+    "category": "Categoria",
+    "allCategories": "Todas as Categorias",
+    "totalAmount": "Total",
+    "totalCategories": "Categorias",
+    "totalTransactions": "Transações",
+    "ofTotal": "do total",
+    "transactions": "transações",
+    "detailsNotAvailable": "Detalhes das transações não disponíveis no momento",
+    "noDetailsAvailable": "Nenhum detalhe disponível",
+    "shared": "Compartilhado",
+    "unshared": "Não compartilhado"
   }
 } 

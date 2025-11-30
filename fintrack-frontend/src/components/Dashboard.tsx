@@ -6,6 +6,7 @@ import CreditCards from './CreditCards';
 import Invoices from './Invoices';
 import MyShares from './MyShares';
 import InvoiceImport from './InvoiceImport';
+import ExpenseReport from './ExpenseReport';
 import Layout from './layout/Layout';
 import './Dashboard.css';
 
@@ -13,7 +14,7 @@ const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
-  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'importInvoices' | 'myShares'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'importInvoices' | 'myShares' | 'expenseReport'>('main');
 
   // Atualizar view baseado no estado da navegação
   useEffect(() => {
@@ -22,6 +23,7 @@ const Dashboard: React.FC = () => {
     else if (path.includes('/invoices')) setActiveView('invoices');
     else if (path.includes('/import-invoices')) setActiveView('importInvoices');
     else if (path.includes('/my-shares')) setActiveView('myShares');
+    else if (path.includes('/expense-report')) setActiveView('expenseReport');
     else setActiveView('main');
   }, [location]);
 
@@ -30,6 +32,7 @@ const Dashboard: React.FC = () => {
   if (activeView === 'invoices') title = t('invoices.title');
   if (activeView === 'importInvoices') title = t('invoiceImport.title');
   if (activeView === 'myShares') title = t('shares.title');
+  if (activeView === 'expenseReport') title = t('expenseReport.title');
 
   return (
     <Layout title={title}>
@@ -76,6 +79,7 @@ const Dashboard: React.FC = () => {
       {activeView === 'invoices' && <Invoices />}
       {activeView === 'importInvoices' && <InvoiceImport />}
       {activeView === 'myShares' && <MyShares />}
+      {activeView === 'expenseReport' && <ExpenseReport />}
     </Layout>
   );
 };
