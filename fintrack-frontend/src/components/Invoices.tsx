@@ -82,10 +82,12 @@ const Invoices: React.FC = () => {
     loadInvoices();
     loadCreditCards();
     loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoices, filters]);
 
   const loadInvoices = async () => {

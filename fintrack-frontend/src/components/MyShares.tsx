@@ -15,12 +15,10 @@ interface GroupedShares {
 }
 
 const MyShares: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
+  const { t } = useTranslation();
   const [shares, setShares] = useState<MySharesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [groupedShares, setGroupedShares] = useState<GroupedShares>({});
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedShare, setSelectedShare] = useState<MyShareResponse | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
@@ -29,20 +27,9 @@ const MyShares: React.FC = () => {
   const [bulkPaymentMethod, setBulkPaymentMethod] = useState('PIX');
   const [bulkPaymentDate, setBulkPaymentDate] = useState(new Date().toISOString().slice(0, 16));
 
-  // Atualizar idioma quando mudar
-  useEffect(() => {
-    const handleLanguageChange = () => {
-      setCurrentLanguage(i18n.language);
-    };
-
-    i18n.on('languageChanged', handleLanguageChange);
-    return () => {
-      i18n.off('languageChanged', handleLanguageChange);
-    };
-  }, [i18n]);
-
   useEffect(() => {
     loadMyShares();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadMyShares = async () => {
@@ -65,8 +52,6 @@ const MyShares: React.FC = () => {
         }
         grouped[key].shares.push(share);
       });
-      
-      setGroupedShares(grouped);
     } catch (err: any) {
       console.error('Error loading shares:', err);
       setError(err.response?.data?.message || t('shares.errorLoadingShares'));

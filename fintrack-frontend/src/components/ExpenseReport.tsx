@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Calendar, Filter } from 'lucide-react';
 import apiService from '../services/api';
-import { ExpenseReportResponse, CategoryExpenseSummary } from '../types/expenseReport';
+import { ExpenseReportResponse } from '../types/expenseReport';
 import { Category } from '../types/invoice';
 import { formatCurrency, formatDate } from '../utils/invoiceUtils';
 import './ExpenseReport.css';
@@ -27,7 +27,7 @@ const ExpenseReport: React.FC = () => {
 
   useEffect(() => {
     loadExpenseReport();
-  }, [selectedMonth, selectedCategoryId]);
+  }, [selectedMonth, selectedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCategories = async () => {
     try {

@@ -26,9 +26,7 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
   const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [userShares, setUserShares] = useState<{ [key: number]: number }>({});
   const [inputValues, setInputValues] = useState<{ [key: number]: string }>({});
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,28 +48,10 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
       // Clear state when modal closes
       setUsers([]);
       setSelectedUsers([]);
-      setUserShares({});
       setInputValues({});
       setError(null);
     }
   }, [isOpen]);
-
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Load users first
-      await loadUsers();
-      
-      // Then load existing shares
-      await loadExistingShares();
-    } catch (err) {
-      setError(t('shares.errorLoadingData'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -105,9 +85,8 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
           }
         });
 
-        setSelectedUsers(userIdsWithShares);
-        setUserShares(userSharesData);
-        setInputValues(newInputValues);
+      setSelectedUsers(userIdsWithShares);
+      setInputValues(newInputValues);
       }
     } catch (err) {
       console.error('Error loading existing shares:', err);

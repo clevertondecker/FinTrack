@@ -31,6 +31,7 @@ const CreditCards: React.FC = () => {
     if (!token) {
       setError(t('common.noAuthToken'));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   const loadCreditCards = async () => {

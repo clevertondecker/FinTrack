@@ -31,6 +31,12 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     private final ItemShareRepository itemShareRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Constructs a new ExpenseSharingServiceImpl.
+     *
+     * @param itemShareRepository the item share repository. Must not be null.
+     * @param userRepository the user repository. Must not be null.
+     */
     public ExpenseSharingServiceImpl(final ItemShareRepository itemShareRepository,
                                      final UserRepository userRepository) {
         this.itemShareRepository = itemShareRepository;
@@ -175,7 +181,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             User user = userRepository.findById(userShare.userId()).get();
             responsibleMap.put(user, userShare.responsible());
         }
-        
+            
         // Create shares with rounding adjustment to ensure sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, responsibleMap);
         List<ItemShare> createdShares = new ArrayList<>();

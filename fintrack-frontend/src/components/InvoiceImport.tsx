@@ -26,6 +26,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
   useEffect(() => {
     loadCreditCards();
     loadImports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadCreditCards = async () => {

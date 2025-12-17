@@ -13,8 +13,4 @@ public enum CardType {
     CardType(String displayName) {
         this.displayName = displayName;
     }
-
-    public String getDisplayName() {
-        return displayName;
-    }
 } 

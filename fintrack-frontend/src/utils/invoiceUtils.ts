@@ -1,5 +1,3 @@
-import { useTranslation } from 'react-i18next';
-
 /**
  * Utility functions for invoice-related operations
  */

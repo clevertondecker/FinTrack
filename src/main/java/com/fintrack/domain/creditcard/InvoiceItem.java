@@ -186,15 +186,6 @@ public class InvoiceItem {
     }
 
     /**
-     * Sets the invoice item for a share. Used by JPA and ItemShare entity.
-     *
-     * @param invoiceItem the invoice item to set. Can be null.
-     */
-    void setInvoiceItem(final InvoiceItem invoiceItem) {
-        // This method is used by ItemShare to set the back reference
-    }
-
-    /**
      * Updates the category of this invoice item.
      * This is typically used after import to categorize items that were imported without a category.
      *

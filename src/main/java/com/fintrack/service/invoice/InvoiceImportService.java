@@ -32,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -41,8 +40,6 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import static com.fintrack.domain.creditcard.InvoiceItem.of;
@@ -321,7 +318,7 @@ public class InvoiceImportService {
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String uniqueFilename = UUID.randomUUID().toString() + extension;
+        String uniqueFilename = UUID.randomUUID() + extension;
 
         // Save file
         Path filePath = uploadPath.resolve(uniqueFilename);

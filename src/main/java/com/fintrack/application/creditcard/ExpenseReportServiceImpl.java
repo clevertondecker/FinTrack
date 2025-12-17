@@ -30,6 +30,12 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceCalculationService invoiceCalculationService;
 
+    /**
+     * Constructs a new ExpenseReportServiceImpl.
+     *
+     * @param invoiceRepository the invoice repository. Must not be null.
+     * @param invoiceCalculationService the invoice calculation service. Must not be null.
+     */
     public ExpenseReportServiceImpl(
             final InvoiceRepository invoiceRepository,
             final InvoiceCalculationService invoiceCalculationService) {

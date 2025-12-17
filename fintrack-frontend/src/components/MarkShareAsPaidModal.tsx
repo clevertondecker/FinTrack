@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { MarkShareAsPaidRequest } from '../types/itemShare';
 import apiService from '../services/api';
 import './MarkShareAsPaidModal.css';
@@ -30,7 +29,6 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
   shareAmount,
   onPaymentMarked
 }) => {
-  const { t } = useTranslation();
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 16));
   const [saving, setSaving] = useState(false);

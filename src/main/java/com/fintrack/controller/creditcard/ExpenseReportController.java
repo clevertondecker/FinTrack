@@ -30,6 +30,12 @@ public class ExpenseReportController {
     private final ExpenseReportServiceImpl expenseReportService;
     private final InvoiceService invoiceService;
 
+    /**
+     * Constructs a new ExpenseReportController.
+     *
+     * @param expenseReportService the expense report service. Must not be null.
+     * @param invoiceService the invoice service. Must not be null.
+     */
     public ExpenseReportController(
             final ExpenseReportServiceImpl expenseReportService,
             final InvoiceService invoiceService) {

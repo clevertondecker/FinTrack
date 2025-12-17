@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +25,12 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
 
     private final ExpenseSharingServiceImpl expenseSharingService;
 
-    public InvoiceCalculationServiceImpl(ExpenseSharingServiceImpl expenseSharingService) {
+    /**
+     * Constructs a new InvoiceCalculationServiceImpl.
+     *
+     * @param expenseSharingService the expense sharing service. Must not be null.
+     */
+    public InvoiceCalculationServiceImpl(final ExpenseSharingServiceImpl expenseSharingService) {
         this.expenseSharingService = expenseSharingService;
     }
 
@@ -82,7 +88,7 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
         }
         
         BigDecimal sharedAmount = calculateTotalSharedAmount(invoice);
-        return sharedAmount.divide(totalAmount, 4, BigDecimal.ROUND_HALF_UP);
+        return sharedAmount.divide(totalAmount, 4, RoundingMode.HALF_UP);
     }
 
     /**
@@ -104,7 +110,7 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
         if (item.getShares().isEmpty()) {
             User cardOwner = item.getInvoice().getCreditCard().getOwner();
             if (cardOwner.equals(user)) {
-                return item.getAmount();
+            return item.getAmount();
             }
             // User is not the card owner and item has no shares, so they owe nothing
             return BigDecimal.ZERO;
@@ -114,7 +120,7 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
         // Only the card owner should receive the unshared amount
         User cardOwner = item.getInvoice().getCreditCard().getOwner();
         if (cardOwner.equals(user)) {
-            return item.getUnsharedAmount();
+        return item.getUnsharedAmount();
         }
         
         // User is not the card owner and has no share, so they owe nothing

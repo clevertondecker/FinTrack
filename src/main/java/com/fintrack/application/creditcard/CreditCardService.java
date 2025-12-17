@@ -30,6 +30,13 @@ public class CreditCardService {
     private final BankJpaRepository bankRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Constructs a new CreditCardService.
+     *
+     * @param theCreditCardRepository the credit card repository. Must not be null.
+     * @param theBankRepository the bank repository. Must not be null.
+     * @param theUserRepository the user repository. Must not be null.
+     */
     public CreditCardService(final CreditCardJpaRepository theCreditCardRepository,
                             final BankJpaRepository theBankRepository,
                             final UserRepository theUserRepository) {
