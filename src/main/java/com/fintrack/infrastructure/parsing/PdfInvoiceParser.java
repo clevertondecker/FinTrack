@@ -1,4 +1,4 @@
-package com.fintrack.service.invoice;
+package com.fintrack.infrastructure.parsing;
 
 import com.fintrack.dto.invoice.ParsedInvoiceData;
 import com.fintrack.dto.invoice.ParsedInvoiceData.ParsedInvoiceItem;

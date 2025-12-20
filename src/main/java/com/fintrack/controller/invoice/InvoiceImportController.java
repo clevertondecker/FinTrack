@@ -1,4 +1,4 @@
-package com.fintrack.controller;
+package com.fintrack.controller.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.invoice.ImportStatus;
@@ -6,7 +6,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
-import com.fintrack.service.invoice.InvoiceImportService;
+import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 import jakarta.validation.Valid;

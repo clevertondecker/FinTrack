@@ -1,4 +1,4 @@
-package com.fintrack.service.invoice;
+package com.fintrack.application.invoice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +16,7 @@ import com.fintrack.dto.invoice.ParsedInvoiceData;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.InvoiceJpaRepository;
 import com.fintrack.infrastructure.persistence.invoice.InvoiceImportJpaRepository;
+import com.fintrack.infrastructure.parsing.PdfInvoiceParser;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -934,9 +935,8 @@ public class InvoiceImportService {
             return false;
         }
         
-        // Use cached set for O(1) lookup instead of O(n) array search
         return SPECIAL_ITEM_TYPES.stream()
-            .anyMatch(specialType -> normalizedDescription.contains(specialType));
+            .anyMatch(normalizedDescription::contains);
     }
 
     /**
@@ -1060,4 +1060,5 @@ public class InvoiceImportService {
             case MANUAL_REVIEW -> "Requer revisão manual";
         };
     }
-} 
+}
+

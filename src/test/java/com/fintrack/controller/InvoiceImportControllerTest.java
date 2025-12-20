@@ -1,6 +1,8 @@
-package com.fintrack.controller;
+package com.fintrack.controller.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.invoice.InvoiceImportService;
+import com.fintrack.controller.invoice.InvoiceImportController;
 import com.fintrack.domain.invoice.ImportSource;
 import com.fintrack.domain.invoice.ImportStatus;
 import com.fintrack.domain.user.Role;
@@ -10,7 +12,6 @@ import com.fintrack.domain.user.Email;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
-import com.fintrack.service.invoice.InvoiceImportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
