@@ -12,8 +12,6 @@ import java.time.YearMonth;
 import java.util.Optional;
 import java.util.Set;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +30,6 @@ import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
-import com.fintrack.domain.creditcard.InvoiceStatus;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.config.TestSecurityConfig;
@@ -58,7 +55,7 @@ class InvoiceControllerTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
@@ -146,20 +143,7 @@ class InvoiceControllerTest {
     void shouldGetUserInvoicesSuccessfully() throws Exception {
         // Given
         List<Invoice> invoices = List.of(testInvoice);
-        InvoiceResponse invoiceResponse = new InvoiceResponse(
-            
-            testInvoice.getId(),
-            testInvoice.getCreditCard().getId(),
-            testInvoice.getCreditCard().getName(),
-            testInvoice.getDueDate(),
-            testInvoice.getTotalAmount(),
-            testInvoice.getPaidAmount(),
-            testInvoice.getStatus().name(),
-            testInvoice.getCreatedAt(),
-            testInvoice.getUpdatedAt(),
-            testInvoice.getTotalAmount()
-        );
-        List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
+        List<InvoiceResponse> invoiceResponses = getInvoiceResponses();
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getUserInvoices(eq(testUser))).thenReturn(invoices);
@@ -175,15 +159,8 @@ class InvoiceControllerTest {
                 .andExpect(jsonPath("$.invoices.length()").value(1));
     }
 
-    @Test
-    @WithMockUser(username = "john@example.com")
-    @DisplayName("Should get invoices by credit card successfully")
-    void shouldGetInvoicesByCreditCardSuccessfully() throws Exception {
-        // Given
-        Long creditCardId = 1L;
-        List<Invoice> invoices = List.of(testInvoice);
+    private List<InvoiceResponse> getInvoiceResponses() {
         InvoiceResponse invoiceResponse = new InvoiceResponse(
-            
             testInvoice.getId(),
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
@@ -195,7 +172,17 @@ class InvoiceControllerTest {
             testInvoice.getUpdatedAt(),
             testInvoice.getTotalAmount()
         );
-        List<InvoiceResponse> invoiceResponses = List.of(invoiceResponse);
+      return List.of(invoiceResponse);
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should get invoices by credit card successfully")
+    void shouldGetInvoicesByCreditCardSuccessfully() throws Exception {
+        // Given
+        Long creditCardId = 1L;
+        List<Invoice> invoices = List.of(testInvoice);
+        List<InvoiceResponse> invoiceResponses = getInvoiceResponses();
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoicesByCreditCard(eq(creditCardId), eq(testUser))).thenReturn(invoices);

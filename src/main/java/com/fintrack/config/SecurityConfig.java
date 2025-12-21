@@ -124,10 +124,8 @@ public class SecurityConfig {
    * @param jwtUtil the JWT utility service. Configures JWT token handling.
    *
    * @param uds the user details service. Cannot be null.
-   *
-   * @throws Exception if configuration fails
    */
-  private void configureJwtFilter(HttpSecurity http, JwtUtil jwtUtil, CustomUserDetailsService uds) throws Exception {
+  private void configureJwtFilter(HttpSecurity http, JwtUtil jwtUtil, CustomUserDetailsService uds) {
     http.addFilterBefore(new JwtFilter(jwtUtil, uds), UsernamePasswordAuthenticationFilter.class);
   }
 

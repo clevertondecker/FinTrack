@@ -3,13 +3,12 @@ package com.fintrack.application.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Set;
 
-import org.apache.commons.lang3.Validate;
+import com.fintrack.domain.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.security.PasswordService;
 
 /**
@@ -90,7 +88,7 @@ public class UserServiceTest {
         @Test
         @DisplayName("Should register user successfully")
         void shouldRegisterUserSuccessfully() {
-            User expectedUser = User.of(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
+            User expectedUser = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
             when(passwordService.encodePassword(VALID_PASSWORD)).thenReturn(ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(expectedUser);
 
@@ -112,7 +110,7 @@ public class UserServiceTest {
         void shouldRegisterUserWithMultipleRoles() {
             Set<Role> multipleRoles = Set.of(Role.USER, Role.ADMIN);
             User expectedUser =
-              User.of(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, multipleRoles);
+              User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, multipleRoles);
 
             when(passwordService.encodePassword(VALID_PASSWORD)).thenReturn(ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(expectedUser);
@@ -130,7 +128,7 @@ public class UserServiceTest {
         @DisplayName("Should register user with admin role only")
         void shouldRegisterUserWithAdminRoleOnly() {
             Set<Role> adminRole = Set.of(Role.ADMIN);
-            User expectedUser = User.of(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, adminRole);
+            User expectedUser = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, adminRole);
             when(passwordService.encodePassword(VALID_PASSWORD)).thenReturn(ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(expectedUser);
 
@@ -148,7 +146,7 @@ public class UserServiceTest {
         void shouldNormalizeEmailToLowercaseDuringRegistration() {
             String mixedCaseEmail = "John.Doe@EXAMPLE.COM";
             User expectedUser =
-              User.of(VALID_NAME, mixedCaseEmail.toLowerCase(), ENCODED_PASSWORD, VALID_ROLES);
+              User.createLocalUser(VALID_NAME, mixedCaseEmail.toLowerCase(), ENCODED_PASSWORD, VALID_ROLES);
 
             when(passwordService.encodePassword(VALID_PASSWORD)).thenReturn(ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(expectedUser);
@@ -240,7 +238,7 @@ public class UserServiceTest {
         void shouldHandlePasswordEncodingIntegration() {
             String differentPassword = "differentPassword123";
             String differentEncodedPassword = "$2a$10$differentEncodedHash";
-            User expectedUser = User.of(VALID_NAME, VALID_EMAIL, differentEncodedPassword, VALID_ROLES);
+            User expectedUser = User.createLocalUser(VALID_NAME, VALID_EMAIL, differentEncodedPassword, VALID_ROLES);
 
             when(passwordService.encodePassword(differentPassword)).thenReturn(differentEncodedPassword);
             when(userRepository.save(any(User.class))).thenReturn(expectedUser);
@@ -256,7 +254,7 @@ public class UserServiceTest {
         @Test
         @DisplayName("Should handle repository save integration")
         void shouldHandleRepositorySaveIntegration() {
-            User savedUser = User.of(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
+            User savedUser = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
             when(passwordService.encodePassword(VALID_PASSWORD)).thenReturn(ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(savedUser);
 

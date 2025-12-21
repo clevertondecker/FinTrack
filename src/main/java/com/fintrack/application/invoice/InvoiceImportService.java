@@ -63,7 +63,7 @@ public class InvoiceImportService {
     /** Default number of installments when not specified. */
     private static final int DEFAULT_INSTALLMENTS = 1;
     
-    /** Default number of days to add to current date for due date calculation. */
+    /** Default number of days to add to the current date for due date calculation. */
     private static final int DEFAULT_DUE_DATE_DAYS = 30;
     
     /** Confidence threshold below which imports require manual review. */
@@ -336,19 +336,17 @@ public class InvoiceImportService {
      * @throws IOException if there's an error parsing the file.
      */
     private ParsedInvoiceData parseFile(InvoiceImport importRecord) throws IOException {
-        switch (importRecord.getSource()) {
-            case PDF:
-                return pdfInvoiceParser.parsePdf(importRecord.getFilePath());
-            case IMAGE:
-                // TODO: Implement image parsing with OCR
+      // TODO: Implement image parsing with OCR
+      // TODO: Implement email parsing
+      return switch (importRecord.getSource()) {
+        case PDF -> pdfInvoiceParser.parsePdf(importRecord.getFilePath());
+        case IMAGE ->
                 throw new UnsupportedOperationException("Image parsing not yet implemented.");
-            case EMAIL:
-                // TODO: Implement email parsing
+        case EMAIL ->
                 throw new UnsupportedOperationException("Email parsing not yet implemented.");
-            case MANUAL:
-            default:
+        default ->
                 throw new UnsupportedOperationException("Manual imports should not be processed automatically.");
-        }
+      };
     }
 
     /**
@@ -820,24 +818,19 @@ public class InvoiceImportService {
     private String buildSignatureBase(String normalizedDescription, String normalizedAmount,
                                     String normalizedDate, int installment, int totalInstallments) {
         // For special items like IOF, include date for more permissive deduplication
-        if (isSpecialItemType(normalizedDescription)) {
-            return String.join(SIGNATURE_DELIMITER,
+        String join = String.join(SIGNATURE_DELIMITER,
                 normalizedDescription,
                 normalizedAmount,
                 normalizedDate,  // Include date for special items
                 String.valueOf(installment),
                 String.valueOf(totalInstallments)
-            );
+        );
+        if (isSpecialItemType(normalizedDescription)) {
+            return join;
         }
         
         // For regular items, use strict deduplication
-        return String.join(SIGNATURE_DELIMITER,
-            normalizedDescription,
-            normalizedAmount,
-            normalizedDate,
-            String.valueOf(installment),
-            String.valueOf(totalInstallments)
-        );
+        return join;
     }
 
     /**
@@ -903,7 +896,6 @@ public class InvoiceImportService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             
-            // Pre-allocate StringBuilder with exact capacity for better performance
             StringBuilder hex = new StringBuilder(hash.length * 2);
             
             for (byte b : hash) {

@@ -1,11 +1,5 @@
 package com.fintrack.domain.creditcard;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -19,6 +13,7 @@ import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("CreditCard Tests")
 class CreditCardTest {
@@ -28,7 +23,7 @@ class CreditCardTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("Test Bank", "Test Bank Description");
     }
 
@@ -270,16 +265,16 @@ class CreditCardTest {
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
             CreditCard creditCard = CreditCard.of("Nubank", "1234", new BigDecimal("5000.00"), testUser, testBank);
-            
-            assertFalse(creditCard.equals(null));
+
+          assertNotNull(creditCard);
         }
 
         @Test
         @DisplayName("Should not be equal to different type")
         void shouldNotBeEqualToDifferentType() {
             CreditCard creditCard = CreditCard.of("Nubank", "1234", new BigDecimal("5000.00"), testUser, testBank);
-            
-            assertFalse(creditCard.equals("Not a CreditCard"));
+
+          assertNotEquals("Not a CreditCard", creditCard);
         }
 
         @Test

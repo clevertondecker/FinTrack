@@ -1,9 +1,7 @@
 package com.fintrack.domain.creditcard;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,8 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
@@ -31,7 +27,7 @@ class ItemShareTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("Test User", "test@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("Test User", "test@example.com", "password123", Set.of(Role.USER));
         Bank testBank = Bank.of("Test Bank", "1234");
         CreditCard testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 15));

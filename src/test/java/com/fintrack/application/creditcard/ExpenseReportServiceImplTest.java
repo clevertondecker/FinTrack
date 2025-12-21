@@ -62,8 +62,8 @@ class ExpenseReportServiceImplTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        cardOwner = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
-        otherUser = User.of("Jane Smith", "jane@example.com", "password456", Set.of(Role.USER));
+        cardOwner = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        otherUser = User.createLocalUser("Jane Smith", "jane@example.com", "password456", Set.of(Role.USER));
         
         // Set user IDs for equals() to work correctly
         java.lang.reflect.Field cardOwnerIdField = User.class.getDeclaredField("id");
@@ -204,7 +204,7 @@ class ExpenseReportServiceImplTest {
         @Test
         @DisplayName("Should return zero for user who is not card owner and has no shares")
         void shouldReturnZeroForUserWithoutShares() throws Exception {
-            // Given - Item with no shares, user is not card owner
+            // Given - Item with no shares, user is not a card owner
             Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
             InvoiceItem unsharedItem = InvoiceItem.of(invoice, "Personal Item", new BigDecimal("100.00"), 
                     foodCategory, LocalDate.of(2024, 10, 15));

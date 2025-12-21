@@ -3,7 +3,6 @@ package com.fintrack.domain.creditcard;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -210,9 +209,8 @@ class CategoryTest {
         @DisplayName("Should have same hash code for equal objects (same id)")
         void shouldHaveSameHashCodeForEqualObjects() {
             Category category1 = Category.of("Test", "#FF0000");
-            Category category2 = category1;
 
-            assertThat(category1).hasSameHashCodeAs(category2);
+          assertThat(category1).hasSameHashCodeAs(category1);
         }
 
         @Test

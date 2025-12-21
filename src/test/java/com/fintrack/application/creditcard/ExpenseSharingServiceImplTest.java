@@ -8,7 +8,6 @@ import com.fintrack.dto.creditcard.CreateItemShareRequest;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.InvoiceItemJpaRepository;
-import com.fintrack.domain.creditcard.ItemShareRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,8 +49,8 @@ class ExpenseSharingServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        user1 = userRepository.save(User.of("User 1", "user1@example.com", "password", Set.of(Role.USER)));
-        user2 = userRepository.save(User.of("User 2", "user2@example.com", "password", Set.of(Role.USER)));
+        user1 = userRepository.save(User.createLocalUser("User 1", "user1@example.com", "password", Set.of(Role.USER)));
+        user2 = userRepository.save(User.createLocalUser("User 2", "user2@example.com", "password", Set.of(Role.USER)));
 
         Bank bank =
           bankRepository.save(Bank.of("NU", "Nubank"));

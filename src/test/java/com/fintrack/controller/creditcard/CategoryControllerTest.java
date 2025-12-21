@@ -218,11 +218,9 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should handle maximum allowed category name length")
         void shouldHandleMaximumAllowedCategoryNameLength() throws Exception {
-            String maxLengthName = "This is exactly fifty characters long category name";
-            if (maxLengthName.length() != 50) {
-                maxLengthName = "A".repeat(50);
-            }
-            CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000");
+          String maxLengthName;
+          maxLengthName = "A".repeat(50);
+          CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000");
             Category longCategory = Category.of(maxLengthName, "#FF0000");
             when(categoryRepository.save(any(Category.class))).thenReturn(longCategory);
 

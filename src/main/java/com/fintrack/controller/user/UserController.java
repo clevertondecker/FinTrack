@@ -3,6 +3,7 @@ package com.fintrack.controller.user;
 import java.util.List;
 import java.util.Set;
 
+import com.fintrack.domain.user.UserRepository;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +26,8 @@ import com.fintrack.dto.user.RegisterResponse;
 import com.fintrack.dto.user.CurrentUserResponse;
 import com.fintrack.dto.user.UserListResponse;
 import com.fintrack.dto.user.UserResponse;
-import com.fintrack.domain.user.UserRepository;
-import com.fintrack.infrastructure.persistence.user.UserJpaRepository;
 
 import jakarta.validation.Valid;
-import java.util.Map;
 import java.util.Optional;
 
 /**

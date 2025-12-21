@@ -197,7 +197,6 @@ public class CreditCardService {
      * @param creditCard the credit card to convert. Cannot be null.
      * @return Map representation of the credit card. Never null.
      */
-    @Deprecated
     public Map<String, Object> toCreditCardDto(CreditCard creditCard) {
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", creditCard.getId());
@@ -240,7 +239,6 @@ public class CreditCardService {
      * @param creditCards the list of credit cards to convert. Cannot be null.
      * @return list of credit card DTOs. Never null, may be empty.
      */
-    @Deprecated
     public List<Map<String, Object>> toCreditCardDtos(List<CreditCard> creditCards) {
         List<Map<String, Object>> dtos = new ArrayList<>();
         for (CreditCard creditCard : creditCards) {

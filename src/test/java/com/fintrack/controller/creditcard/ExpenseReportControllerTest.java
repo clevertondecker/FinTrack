@@ -1,7 +1,6 @@
 package com.fintrack.controller.creditcard;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -33,10 +32,7 @@ import com.fintrack.config.TestSecurityConfig;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.dto.creditcard.CategoryExpenseSummary;
-import com.fintrack.dto.creditcard.ExpenseByCategoryResponse;
 import com.fintrack.dto.creditcard.ExpenseDetailResponse;
-import com.fintrack.dto.creditcard.ExpenseReportResponse;
 
 /**
  * Unit tests for ExpenseReportController.
@@ -65,7 +61,7 @@ class ExpenseReportControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         foodCategory = Category.of("Food", "#FF0000");
         transportCategory = Category.of("Transport", "#0000FF");
         

@@ -125,7 +125,7 @@ public class Invoice {
     /**
      * Records a payment for this invoice.
      *
-     * @param amount the amount being paid. Must be positive and not exceed total amount.
+     * @param amount the amount being paid. Must be positive and not exceed the total amount.
      */
     public void recordPayment(final BigDecimal amount) {
         Validate.notNull(amount, "Payment amount must not be null.");
@@ -171,7 +171,7 @@ public class Invoice {
     /**
      * Gets the remaining amount to be paid.
      *
-     * @return the remaining amount. Never null, may be zero.
+     * @return the remaining amount. Never null may be zero.
      */
     public BigDecimal getRemainingAmount() {
         return totalAmount.subtract(paidAmount);
@@ -180,7 +180,7 @@ public class Invoice {
     /**
      * Gets the total amount of this invoice.
      *
-     * @return the total amount. Never null, may be zero.
+     * @return the total amount. Never null may be zero.
      */
     public BigDecimal getTotalAmount() {
         return totalAmount;
@@ -217,7 +217,7 @@ public class Invoice {
     /**
      * Gets the amount already paid for this invoice.
      *
-     * @return the paid amount. Never null, may be zero.
+     * @return the paid amount. Never null may be zero.
      */
     public BigDecimal getPaidAmount() { return paidAmount; }
 
@@ -252,19 +252,9 @@ public class Invoice {
     }
 
     /**
-     * Checks if the persisted status is different from the calculated status.
-     * Useful for detecting when status needs to be updated.
-     *
-     * @return true if status needs update, false otherwise.
-     */
-    public boolean needsStatusUpdate() {
-        return !status.equals(calculateCurrentStatus());
-    }
-
-    /**
      * Gets all items in this invoice.
      *
-     * @return a defensive copy of the items list. Never null, may be empty.
+     * @return a defensive copy of the item list. Never null, may be empty.
      */
     public List<InvoiceItem> getItems() { return new ArrayList<>(items); }
 

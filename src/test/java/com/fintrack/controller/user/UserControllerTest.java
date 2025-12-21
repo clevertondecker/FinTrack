@@ -1,12 +1,9 @@
 package com.fintrack.controller.user;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,7 +31,6 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.RegisterRequest;
-import com.fintrack.dto.user.CurrentUserResponse;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController Tests")
@@ -415,7 +411,7 @@ class UserControllerTest {
         @DisplayName("Should get current user successfully")
         void shouldGetCurrentUserSuccessfully() {
             // Given
-            User testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+            User testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
             // Set ID and timestamps using reflection to avoid null values
             setUserId(testUser, 1L);
             setUserTimestamps(testUser);
@@ -478,16 +474,14 @@ class UserControllerTest {
                 .thenThrow(new RuntimeException("Database error"));
 
             // When & Then
-            assertThrows(RuntimeException.class, () -> {
-                userController.getCurrentUser(userDetails);
-            });
+            assertThrows(RuntimeException.class, () -> userController.getCurrentUser(userDetails));
         }
 
         @Test
         @DisplayName("Should handle user with multiple roles")
         void shouldHandleUserWithMultipleRoles() {
             // Given
-            User testUser = User.of("Admin User", "admin@example.com", "password123", Set.of(Role.USER, Role.ADMIN));
+            User testUser = User.createLocalUser("Admin User", "admin@example.com", "password123", Set.of(Role.USER, Role.ADMIN));
             setUserId(testUser, 2L);
             setUserTimestamps(testUser);
             
@@ -520,7 +514,7 @@ class UserControllerTest {
         @DisplayName("Should handle special characters in user name")
         void shouldHandleSpecialCharactersInUserName() {
             // Given
-            User testUser = User.of("João Silva", "joao@example.com", "password123", Set.of(Role.USER));
+            User testUser = User.createLocalUser("João Silva", "joao@example.com", "password123", Set.of(Role.USER));
             setUserId(testUser, 3L);
             setUserTimestamps(testUser);
             

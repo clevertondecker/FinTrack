@@ -47,7 +47,7 @@ public class UserService {
     public User registerUser(final String name, final String email,
                              final String rawPassword, final Set<Role> roles) {
         String encodedPassword = passwordService.encodePassword(rawPassword);
-        User user = User.of(name, email, encodedPassword, roles);
+        User user = User.createLocalUser(name, email, encodedPassword, roles);
 
         return userRepository.save(user);
     }

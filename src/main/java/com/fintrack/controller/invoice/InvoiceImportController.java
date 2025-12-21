@@ -9,7 +9,6 @@ import com.fintrack.dto.invoice.ImportProgressResponse;
 import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
-import jakarta.validation.Valid;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -72,16 +72,17 @@ public class InvoiceImportController {
 
         Validate.notNull(file, "File must not be null.");
         if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
         }
 
         try {
             // Parse the request JSON using ObjectMapper
-            ImportInvoiceRequest request = objectMapper.readValue(requestJson, ImportInvoiceRequest.class);
+            ImportInvoiceRequest request =
+                objectMapper.readValue(requestJson, ImportInvoiceRequest.class);
             
             User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
             
             ImportInvoiceResponse response = invoiceImportService.importInvoice(file, request, user);
             return ResponseEntity.accepted().body(response);
@@ -122,14 +123,16 @@ public class InvoiceImportController {
             @PathVariable Long importId,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
         }
         
         try {
             User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-            ImportProgressResponse progress = invoiceImportService.getImportProgress(importId, user);
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+
+            ImportProgressResponse progress =
+                invoiceImportService.getImportProgress(importId, user);
             return ResponseEntity.ok(progress);
         } catch (IllegalArgumentException e) {
             logger.warn("Import not found or access denied: {}", e.getMessage());
@@ -145,13 +148,11 @@ public class InvoiceImportController {
      */
     @GetMapping
     public ResponseEntity<List<ImportInvoiceResponse>> getUserImports(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
-        
+        getUserDetail(userDetails);
+
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImports(user);
         return ResponseEntity.ok(imports);
     }
@@ -167,15 +168,19 @@ public class InvoiceImportController {
     public ResponseEntity<List<ImportInvoiceResponse>> getUserImportsByStatus(
             @RequestParam ImportStatus status,
             @AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
-        
+        getUserDetail(userDetails);
+
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImportsByStatus(user, status);
         return ResponseEntity.ok(imports);
+    }
+
+    private void getUserDetail(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
     }
 
     /**
@@ -186,14 +191,14 @@ public class InvoiceImportController {
      */
     @GetMapping("/failed")
     public ResponseEntity<List<ImportInvoiceResponse>> getFailedImports(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
-        
+        getUserDetail(userDetails);
+
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-        List<ImportInvoiceResponse> failedImports = invoiceImportService.getUserImportsByStatus(user, ImportStatus.FAILED);
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+
+        List<ImportInvoiceResponse> failedImports =
+            invoiceImportService.getUserImportsByStatus(user, ImportStatus.FAILED);
         return ResponseEntity.ok(failedImports);
     }
 
@@ -205,14 +210,14 @@ public class InvoiceImportController {
      */
     @GetMapping("/manual-review")
     public ResponseEntity<List<ImportInvoiceResponse>> getManualReviewImports(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
-        
+        getUserDetail(userDetails);
+
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-        List<ImportInvoiceResponse> imports = invoiceImportService.getUserImportsByStatus(user, ImportStatus.MANUAL_REVIEW);
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+
+        List<ImportInvoiceResponse> imports =
+            invoiceImportService.getUserImportsByStatus(user, ImportStatus.MANUAL_REVIEW);
         return ResponseEntity.ok(imports);
     }
 } 

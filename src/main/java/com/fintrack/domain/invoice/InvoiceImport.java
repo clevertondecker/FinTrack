@@ -45,9 +45,6 @@ public class InvoiceImport {
     private String filePath;
 
     @Column(columnDefinition = "TEXT")
-    private String extractedText;
-
-    @Column(columnDefinition = "TEXT")
     private String parsedData; // JSON with extracted data
 
     @Column(length = 1000)
@@ -162,15 +159,6 @@ public class InvoiceImport {
     }
 
     /**
-     * Sets the extracted text from the file.
-     *
-     * @param extractedText the extracted text. Can be null.
-     */
-    public void setExtractedText(final String extractedText) {
-        this.extractedText = extractedText;
-    }
-
-    /**
      * Sets the parsed data as JSON.
      *
      * @param parsedData the parsed data in JSON format. Can be null.
@@ -232,7 +220,6 @@ public class InvoiceImport {
     public ImportSource getSource() { return source; }
     public String getOriginalFileName() { return originalFileName; }
     public String getFilePath() { return filePath; }
-    public String getExtractedText() { return extractedText; }
     public String getParsedData() { return parsedData; }
     public String getErrorMessage() { return errorMessage; }
     public LocalDateTime getImportedAt() { return importedAt; }

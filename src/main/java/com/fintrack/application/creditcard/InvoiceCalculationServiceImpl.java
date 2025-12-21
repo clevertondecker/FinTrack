@@ -106,17 +106,17 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
             }
         }
         
-        // If item has no shares, check if user is the card owner
+        // If an item has no shares, check if a user is the card owner
         if (item.getShares().isEmpty()) {
             User cardOwner = item.getInvoice().getCreditCard().getOwner();
             if (cardOwner.equals(user)) {
             return item.getAmount();
             }
-            // User is not the card owner and item has no shares, so they owe nothing
+            // The User is not the card owner and the item has no shares, so they owe nothing
             return BigDecimal.ZERO;
         }
         
-        // Item is shared but user has no share
+        // Item is shared, but user has no share
         // Only the card owner should receive the unshared amount
         User cardOwner = item.getInvoice().getCreditCard().getOwner();
         if (cardOwner.equals(user)) {

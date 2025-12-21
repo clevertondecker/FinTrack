@@ -1,7 +1,6 @@
 package com.fintrack.application.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
@@ -29,17 +28,14 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.lang.reflect.InvocationTargetException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,7 +77,7 @@ class InvoiceImportServiceTest {
     void setUp() {
         Set<Role> roles = new HashSet<>();
         roles.add(Role.USER);
-        testUser = User.of("Test User", "test@example.com", "password123", roles);
+        testUser = User.createLocalUser("Test User", "test@example.com", "password123", roles);
         testBank = Bank.of("001", "Test Bank");
         testCreditCard = CreditCard.of("Test Card", "1234", BigDecimal.valueOf(10000), testUser, testBank);
         testFile = new MockMultipartFile(
@@ -138,7 +134,7 @@ class InvoiceImportServiceTest {
         // Given
         Set<Role> otherRoles = new HashSet<>();
         otherRoles.add(Role.USER);
-        User otherUser = User.of("Other User", "other@example.com", "password123", otherRoles);
+        User otherUser = User.createLocalUser("Other User", "other@example.com", "password123", otherRoles);
         CreditCard otherUserCard = CreditCard.of("Other Card", "5678", BigDecimal.valueOf(5000), otherUser, testBank);
         
         // Set IDs via reflection to ensure proper equality comparison

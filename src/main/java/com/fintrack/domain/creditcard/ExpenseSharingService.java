@@ -69,10 +69,8 @@ public interface ExpenseSharingService {
      * Validates that the sum of share percentages equals 1.0 (100%).
      *
      * @param shares a map of users to their share percentages. Must not be null.
-     *
-     * @return true if the shares are valid, false otherwise.
      */
-    boolean validateShares(Map<User, BigDecimal> shares);
+    void validateShares(Map<User, BigDecimal> shares);
 
     /**
      * Calculates the amount each user should pay based on their share percentage.

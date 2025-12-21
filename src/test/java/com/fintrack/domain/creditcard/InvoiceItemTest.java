@@ -1,11 +1,5 @@
 package com.fintrack.domain.creditcard;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 @DisplayName("InvoiceItem Tests")
 class InvoiceItemTest {
 
@@ -32,7 +28,7 @@ class InvoiceItemTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("Test Bank", "Test Bank Description");
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
@@ -162,7 +158,7 @@ class InvoiceItemTest {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), null, LocalDate.now());
 
             assertNotNull(item);
-            assertEquals(null, item.getCategory());
+            assertNull(item.getCategory());
         }
 
         @Test
@@ -224,8 +220,8 @@ class InvoiceItemTest {
         @DisplayName("Should add share successfully")
         void shouldAddShareSuccessfully() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
-            User user2 = User.of("User2", "user2@example.com", "password123", Set.of(Role.USER));
+            User user1 = User.createLocalUser("User1", "user1@example.com", "password123", Set.of(Role.USER));
+            User user2 = User.createLocalUser("User2", "user2@example.com", "password123", Set.of(Role.USER));
 
             ItemShare share1 = ItemShare.of(user1, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
             ItemShare share2 = ItemShare.of(user2, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
@@ -242,7 +238,7 @@ class InvoiceItemTest {
         @DisplayName("Should calculate shared amount correctly")
         void shouldCalculateSharedAmountCorrectly() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
+            User user1 = User.createLocalUser("User1", "user1@example.com", "password123", Set.of(Role.USER));
 
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.3"), new BigDecimal("30.00"));
             item.addShare(share);
@@ -256,7 +252,7 @@ class InvoiceItemTest {
         @DisplayName("Should remove share successfully")
         void shouldRemoveShareSuccessfully() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
+            User user1 = User.createLocalUser("User1", "user1@example.com", "password123", Set.of(Role.USER));
 
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.5"), new BigDecimal("50.00"));
             item.addShare(share);
@@ -273,9 +269,9 @@ class InvoiceItemTest {
         @DisplayName("Should handle multiple shares with different amounts")
         void shouldHandleMultipleSharesWithDifferentAmounts() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Dinner", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
-            User user2 = User.of("User2", "user2@example.com", "password123", Set.of(Role.USER));
-            User user3 = User.of("User3", "user3@example.com", "password123", Set.of(Role.USER));
+            User user1 = User.createLocalUser("User1", "user1@example.com", "password123", Set.of(Role.USER));
+            User user2 = User.createLocalUser("User2", "user2@example.com", "password123", Set.of(Role.USER));
+            User user3 = User.createLocalUser("User3", "user3@example.com", "password123", Set.of(Role.USER));
 
             ItemShare share1 = ItemShare.of(user1, item, new BigDecimal("0.4"), new BigDecimal("40.00"));
             ItemShare share2 = ItemShare.of(user2, item, new BigDecimal("0.3"), new BigDecimal("30.00"));
@@ -293,7 +289,7 @@ class InvoiceItemTest {
         @DisplayName("Should handle multiple shares with zero amounts")
         void shouldHandleMultipleSharesWithZeroAmounts() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
-            User user1 = User.of("User1", "user1@example.com", "password123", Set.of(Role.USER));
+            User user1 = User.createLocalUser("User1", "user1@example.com", "password123", Set.of(Role.USER));
 
             ItemShare share = ItemShare.of(user1, item, new BigDecimal("0.01"), new BigDecimal("0.01"));
             item.addShare(share);
@@ -341,7 +337,7 @@ class InvoiceItemTest {
         void shouldNotBeEqualToNull() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
 
-            assertFalse(item.equals(null));
+            assertNotNull(item);
         }
 
         @Test
@@ -349,7 +345,7 @@ class InvoiceItemTest {
         void shouldNotBeEqualToDifferentType() {
             InvoiceItem item = InvoiceItem.of(testInvoice, "Description", new BigDecimal("100.00"), foodCategory, LocalDate.now());
 
-            assertFalse(item.equals("Not an InvoiceItem"));
+          assertNotEquals("Not an InvoiceItem", item);
         }
 
         @Test

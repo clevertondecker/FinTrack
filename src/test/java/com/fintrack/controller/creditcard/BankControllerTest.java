@@ -8,10 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,15 +46,14 @@ class BankControllerTest {
     private Bank nubank;
     private Bank itau;
     private Bank santander;
-    private User testUser;
 
-    @BeforeEach
+  @BeforeEach
     void setUp() {
         nubank = Bank.of("NU", "Nubank");
         itau = Bank.of("ITAU", "Itaú Unibanco");
         santander = Bank.of("SAN", "Santander");
-        testUser = User.of("Test User", "test@example.com", "password123", Set.of(Role.USER));
-    }
+        User.createLocalUser("Test User", "test@example.com", "password123", Set.of(Role.USER));
+  }
 
     @Nested
     @DisplayName("Create Bank Tests")
@@ -191,7 +187,7 @@ class BankControllerTest {
         @DisplayName("Should return empty list when no banks exist")
         void shouldReturnEmptyListWhenNoBanksExist() throws Exception {
             // Given
-            when(bankRepository.findAll()).thenReturn(Arrays.asList());
+            when(bankRepository.findAll()).thenReturn(List.of());
 
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
@@ -205,7 +201,7 @@ class BankControllerTest {
         @DisplayName("Should handle single bank")
         void shouldHandleSingleBank() throws Exception {
             // Given
-            List<Bank> banks = Arrays.asList(nubank);
+            List<Bank> banks = Collections.singletonList(nubank);
             when(bankRepository.findAll()).thenReturn(banks);
 
             mockMvc.perform(get("/api/banks"))

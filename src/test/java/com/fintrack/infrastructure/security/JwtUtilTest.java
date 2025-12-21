@@ -3,20 +3,12 @@ package com.fintrack.infrastructure.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Instant;
-import java.util.Date;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Unit tests for the JwtUtil infrastructure service.
@@ -27,10 +19,8 @@ import javax.crypto.spec.SecretKeySpec;
 @DisplayName("JWT Utility")
 class JwtUtilTest {
 
-    private static final String SECRET_KEY = "testSecretKeyForJwtUtilTestingPurposesOnly123456789";
     private static final String VALID_USERNAME = "john.doe@example.com";
     private static final String DIFFERENT_USERNAME = "jane.smith@example.com";
-    private static final long EXPIRATION_TIME = 900000; // 15 minutes in milliseconds
 
     private JwtUtil jwtUtil;
 
@@ -98,9 +88,6 @@ class JwtUtilTest {
         @Test
         @DisplayName("Should generate token with future expiration")
         void shouldGenerateTokenWithFutureExpiration() {
-            // Given
-            long beforeGeneration = System.currentTimeMillis();
-
             // When
             String token = jwtUtil.generateToken(VALID_USERNAME);
 
@@ -113,9 +100,6 @@ class JwtUtilTest {
         @Test
         @DisplayName("Should generate token with reasonable expiration time")
         void shouldGenerateTokenWithReasonableExpirationTime() {
-            // Given
-            long beforeGeneration = System.currentTimeMillis();
-
             // When
             String token = jwtUtil.generateToken(VALID_USERNAME);
 
@@ -128,9 +112,6 @@ class JwtUtilTest {
         @Test
         @DisplayName("Should generate token with issued at time")
         void shouldGenerateTokenWithIssuedAtTime() {
-            // Given
-            long beforeGeneration = System.currentTimeMillis();
-
             // When
             String token = jwtUtil.generateToken(VALID_USERNAME);
 

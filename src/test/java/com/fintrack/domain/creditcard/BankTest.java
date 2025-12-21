@@ -2,8 +2,6 @@ package com.fintrack.domain.creditcard;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.LocalDateTime;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,14 +37,12 @@ class BankTest {
         @DisplayName("Should throw exception when name is null or blank")
         void shouldThrowExceptionWhenNameIsNullOrBlank(String invalidName) {
             if (invalidName == null) {
-                NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-                    Bank.of("NU", invalidName);
-                });
+                NullPointerException exception =
+                    assertThrows(NullPointerException.class, () -> Bank.of("NU", invalidName));
                 assertEquals("Bank name must not be null or blank.", exception.getMessage());
             } else {
-                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                    Bank.of("NU", invalidName);
-                });
+                IllegalArgumentException exception =
+                    assertThrows(IllegalArgumentException.class, () -> Bank.of("NU", invalidName));
                 assertEquals("Bank name must not be null or blank.", exception.getMessage());
             }
         }
@@ -57,14 +53,12 @@ class BankTest {
         @DisplayName("Should throw exception when code is null or blank")
         void shouldThrowExceptionWhenCodeIsNullOrBlank(String invalidCode) {
             if (invalidCode == null) {
-                NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-                    Bank.of(invalidCode, "Nubank");
-                });
+                NullPointerException exception =
+                    assertThrows(NullPointerException.class, () -> Bank.of(invalidCode, "Nubank"));
                 assertEquals("Bank code must not be null or blank.", exception.getMessage());
             } else {
-                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                    Bank.of(invalidCode, "Nubank");
-                });
+                IllegalArgumentException exception =
+                    assertThrows(IllegalArgumentException.class, () -> Bank.of(invalidCode, "Nubank"));
                 assertEquals("Bank code must not be null or blank.", exception.getMessage());
             }
         }
@@ -218,7 +212,7 @@ class BankTest {
         @Test
         @DisplayName("Should handle maximum code length")
         void shouldHandleMaximumCodeLength() {
-            String maxCode = "A".repeat(50); // Assuming reasonable max length
+            String maxCode = "A".repeat(50); // Assuming a reasonable max length
             Bank bank = Bank.of(maxCode, "Bank Name");
             assertEquals(maxCode, bank.getCode());
         }
@@ -332,8 +326,8 @@ class BankTest {
             Bank bank1 = Bank.of("NU", "Nubank");
             Bank bank2 = Bank.of("ITAU", "Itaú");
             
-            // Simulate same ID (in real scenario, this would be set by JPA)
-            // Since we can't set ID directly, we test the equals logic differently
+            // Simulate the same ID (in a real scenario, this would be set by JPA)
+            // Since we can't set ID directly, we test the equal logic differently
             // The current implementation only considers id for equality
             assertEquals(bank1, bank2); // Both have null IDs
         }
@@ -346,7 +340,7 @@ class BankTest {
             Bank bank1 = Bank.of("NU", "Nubank");
             Bank bank2 = Bank.of("ITAU", "Itaú");
             
-            // Both have null IDs, so they are equal according to current implementation
+            // Both have null IDs, so they are equal, according to current implementation
             assertEquals(bank1, bank2);
         }
     }
@@ -439,10 +433,7 @@ class BankTest {
             // Verify that the values are correctly set and immutable
             assertEquals("NU", bank.getCode());
             assertEquals("Nubank", bank.getName());
-            
-            // Create another bank with different values
-            Bank bank2 = Bank.of("ITAU", "Itaú");
-            
+
             // Verify that the first bank's values haven't changed
             assertEquals("NU", bank.getCode());
             assertEquals("Nubank", bank.getName());

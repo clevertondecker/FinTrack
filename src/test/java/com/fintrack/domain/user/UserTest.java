@@ -34,7 +34,7 @@ public class UserTest {
         @Test
         @DisplayName("Should create user with valid parameters")
         void shouldCreateUserWithValidParameters() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user).isNotNull();
             assertThat(user.getName()).isEqualTo(VALID_NAME);
@@ -48,7 +48,7 @@ public class UserTest {
         void shouldCreateUserWithMultipleRoles() {
             Set<Role> multipleRoles = Set.of(Role.USER, Role.ADMIN);
 
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, multipleRoles);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, multipleRoles);
 
             assertThat(user.getName()).isEqualTo(VALID_NAME);
             assertThat(user.getEmail().getEmail()).isEqualTo(VALID_EMAIL);
@@ -61,7 +61,7 @@ public class UserTest {
         void shouldNormalizeEmailToLowercase() {
             String mixedCaseEmail = "John.Doe@EXAMPLE.COM";
 
-            User user = User.of(VALID_NAME, mixedCaseEmail, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, mixedCaseEmail, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user.getEmail().getEmail()).isEqualTo("john.doe@example.com");
         }
@@ -75,7 +75,7 @@ public class UserTest {
         @ValueSource(strings = {"", " ", "  ", "\t", "\n"})
         @DisplayName("Should throw exception when name is blank")
         void shouldThrowExceptionWhenNameIsBlank(String blankName) {
-            assertThatThrownBy(() -> User.of(blankName, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(blankName, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Name must not be null or blank");
         }
@@ -83,7 +83,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when name is null")
         void shouldThrowExceptionWhenNameIsNull() {
-            assertThatThrownBy(() -> User.of(null, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(null, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Name must not be null or blank");
         }
@@ -92,7 +92,7 @@ public class UserTest {
         @ValueSource(strings = {"", " ", "  ", "\t", "\n"})
         @DisplayName("Should throw exception when password is blank")
         void shouldThrowExceptionWhenPasswordIsBlank(String blankPassword) {
-            assertThatThrownBy(() -> User.of(VALID_NAME, VALID_EMAIL, blankPassword, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, VALID_EMAIL, blankPassword, VALID_ROLES))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Password must not be null or blank");
         }
@@ -100,7 +100,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when password is null")
         void shouldThrowExceptionWhenPasswordIsNull() {
-            assertThatThrownBy(() -> User.of(VALID_NAME, VALID_EMAIL, null, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, VALID_EMAIL, null, VALID_ROLES))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Password must not be null or blank");
         }
@@ -108,7 +108,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when roles is null")
         void shouldThrowExceptionWhenRolesIsNull() {
-            assertThatThrownBy(() -> User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, null))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Roles must not be null");
         }
@@ -116,7 +116,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when email is null")
         void shouldThrowExceptionWhenEmailIsNull() {
-            assertThatThrownBy(() -> User.of(VALID_NAME, null, VALID_PASSWORD, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, null, VALID_PASSWORD, VALID_ROLES))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Email cannot be null or blank");
         }
@@ -125,7 +125,7 @@ public class UserTest {
         @ValueSource(strings = {"", " ", "  ", "\t", "\n"})
         @DisplayName("Should throw exception when email is blank")
         void shouldThrowExceptionWhenEmailIsBlank(String blankEmail) {
-            assertThatThrownBy(() -> User.of(VALID_NAME, blankEmail, VALID_PASSWORD, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, blankEmail, VALID_PASSWORD, VALID_ROLES))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Email cannot be null or blank");
         }
@@ -147,7 +147,7 @@ public class UserTest {
         })
         @DisplayName("Should throw exception when email format is invalid")
         void shouldThrowExceptionWhenEmailFormatIsInvalid(String invalidEmail) {
-            assertThatThrownBy(() -> User.of(VALID_NAME, invalidEmail, VALID_PASSWORD, VALID_ROLES))
+            assertThatThrownBy(() -> User.createLocalUser(VALID_NAME, invalidEmail, VALID_PASSWORD, VALID_ROLES))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid email format");
         }
@@ -160,7 +160,7 @@ public class UserTest {
         @Test
         @DisplayName("Should return correct values from getters")
         void shouldReturnCorrectValuesFromGetters() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user.getName()).isEqualTo(VALID_NAME);
             assertThat(user.getEmail().getEmail()).isEqualTo(VALID_EMAIL);
@@ -171,7 +171,7 @@ public class UserTest {
         @Test
         @DisplayName("Should return non-null timestamps")
         void shouldReturnNonNullTimestamps() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user.getCreatedAt()).isNotNull();
             assertThat(user.getUpdatedAt()).isNotNull();
@@ -187,8 +187,8 @@ public class UserTest {
         @Test
         @DisplayName("Should be equal when users have same ID")
         void shouldBeEqualWhenUsersHaveSameId() {
-            User user1 = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
-            User user2 = User.of("Different Name", "different@email.com", "differentPassword", Set.of(Role.ADMIN));
+            User user1 = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user2 = User.createLocalUser("Different Name", "different@email.com", "differentPassword", Set.of(Role.ADMIN));
 
             // Set same ID using reflection
             setUserId(user1, 1L);
@@ -201,7 +201,7 @@ public class UserTest {
         @Test
         @DisplayName("Should be equal to itself")
         void shouldBeEqualToItself() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user).isEqualTo(user);
         }
@@ -209,7 +209,7 @@ public class UserTest {
         @Test
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             assertThat(user).isNotEqualTo(null);
         }
@@ -217,7 +217,7 @@ public class UserTest {
         @Test
         @DisplayName("Should not be equal to different type")
         void shouldNotBeEqualToDifferentType() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
             String differentType = "not a user";
 
             assertThat(user).isNotEqualTo(differentType);
@@ -226,7 +226,7 @@ public class UserTest {
         @Test
         @DisplayName("Should have consistent hashCode")
         void shouldHaveConsistentHashCode() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             int hashCode1 = user.hashCode();
             int hashCode2 = user.hashCode();
@@ -244,7 +244,7 @@ public class UserTest {
         void shouldCreateUserWithCurrentTimestamps() {
             LocalDateTime beforeCreation = LocalDateTime.now();
 
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
             LocalDateTime afterCreation = LocalDateTime.now();
 
             assertThat(user.getCreatedAt()).isBetween(beforeCreation, afterCreation);
@@ -254,7 +254,7 @@ public class UserTest {
         @Test
         @DisplayName("Should have same created and updated time initially")
         void shouldHaveSameCreatedAndUpdatedTimeInitially() {
-            User user = User.of(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
             // Allow for small time differences due to execution time
             long timeDifference = Math.abs(Duration.between(user.getCreatedAt(), user.getUpdatedAt()).toMillis());

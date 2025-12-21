@@ -204,10 +204,10 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         if (category1 == null || category2 == null) {
             // Check if both are uncategorized by name
             if (category1 != null && "Sem categoria".equals(category1.getName())) {
-                return category2 == null || "Sem categoria".equals(category2.getName());
+                return true;
             }
             if (category2 != null && "Sem categoria".equals(category2.getName())) {
-                return category1 == null || "Sem categoria".equals(category1.getName());
+                return true;
             }
             return false;
         }

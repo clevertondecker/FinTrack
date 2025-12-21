@@ -1,7 +1,6 @@
 package com.fintrack.controller.auth;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -119,14 +118,6 @@ class AuthControllerTest {
     @Nested
     @DisplayName("Constructor Tests")
     class ConstructorTests {
-
-        @Test
-        @DisplayName("Should create AuthController with valid dependencies")
-        void shouldCreateAuthControllerWithValidDependencies() {
-            AuthController controller = new AuthController(authManager, jwtUtil);
-
-            assert controller != null;
-        }
 
         @Test
         @DisplayName("Should throw exception when AuthenticationManager is null")

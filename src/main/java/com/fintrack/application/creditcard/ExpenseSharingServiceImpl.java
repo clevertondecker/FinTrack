@@ -51,7 +51,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         // Remove existing shares
         removeShares(item);
         
-        // Create shares with rounding adjustment to ensure sum equals item amount
+        // Create shares with rounding adjustment to ensure a sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, false);
         for (ItemShare share : shareList) {
             item.addShare(share);
@@ -66,7 +66,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         // Remove existing shares
         removeShares(item);
         
-        // Create shares with rounding adjustment to ensure sum equals item amount
+        // Create shares with rounding adjustment to ensure a sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, newShares, false);
         for (ItemShare share : shareList) {
             item.addShare(share);
@@ -105,11 +105,23 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public boolean validateShares(final Map<User, BigDecimal> shares) {
+    public void validateShares(final Map<User, BigDecimal> shares) {
         if (shares == null || shares.isEmpty()) {
             throw new IllegalArgumentException("Shares cannot be null or empty");
         }
-        
+
+        BigDecimal totalPercentage = getTotalPercentage(shares);
+
+        // Allow for small rounding differences (within 0.01)
+        BigDecimal difference = totalPercentage.subtract(BigDecimal.ONE).abs();
+        if (difference.compareTo(new BigDecimal("0.01")) > 0) {
+            throw new IllegalArgumentException("Sum of share percentages must equal 1.0 (100%). Current sum: " + totalPercentage);
+        }
+
+    }
+
+    // Extracted method to calculate total percentage and validate individual percentages.
+    private BigDecimal getTotalPercentage(Map<User, BigDecimal> shares) {
         BigDecimal totalPercentage = BigDecimal.ZERO;
         for (BigDecimal percentage : shares.values()) {
             if (percentage == null) {
@@ -123,14 +135,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             }
             totalPercentage = totalPercentage.add(percentage);
         }
-        
-        // Allow for small rounding differences (within 0.01)
-        BigDecimal difference = totalPercentage.subtract(BigDecimal.ONE).abs();
-        if (difference.compareTo(new BigDecimal("0.01")) > 0) {
-            throw new IllegalArgumentException("Sum of share percentages must equal 1.0 (100%). Current sum: " + totalPercentage);
-        }
-        
-        return true;
+        return totalPercentage;
     }
 
     @Override
@@ -162,27 +167,23 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             throw new IllegalArgumentException("User shares cannot be null or empty");
         }
         
-        // Convert to Map<User, BigDecimal> for validation
+        // Convert to Map<User, BigDecimal> for validation and build responsibleMap at the same time
         Map<User, BigDecimal> shares = new HashMap<>();
+        Map<User, Boolean> responsibleMap = new HashMap<>();
         for (CreateItemShareRequest.UserShare userShare : userShares) {
             User user = userRepository.findById(userShare.userId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userShare.userId()));
+                .orElseThrow(() ->
+                    new IllegalArgumentException("User not found with ID: " + userShare.userId()));
             shares.put(user, userShare.percentage());
+            responsibleMap.put(user, userShare.responsible());
         }
         
         validateShares(shares);
         
         // Remove existing shares
         removeShares(item);
-        
-        // Convert to Map with responsible flag for adjustment method
-        Map<User, Boolean> responsibleMap = new HashMap<>();
-        for (CreateItemShareRequest.UserShare userShare : userShares) {
-            User user = userRepository.findById(userShare.userId()).get();
-            responsibleMap.put(user, userShare.responsible());
-        }
             
-        // Create shares with rounding adjustment to ensure sum equals item amount
+        // Create shares with rounding adjustment to ensure a sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, responsibleMap);
         List<ItemShare> createdShares = new ArrayList<>();
         for (ItemShare share : shareList) {
@@ -375,14 +376,6 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                 continue;
             }
 
-            // Build map of user to percentage and responsible flag
-            Map<User, BigDecimal> percentageMap = new HashMap<>();
-            Map<User, Boolean> responsibleMap = new HashMap<>();
-            for (ItemShare share : shares) {
-                percentageMap.put(share.getUser(), share.getPercentage());
-                responsibleMap.put(share.getUser(), share.isResponsible());
-            }
-
             // Recalculate amounts with rounding adjustment
             BigDecimal totalCalculated = BigDecimal.ZERO;
             List<ItemShare> sharesList = new ArrayList<>(shares);
@@ -396,7 +389,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                 
                 // Update amount if different
                 if (share.getAmount().compareTo(newAmount) != 0) {
-                    // Create new share with updated amount (preserving payment info)
+                    // Create a new share with updated amount (preserving payment info)
                     ItemShare updatedShare = ItemShare.of(
                         share.getUser(),
                         item,

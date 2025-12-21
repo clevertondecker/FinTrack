@@ -57,7 +57,7 @@ public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
             
             logger.info("OAuth2 authentication successful for user: {}", userInfo.email());
 
-            User user = findOrCreateOAuthUser(userInfo.name(), userInfo.email());
+            findOrCreateOAuthUser(userInfo.name(), userInfo.email());
             String jwt = jwtUtil.generateToken(userInfo.email());
 
             redirectToFrontend(response, jwt);
@@ -69,7 +69,7 @@ public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     /**
-     * Extracts OAuth2User from authentication object.
+     * Extracts OAuth2User from an authentication object.
      *
      * @param authentication the authentication object
      * @return OAuth2User object
@@ -123,18 +123,17 @@ public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     /**
-     * Finds existing user or creates new one for OAuth2 authentication.
+     * Finds an existing user or creates new one for OAuth2 authentication.
      *
-     * @param name the user's name from OAuth2 provider
+     * @param name  the user's name from OAuth2 provider
      * @param email the user's email from OAuth2 provider
-     * @return the user entity, either existing or newly created
      */
-    private User findOrCreateOAuthUser(String name, String email) {
-        return userRepository.findByEmail(com.fintrack.domain.user.Email.of(email))
-                .orElseGet(() -> {
-                    logger.info("Creating new OAuth2 user: {}", email);
-                    User newUser = User.createOAuth2User(name, email, Set.of(Role.USER), AuthProvider.GOOGLE);
-                    return userRepository.save(newUser);
-                });
+    private void findOrCreateOAuthUser(String name, String email) {
+        userRepository.findByEmail(com.fintrack.domain.user.Email.of(email))
+            .orElseGet(() -> {
+                logger.info("Creating new OAuth2 user: {}", email);
+                User newUser = User.createOAuth2User(name, email, Set.of(Role.USER), AuthProvider.GOOGLE);
+                return userRepository.save(newUser);
+            });
     }
 } 

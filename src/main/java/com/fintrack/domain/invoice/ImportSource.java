@@ -1,7 +1,7 @@
 package com.fintrack.domain.invoice;
 
 /**
- * Enum representing the source type of an invoice import.
+ * Enum representing the source type of invoice import.
  */
 public enum ImportSource {
     PDF("PDF"),

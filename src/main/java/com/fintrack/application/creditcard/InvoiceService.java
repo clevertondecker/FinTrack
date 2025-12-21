@@ -252,11 +252,12 @@ public class InvoiceService {
      * @param itemId the invoice item ID. Cannot be null.
      * @param user the authenticated user. Cannot be null.
      * @return the updated invoice. Never null.
-     * @throws IllegalArgumentException if item not found or doesn't belong to invoice/user.
+     * @throws IllegalArgumentException if item isn't found or doesn't belong to invoice/user.
      */
     public Invoice deleteInvoiceItem(Long invoiceId, Long itemId, User user) {
         // Find the invoice item
-        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
+        Optional<InvoiceItem> itemOpt =
+            invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
         if (itemOpt.isEmpty()) {
             throw new IllegalArgumentException("Invoice item not found");
         }
@@ -305,7 +306,8 @@ public class InvoiceService {
      * @throws IllegalArgumentException if item not found or validation fails.
      */
     private InvoiceItem findAndValidateInvoiceItem(Long invoiceId, Long itemId, User user) {
-        Optional<InvoiceItem> itemOpt = invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
+        Optional<InvoiceItem> itemOpt =
+            invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(itemId, user);
         if (itemOpt.isEmpty()) {
             throw new IllegalArgumentException("Invoice item not found");
         }
@@ -503,7 +505,7 @@ public class InvoiceService {
             invoiceItemRepository.delete(item);
         }
         
-        // 3. Finally delete the invoice
+        // 3. Finally, delete the invoice
         invoiceRepository.deleteById(id);
     }
 }

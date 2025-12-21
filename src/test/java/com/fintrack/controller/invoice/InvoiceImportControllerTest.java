@@ -2,7 +2,6 @@ package com.fintrack.controller.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.invoice.InvoiceImportService;
-import com.fintrack.controller.invoice.InvoiceImportController;
 import com.fintrack.domain.invoice.ImportSource;
 import com.fintrack.domain.invoice.ImportStatus;
 import com.fintrack.domain.user.Role;
@@ -64,7 +63,7 @@ class InvoiceImportControllerTest {
     void setUp() throws Exception {
         Set<Role> roles = new HashSet<>();
         roles.add(Role.USER);
-        testUser = User.of("Test User", "test@example.com", "password123", roles);
+        testUser = User.createLocalUser("Test User", "test@example.com", "password123", roles);
         testUserDetails = org.springframework.security.core.userdetails.User
             .withUsername("test@example.com")
             .password("password123")

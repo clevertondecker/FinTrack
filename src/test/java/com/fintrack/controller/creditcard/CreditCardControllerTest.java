@@ -55,7 +55,7 @@ public class CreditCardControllerTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         inactiveCreditCard = CreditCard.of("Inactive Card", "5678", new BigDecimal("3000.00"), testUser, testBank);

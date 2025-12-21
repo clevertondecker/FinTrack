@@ -57,8 +57,8 @@ class ItemShareControllerTest {
 
     @BeforeEach
     void setUp() {
-        user1 = User.of("User 1", "user1@example.com", "password", Set.of(Role.USER));
-        user2 = User.of("User 2", "user2@example.com", "password", Set.of(Role.USER));
+        user1 = User.createLocalUser("User 1", "user1@example.com", "password", Set.of(Role.USER));
+        user2 = User.createLocalUser("User 2", "user2@example.com", "password", Set.of(Role.USER));
         invoice = Invoice.of(
                 CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), user1, Bank.of("NU", "Nubank")),
                 YearMonth.of(2024, 2),

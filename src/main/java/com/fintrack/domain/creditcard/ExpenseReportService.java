@@ -23,7 +23,7 @@ public interface ExpenseReportService {
 
     /**
      * Gets a summary of expenses grouped by category for a user in a given month.
-     * Includes both shared items (via ItemShare) and unshared items (for card owner).
+     * Includes both shared items (via ItemShare) and unshared items (for a card owner).
      *
      * @param user the user to generate the report for. Must not be null.
      * @param month the month to generate the report for. Must not be null.
@@ -33,11 +33,11 @@ public interface ExpenseReportService {
     Map<Category, BigDecimal> getExpensesByCategory(User user, YearMonth month);
 
     /**
-     * Gets the total amount of expenses for a user in a given month across all categories.
+     * Gets the total number of expenses for a user in a given month across all categories.
      *
      * @param user the user to calculate total expenses for. Must not be null.
      * @param month the month to calculate expenses for. Must not be null.
-     * @return the total amount of expenses. Never null.
+     * @return the total number of expenses. Never null.
      */
     BigDecimal getTotalExpenses(User user, YearMonth month);
 }

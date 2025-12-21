@@ -9,7 +9,6 @@ import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.InvoiceItemJpaRepository;
-import com.fintrack.infrastructure.persistence.creditcard.InvoiceJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -44,7 +44,7 @@ public class ExpenseReportController {
     }
 
     /**
-     * Gets expense report by category for the current user.
+     * Gets an expense report by category for the current user.
      *
      * @param month the month to generate the report for (format: yyyy-MM). Optional, defaults to current month.
      * @param categoryId optional category ID to filter by a specific category.
@@ -184,7 +184,7 @@ public class ExpenseReportController {
                 user.getName(),
                 user.getEmail().getEmail(),
                 user.getRoles().stream()
-                        .map(role -> role.name())
+                        .map(Enum::name)
                         .toArray(String[]::new),
                 user.getCreatedAt(),
                 user.getUpdatedAt()

@@ -1,11 +1,5 @@
 package com.fintrack.domain.creditcard;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Invoice Tests")
 class InvoiceTest {
@@ -31,7 +26,7 @@ class InvoiceTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("Test Bank", "Test Bank Description");
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testCategory = Category.of("Food", "#FF0000");
@@ -321,7 +316,7 @@ class InvoiceTest {
             // Should be CLOSED because no items and past due date
             assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
             
-            // Add an item - should be allowed and status should change
+            // Add an item - should be allowed, and status should change
             InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
@@ -340,7 +335,7 @@ class InvoiceTest {
             assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
             assertEquals(BigDecimal.ZERO, invoice.getTotalAmount());
             
-            // Should allow payment even with zero total amount
+            // Should allow payment even with zero total amounts
             invoice.recordPayment(new BigDecimal("50.00"));
             
             // Should now have paid amount
@@ -390,7 +385,7 @@ class InvoiceTest {
             
             assertEquals(0, invoice.getItems().size());
             assertEquals(BigDecimal.ZERO, invoice.getTotalAmount());
-            assertEquals(null, item.getInvoice());
+            assertNull(item.getInvoice());
         }
 
         @Test
@@ -534,16 +529,16 @@ class InvoiceTest {
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            
-            assertFalse(invoice.equals(null));
+
+          assertNotEquals(null, invoice);
         }
 
         @Test
         @DisplayName("Should not be equal to different type")
         void shouldNotBeEqualToDifferentType() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            
-            assertFalse(invoice.equals("Not an Invoice"));
+
+            assertNotEquals("Not an Invoice", invoice);
         }
 
         @Test

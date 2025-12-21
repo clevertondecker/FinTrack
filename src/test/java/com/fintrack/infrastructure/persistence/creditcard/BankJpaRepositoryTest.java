@@ -2,7 +2,6 @@ package com.fintrack.infrastructure.persistence.creditcard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -79,7 +78,6 @@ class BankJpaRepositoryTest {
         @DisplayName("Should update existing bank")
         void shouldUpdateExistingBank() {
             Bank savedBank = bankRepository.save(nubank);
-            Long bankId = savedBank.getId();
 
             // Create a new bank instance with updated data but same ID
             Bank updatedBank = Bank.of("NU_UPDATED", "Nubank Digital Bank");

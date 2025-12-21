@@ -1,8 +1,5 @@
 package com.fintrack.controller.auth.dtos;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +12,8 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
 import com.fintrack.dto.auth.LoginRequest;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("LoginRequest Tests")
 class LoginRequestTest {
@@ -45,10 +44,9 @@ class LoginRequestTest {
         void shouldCreateLoginRequestWithNullValues() {
             LoginRequest request =
               new LoginRequest(null, null);
-
-            assertNotNull(request);
-            assertEquals(null, request.email());
-            assertEquals(null, request.password());
+          assertNotNull(request);
+          assertNull(request.email());
+          assertNull(request.password());
         }
     }
 
@@ -229,24 +227,24 @@ class LoginRequestTest {
     @DisplayName("Multiple Validation Tests")
     class MultipleValidationTests {
 
-        @Test
-        @DisplayName("Should fail validation with both email and password invalid")
-        void shouldFailValidationWithBothEmailAndPasswordInvalid() {
-            LoginRequest request = new LoginRequest("invalid-email", "");
+    @Test
+    @DisplayName("Should fail validation with both email and password invalid")
+    void shouldFailValidationWithBothEmailAndPasswordInvalid() {
+        LoginRequest request = new LoginRequest("invalid-email", "");
 
-            Set<ConstraintViolation<LoginRequest>> violations =
-              validator.validate(request);
+        Set<ConstraintViolation<LoginRequest>> violations =
+          validator.validate(request);
 
-            assertEquals(2, violations.size());
+        assertEquals(2, violations.size());
 
-            boolean hasEmailViolation = violations.stream()
-                .anyMatch(v -> v.getPropertyPath().toString().equals("email"));
-            boolean hasPasswordViolation = violations.stream()
-                .anyMatch(v -> v.getPropertyPath().toString().equals("password"));
+        boolean hasEmailViolation = violations.stream()
+            .anyMatch(v -> v.getPropertyPath().toString().equals("email"));
+        boolean hasPasswordViolation = violations.stream()
+            .anyMatch(v -> v.getPropertyPath().toString().equals("password"));
 
-            assertEquals(true, hasEmailViolation);
-            assertEquals(true, hasPasswordViolation);
-        }
+        assertTrue(hasEmailViolation);
+        assertTrue(hasPasswordViolation);
+    }
 
         @Test
         @DisplayName("Should fail validation with null email and password")
@@ -263,8 +261,8 @@ class LoginRequestTest {
             boolean hasPasswordViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().equals("password"));
 
-            assertEquals(true, hasEmailViolation);
-            assertEquals(true, hasPasswordViolation);
+            assertTrue(hasEmailViolation);
+            assertTrue(hasPasswordViolation);
         }
     }
 
@@ -304,8 +302,8 @@ class LoginRequestTest {
 
             assertEquals(request1, request2);
             assertEquals(request1.hashCode(), request2.hashCode());
-            assertEquals(false, request1.equals(request3));
-            assertEquals(false, request1.hashCode() == request3.hashCode());
+            assertNotEquals(request1, request3);
+            assertNotEquals(request1.hashCode(), request3.hashCode());
         }
     }
 }

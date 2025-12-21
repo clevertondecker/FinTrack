@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -256,10 +256,10 @@ public class ItemShareController {
     /**
      * Bulk marks multiple shares as paid.
      */
-    public static record BulkMarkSharesAsPaidRequest(
-        java.util.List<Long> shareIds,
+    public record BulkMarkSharesAsPaidRequest(
+        List<Long> shareIds,
         String paymentMethod,
-        java.time.LocalDateTime paidAt
+        LocalDateTime paidAt
     ) {}
 
     @PostMapping("/shares/mark-as-paid-bulk")
@@ -295,21 +295,20 @@ public class ItemShareController {
      * @return the ItemShareResponse DTO.
      */
     private ItemShareResponse toItemShareResponse(ItemShare share) {
-        ItemShareResponse response = new ItemShareResponse(
-            share.getId(),
-            share.getUser().getId(),
-            share.getUser().getName(),
-            share.getUser().getEmail().getEmail(),
-            share.getPercentage(),
-            share.getAmount(),
-            Boolean.valueOf(share.isResponsible()),
-            Boolean.valueOf(share.isPaid()),
-            share.getPaymentMethod(),
-            share.getPaidAt(),
-            share.getCreatedAt()
-        );
-        
-        return response;
+
+      return new ItemShareResponse(
+          share.getId(),
+          share.getUser().getId(),
+          share.getUser().getName(),
+          share.getUser().getEmail().getEmail(),
+          share.getPercentage(),
+          share.getAmount(),
+          share.isResponsible(),
+          share.isPaid(),
+          share.getPaymentMethod(),
+          share.getPaidAt(),
+          share.getCreatedAt()
+      );
     }
 
     private MyShareResponse toMyShareResponse(ItemShare share) {
@@ -317,10 +316,12 @@ public class ItemShareController {
         Invoice invoice = item.getInvoice();
         CreditCard creditCard = invoice.getCreditCard();
         
-        // Corrigir cálculo: não somar +1
-        int remainingInstallments = Math.max(0, item.getTotalInstallments() - item.getInstallments());
-        BigDecimal totalItemAmount = item.getAmount().multiply(BigDecimal.valueOf(item.getTotalInstallments()));
-        BigDecimal remainingItemAmount = item.getAmount().multiply(BigDecimal.valueOf(remainingInstallments));
+        int remainingInstallments =
+            Math.max(0, item.getTotalInstallments() - item.getInstallments());
+        BigDecimal totalItemAmount =
+            item.getAmount().multiply(BigDecimal.valueOf(item.getTotalInstallments()));
+        BigDecimal remainingItemAmount =
+            item.getAmount().multiply(BigDecimal.valueOf(remainingInstallments));
         
         return new MyShareResponse(
             share.getId(),

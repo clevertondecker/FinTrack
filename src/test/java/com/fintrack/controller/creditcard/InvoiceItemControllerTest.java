@@ -12,8 +12,6 @@ import java.time.YearMonth;
 import java.util.Optional;
 import java.util.Set;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,7 +59,7 @@ class InvoiceItemControllerTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.of("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
@@ -163,21 +161,7 @@ class InvoiceItemControllerTest {
         // Given
         Long invoiceId = 1L;
         List<InvoiceItem> invoiceItems = List.of(testInvoiceItem);
-        InvoiceItemResponse invoiceItemResponse = new InvoiceItemResponse(
-            testInvoiceItem.getId(),
-            testInvoiceItem.getInvoice().getId(),
-            testInvoiceItem.getDescription(),
-            testInvoiceItem.getAmount(),
-            testInvoiceItem.getCategory() != null ? testInvoiceItem.getCategory().getName() : null,
-            testInvoiceItem.getPurchaseDate().toString(),
-            testInvoiceItem.getCreatedAt(),
-            testInvoiceItem.getInstallments(),
-            testInvoiceItem.getTotalInstallments(),
-            false,
-            testInvoiceItem.getAmount(),
-            BigDecimal.ZERO
-        );
-        List<InvoiceItemResponse> invoiceItemResponses = List.of(invoiceItemResponse);
+        List<InvoiceItemResponse> invoiceItemResponses = getInvoiceItemResponses();
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoiceItems(eq(invoiceId), eq(testUser))).thenReturn(invoiceItems);
@@ -193,6 +177,24 @@ class InvoiceItemControllerTest {
                 .andExpect(jsonPath("$.count").value(1))
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    private List<InvoiceItemResponse> getInvoiceItemResponses() {
+        InvoiceItemResponse invoiceItemResponse = new InvoiceItemResponse(
+            testInvoiceItem.getId(),
+            testInvoiceItem.getInvoice().getId(),
+            testInvoiceItem.getDescription(),
+            testInvoiceItem.getAmount(),
+            testInvoiceItem.getCategory() != null ? testInvoiceItem.getCategory().getName() : null,
+            testInvoiceItem.getPurchaseDate().toString(),
+            testInvoiceItem.getCreatedAt(),
+            testInvoiceItem.getInstallments(),
+            testInvoiceItem.getTotalInstallments(),
+            false,
+            testInvoiceItem.getAmount(),
+            BigDecimal.ZERO
+        );
+      return List.of(invoiceItemResponse);
     }
 
     @Test
