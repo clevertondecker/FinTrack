@@ -30,6 +30,7 @@ import java.util.Optional;
 @RequestMapping("/api/invoices")
 public class InvoiceController {
 
+    /** The invoice service. */
     private final InvoiceService invoiceService;
 
     public InvoiceController(InvoiceService invoiceService) {
@@ -194,7 +195,9 @@ public class InvoiceController {
             
         } catch (Exception e) {
             // If there are still foreign key constraints, provide a helpful error message
-            throw new RuntimeException("Cannot delete invoice. It may be referenced by other data. Error: " + e.getMessage());
+            throw new RuntimeException(
+                "Cannot delete invoice. It may be referenced by other data. Error: "
+                    + e.getMessage());
         }
         return ResponseEntity.noContent().build();
     }

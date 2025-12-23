@@ -19,10 +19,12 @@ import org.apache.commons.lang3.Validate;
 @Embeddable
 public class Email {
 
-    private static final EmailValidator validator =
-      EmailValidator.getInstance();
+    /** Email validator instance. */
+    private static final EmailValidator VALIDATOR =
+        EmailValidator.getInstance();
 
-    @Column(name="email", nullable = false, unique = true)
+    /** The email address value. */
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     protected Email() {}
@@ -37,7 +39,7 @@ public class Email {
     private Email(String emailValue) {
         String trimmed = emailValue == null ? null : emailValue.trim();
         Validate.notBlank(trimmed, "Email cannot be null or blank");
-        Validate.isTrue(validator.isValid(trimmed), "Invalid email format");
+        Validate.isTrue(VALIDATOR.isValid(trimmed), "Invalid email format");
 
         email = trimmed.toLowerCase();
     }
@@ -61,7 +63,9 @@ public class Email {
      *
      * @return the email value, Never null or blank.
      */
-    public String getEmail() { return email; }
+    public String getEmail() {
+        return email;
+    }
 
     @Override
     public boolean equals(final Object theO) {

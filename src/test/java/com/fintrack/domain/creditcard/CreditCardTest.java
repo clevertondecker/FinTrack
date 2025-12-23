@@ -13,7 +13,12 @@ import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("CreditCard Tests")
 class CreditCardTest {
@@ -191,15 +196,15 @@ class CreditCardTest {
             
             LocalDateTime afterCreation = LocalDateTime.now();
 
-            assertTrue(creditCard.getCreatedAt().isAfter(beforeCreation) || 
-                      creditCard.getCreatedAt().equals(beforeCreation));
-            assertTrue(creditCard.getCreatedAt().isBefore(afterCreation) || 
-                      creditCard.getCreatedAt().equals(afterCreation));
+            assertTrue(creditCard.getCreatedAt().isAfter(beforeCreation)
+                || creditCard.getCreatedAt().equals(beforeCreation));
+            assertTrue(creditCard.getCreatedAt().isBefore(afterCreation)
+                || creditCard.getCreatedAt().equals(afterCreation));
             
-            assertTrue(creditCard.getUpdatedAt().isAfter(beforeCreation) || 
-                      creditCard.getUpdatedAt().equals(beforeCreation));
-            assertTrue(creditCard.getUpdatedAt().isBefore(afterCreation) || 
-                      creditCard.getUpdatedAt().equals(afterCreation));
+            assertTrue(creditCard.getUpdatedAt().isAfter(beforeCreation)
+                || creditCard.getUpdatedAt().equals(beforeCreation));
+            assertTrue(creditCard.getUpdatedAt().isBefore(afterCreation)
+                || creditCard.getUpdatedAt().equals(afterCreation));
         }
 
         @Test

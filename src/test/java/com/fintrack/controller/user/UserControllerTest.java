@@ -481,7 +481,8 @@ class UserControllerTest {
         @DisplayName("Should handle user with multiple roles")
         void shouldHandleUserWithMultipleRoles() {
             // Given
-            User testUser = User.createLocalUser("Admin User", "admin@example.com", "password123", Set.of(Role.USER, Role.ADMIN));
+            User testUser = User.createLocalUser("Admin User", "admin@example.com", "password123",
+                Set.of(Role.USER, Role.ADMIN));
             setUserId(testUser, 2L);
             setUserTimestamps(testUser);
             

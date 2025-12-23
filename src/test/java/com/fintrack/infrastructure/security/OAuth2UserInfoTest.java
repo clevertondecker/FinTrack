@@ -13,13 +13,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("OAuth2UserInfo Tests")
 class OAuth2UserInfoTest {
 
+    /** Valid email for testing. */
     private static final String VALID_EMAIL = "test@example.com";
+    /** Valid name for testing. */
     private static final String VALID_NAME = "Test User";
+    /** Blank name for testing. */
     private static final String BLANK_NAME = "   ";
+    /** Empty name for testing. */
     private static final String EMPTY_NAME = "";
+    /** Long email for testing. */
     private static final String LONG_EMAIL = "very.long.email.address.with.many.subdomains@example.com";
-    private static final String LONG_NAME = "Very Long Name With Many Words And Special Characters Including Numbers 123";
+    /** Long name for testing. */
+    private static final String LONG_NAME =
+        "Very Long Name With Many Words And Special Characters Including Numbers 123";
+    /** Special email with tag for testing. */
     private static final String SPECIAL_EMAIL = "test+tag@example.com";
+    /** Special name with accents for testing. */
     private static final String SPECIAL_NAME = "José María O'Connor-Smith";
 
     @Nested

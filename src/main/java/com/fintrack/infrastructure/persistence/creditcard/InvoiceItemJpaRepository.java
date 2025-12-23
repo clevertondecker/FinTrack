@@ -28,10 +28,10 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
      * @param user the owner of the credit card. Cannot be null.
      * @return an Optional containing the invoice item if found, empty otherwise. Never null.
      */
-    @Query("SELECT ii FROM InvoiceItem ii " +
-           "JOIN FETCH ii.invoice i " +
-           "JOIN FETCH i.creditCard cc " +
-           "WHERE ii.id = :id AND cc.owner = :user")
+    @Query("SELECT ii FROM InvoiceItem ii "
+        + "JOIN FETCH ii.invoice i "
+        + "JOIN FETCH i.creditCard cc "
+        + "WHERE ii.id = :id AND cc.owner = :user")
     Optional<InvoiceItem> findByIdAndInvoiceCreditCardOwner(@Param("id") Long id, @Param("user") User user);
 
     /**
@@ -77,8 +77,10 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
      * @param categoryName the category name. Cannot be null or blank.
      * @return a list of invoice items with the specified category name for the invoice. Never null, may be empty.
      */
-    @Query("SELECT ii FROM InvoiceItem ii WHERE ii.invoice = :invoice AND ii.category.name = :categoryName")
-    List<InvoiceItem> findByInvoiceAndCategoryName(@Param("invoice") Invoice invoice, @Param("categoryName") String categoryName);
+    @Query("SELECT ii FROM InvoiceItem ii "
+        + "WHERE ii.invoice = :invoice AND ii.category.name = :categoryName")
+    List<InvoiceItem> findByInvoiceAndCategoryName(
+            @Param("invoice") Invoice invoice, @Param("categoryName") String categoryName);
 
     /**
      * Counts items by invoice.

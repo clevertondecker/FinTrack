@@ -1,6 +1,10 @@
 package com.fintrack.application.creditcard;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -18,12 +22,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fintrack.domain.creditcard.*;
+import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.CardType;
+import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
-import com.fintrack.infrastructure.persistence.creditcard.*;
+import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CreditCardService Tests")

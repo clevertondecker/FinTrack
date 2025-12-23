@@ -211,7 +211,8 @@ class JwtUtilTest {
         @DisplayName("Should reject expired token")
         void shouldRejectExpiredToken() {
             // Given
-            String expiredToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIsImlhdCI6MTY5OTk5OTk5OSwiZXhwIjoxNjk5OTk5OTk5fQ.invalid";
+            String expiredToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIs"
+                + "ImlhdCI6MTY5OTk5OTk5OSwiZXhwIjoxNjk5OTk5OTk5fQ.invalid";
 
             // When
             boolean isValid = jwtUtil.validate(expiredToken);
@@ -224,7 +225,8 @@ class JwtUtilTest {
         @DisplayName("Should reject token without expiration")
         void shouldRejectTokenWithoutExpiration() {
             // Given
-            String tokenWithoutExpiration = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIsImlhdCI6MTY5OTk5OTk5OX0.invalid";
+            String tokenWithoutExpiration =
+                "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIsImlhdCI6MTY5OTk5OTk5OX0.invalid";
 
             // When
             boolean isValid = jwtUtil.validate(tokenWithoutExpiration);
@@ -295,7 +297,8 @@ class JwtUtilTest {
         @DisplayName("Should return null for expired token")
         void shouldReturnNullForExpiredToken() {
             // Given
-            String invalidToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIsImlhdCI6MTY5OTk5OTk5OSwiZXhwIjoxNjk5OTk5OTk5fQ.invalid";
+            String invalidToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huLmRvZUBleGFtcGxlLmNvbSIs"
+                + "ImlhdCI6MTY5OTk5OTk5OSwiZXhwIjoxNjk5OTk5OTk5fQ.invalid";
 
             // When & Then
             assertThatThrownBy(() -> jwtUtil.extractUsername(invalidToken))

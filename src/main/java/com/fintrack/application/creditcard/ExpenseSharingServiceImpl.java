@@ -28,7 +28,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class ExpenseSharingServiceImpl implements ExpenseSharingService {
 
+    /** The item share repository. */
     private final ItemShareRepository itemShareRepository;
+    /** The user repository. */
     private final UserRepository userRepository;
 
     /**
@@ -115,7 +117,8 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         // Allow for small rounding differences (within 0.01)
         BigDecimal difference = totalPercentage.subtract(BigDecimal.ONE).abs();
         if (difference.compareTo(new BigDecimal("0.01")) > 0) {
-            throw new IllegalArgumentException("Sum of share percentages must equal 1.0 (100%). Current sum: " + totalPercentage);
+            throw new IllegalArgumentException(
+                "Sum of share percentages must equal 1.0 (100%). Current sum: " + totalPercentage);
         }
 
     }
@@ -328,7 +331,9 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                 BigDecimal adjustment = lastAmount.abs();
                 if (!shareList.isEmpty()) {
                     ItemShare lastCreatedShare = shareList.get(shareList.size() - 1);
-                    BigDecimal adjustedAmount = lastCreatedShare.getAmount().subtract(adjustment).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal adjustedAmount = lastCreatedShare.getAmount()
+                        .subtract(adjustment)
+                        .setScale(2, RoundingMode.HALF_UP);
                     // Recreate the last share with adjusted amount
                     shareList.remove(shareList.size() - 1);
                     ItemShare adjustedShare = ItemShare.of(

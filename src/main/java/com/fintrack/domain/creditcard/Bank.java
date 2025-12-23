@@ -1,6 +1,11 @@
 package com.fintrack.domain.creditcard;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.Objects;
 
 import org.apache.commons.lang3.Validate;
@@ -13,13 +18,16 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "banks")
 public class Bank {
 
+    /** The bank's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The bank's code. */
     @Column(nullable = false, unique = true)
     private String code;
 
+    /** The bank's name. */
     @Column(nullable = false)
     private String name;
 
@@ -58,26 +66,36 @@ public class Bank {
      *
      * @return the bank's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the bank's code.
      *
      * @return the bank's code. Never null or blank.
      */
-    public String getCode() { return code; }
+    public String getCode() {
+        return code;
+    }
 
     /**
      * Gets the bank's name.
      *
      * @return the bank's name. Never null or blank.
      */
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Bank bank)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Bank bank)) {
+            return false;
+        }
         return Objects.equals(id, bank.id);
     }
 
@@ -88,10 +106,10 @@ public class Bank {
 
     @Override
     public String toString() {
-        return "Bank{" +
-                "id=" + id +
-                ", code='" + code + '\'' +
-                ", name='" + name + '\'' +
-                '}';
+        return "Bank{"
+            + "id=" + id
+            + ", code='" + code + '\''
+            + ", name='" + name + '\''
+            + '}';
     }
 }

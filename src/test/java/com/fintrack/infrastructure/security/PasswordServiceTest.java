@@ -1,7 +1,6 @@
 package com.fintrack.infrastructure.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,9 +18,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DisplayName("Password Service")
 class PasswordServiceTest {
 
+    /** Test password for encoding. */
     private static final String RAW_PASSWORD = "securePassword123";
+    /** Different test password for comparison. */
     private static final String DIFFERENT_RAW_PASSWORD = "differentPassword456";
 
+    /** The password service under test. */
     private PasswordService passwordService;
 
     @BeforeEach

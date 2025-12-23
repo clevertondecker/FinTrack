@@ -88,7 +88,9 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
      * @param invoiceId the invoice ID.
      */
     @Modifying
-    @Query("UPDATE Invoice i SET i.totalAmount = (SELECT COALESCE(SUM(ii.amount), 0) FROM InvoiceItem ii WHERE ii.invoice.id = :invoiceId) WHERE i.id = :invoiceId")
+    @Query("UPDATE Invoice i SET i.totalAmount = "
+        + "(SELECT COALESCE(SUM(ii.amount), 0) FROM InvoiceItem ii "
+        + "WHERE ii.invoice.id = :invoiceId) WHERE i.id = :invoiceId")
     void updateTotalAmount(@Param("invoiceId") Long invoiceId);
 
     // Implementações dos métodos da interface InvoiceRepository
@@ -115,9 +117,9 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
      * @param month the month to find invoices for. Cannot be null.
      * @return a list of invoices for the month with items loaded. Never null, may be empty.
      */
-    @Query("SELECT DISTINCT i FROM Invoice i " +
-           "LEFT JOIN FETCH i.items " +
-           "WHERE i.month = :month")
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items "
+        + "WHERE i.month = :month")
     List<Invoice> findByMonth(@Param("month") YearMonth month);
 
     @Override

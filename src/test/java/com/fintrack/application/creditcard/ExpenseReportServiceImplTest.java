@@ -169,8 +169,10 @@ class ExpenseReportServiceImplTest {
             when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
 
             // When
-            Map<Category, BigDecimal> otherUserResult = expenseReportService.getExpensesByCategory(otherUser, testMonth);
-            Map<Category, BigDecimal> cardOwnerResult = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
+            Map<Category, BigDecimal> otherUserResult =
+                expenseReportService.getExpensesByCategory(otherUser, testMonth);
+            Map<Category, BigDecimal> cardOwnerResult =
+                expenseReportService.getExpensesByCategory(cardOwner, testMonth);
 
             // Then
             assertThat(otherUserResult.get(foodCategory)).isEqualByComparingTo(new BigDecimal("100.00"));
@@ -645,8 +647,10 @@ class ExpenseReportServiceImplTest {
             when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
 
             // When
-            Map<Category, BigDecimal> otherUserResult = expenseReportService.getExpensesByCategory(otherUser, testMonth);
-            Map<Category, BigDecimal> cardOwnerResult = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
+            Map<Category, BigDecimal> otherUserResult =
+                expenseReportService.getExpensesByCategory(otherUser, testMonth);
+            Map<Category, BigDecimal> cardOwnerResult =
+                expenseReportService.getExpensesByCategory(cardOwner, testMonth);
 
             // Then
             assertThat(otherUserResult.get(foodCategory)).isEqualByComparingTo(new BigDecimal("30.00"));

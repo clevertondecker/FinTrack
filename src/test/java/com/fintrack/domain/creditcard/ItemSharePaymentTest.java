@@ -31,7 +31,8 @@ class ItemSharePaymentTest {
             YearMonth.now(),
             LocalDateTime.now().toLocalDate()
         );
-        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"), null, LocalDateTime.now().toLocalDate());
+        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item",
+            new BigDecimal("100.00"), null, LocalDateTime.now().toLocalDate());
     }
 
     @Nested

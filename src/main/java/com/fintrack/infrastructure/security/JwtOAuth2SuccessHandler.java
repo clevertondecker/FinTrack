@@ -32,11 +32,16 @@ import java.util.Set;
 public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtOAuth2SuccessHandler.class);
+    /** Email attribute name in OAuth2 response. */
     private static final String EMAIL_ATTRIBUTE = "email";
+    /** Name attribute name in OAuth2 response. */
     private static final String NAME_ATTRIBUTE = "name";
 
+    /** The JWT utility. */
     private final JwtUtil jwtUtil;
+    /** The user repository. */
     private final UserRepository userRepository;
+    /** The redirect URI. */
     private final String redirectUri;
 
     public JwtOAuth2SuccessHandler(JwtUtil jwtUtil,

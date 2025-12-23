@@ -25,6 +25,7 @@ import java.util.Optional;
 @RequestMapping("/api/credit-cards")
 public class CreditCardController {
 
+    /** The credit card service. */
     private final CreditCardService creditCardService;
 
     public CreditCardController(CreditCardService creditCardService) {

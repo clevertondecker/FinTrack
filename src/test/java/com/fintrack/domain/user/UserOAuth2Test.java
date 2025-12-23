@@ -21,7 +21,8 @@ class UserOAuth2Test {
     private static final String ADMIN_EMAIL = "admin@example.com";
     private static final String MULTI_ROLE_NAME = "Multi Role User";
     private static final String MULTI_ROLE_EMAIL = "multi@example.com";
-    private static final String LONG_NAME = "Very Long Name With Many Words And Special Characters Including Numbers 123";
+    private static final String LONG_NAME =
+        "Very Long Name With Many Words And Special Characters Including Numbers 123";
     private static final String SPECIAL_EMAIL = "test+tag@example.com";
     private static final Set<Role> USER_ROLES = Set.of(Role.USER);
     private static final Set<Role> ADMIN_ROLES = Set.of(Role.ADMIN);
@@ -205,7 +206,8 @@ class UserOAuth2Test {
         return User.createOAuth2User(name, email, roles, AuthProvider.GOOGLE);
     }
 
-    private void assertOAuth2UserProperties(User user, String expectedName, String expectedEmail, Set<Role> expectedRoles) {
+    private void assertOAuth2UserProperties(User user, String expectedName, String expectedEmail,
+        Set<Role> expectedRoles) {
         assertThat(user.getName()).isEqualTo(expectedName);
         assertThat(user.getEmail().toString()).isEqualTo(expectedEmail);
         assertThat(user.getRoles()).isEqualTo(expectedRoles);

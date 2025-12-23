@@ -3,8 +3,11 @@ package com.fintrack.controller.creditcard;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -64,7 +67,8 @@ class InvoiceItemControllerTest {
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
         testCategory = Category.of("Food", "#FF0000");
-        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"), testCategory, LocalDate.of(2024, 1, 15));
+        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"),
+            testCategory, LocalDate.of(2024, 1, 15));
 
         // Set IDs using reflection for testing
         setCreditCardId(testCreditCard, 1L);

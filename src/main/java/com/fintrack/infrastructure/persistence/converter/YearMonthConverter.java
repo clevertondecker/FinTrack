@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 public class YearMonthConverter implements AttributeConverter<YearMonth, String> {
 
     private static final Logger logger = LoggerFactory.getLogger(YearMonthConverter.class);
+    /** Date formatter for YearMonth conversion. */
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
     @Override
@@ -57,10 +58,15 @@ public class YearMonthConverter implements AttributeConverter<YearMonth, String>
             logger.info("Converted database column to YearMonth: {}", result);
             return result;
         } catch (DateTimeParseException e) {
-            logger.warn("Invalid YearMonth format in database: {}. Error: {}. Using current month as fallback.", dbData, e.getMessage());
+            logger.warn(
+                "Invalid YearMonth format in database: {}. Error: {}. Using current month as fallback.",
+                dbData, e.getMessage());
             return YearMonth.now();
         } catch (Exception e) {
-            logger.warn("Unexpected error parsing YearMonth from database: {}. Error: {}. Using current month as fallback.", dbData, e.getMessage());
+            logger.warn(
+                "Unexpected error parsing YearMonth from database: {}. Error: {}. "
+                    + "Using current month as fallback.",
+                dbData, e.getMessage());
             return YearMonth.now();
         }
     }

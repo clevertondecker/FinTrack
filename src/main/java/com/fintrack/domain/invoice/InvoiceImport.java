@@ -3,7 +3,18 @@ package com.fintrack.domain.invoice;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.user.User;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import org.apache.commons.lang3.Validate;
 
 import java.math.BigDecimal;
@@ -18,57 +29,73 @@ import java.util.Objects;
 @Table(name = "invoice_imports")
 public class InvoiceImport {
 
+    /** The import's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The user who initiated the import. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    /** The credit card associated with the import. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "credit_card_id")
     private CreditCard creditCard;
 
+    /** The current status of the import. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ImportStatus status = ImportStatus.PENDING;
 
+    /** The source of the import. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ImportSource source;
 
+    /** The original filename of the imported file. */
     @Column(length = 500, nullable = false)
     private String originalFileName;
 
+    /** The file path where the imported file is stored. */
     @Column(length = 1000, nullable = false)
     private String filePath;
 
+    /** JSON with extracted data from the imported file. */
     @Column(columnDefinition = "TEXT")
-    private String parsedData; // JSON with extracted data
+    private String parsedData;
 
+    /** Error message if the import failed. */
     @Column(length = 1000)
     private String errorMessage;
 
+    /** The timestamp when the import was initiated. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime importedAt;
 
+    /** The timestamp when the import was processed. */
     @Column
     private LocalDateTime processedAt;
 
+    /** The invoice created from this import. */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_invoice_id")
     private Invoice createdInvoice;
 
+    /** The total amount extracted from the imported file. */
     @Column(precision = 15, scale = 2)
     private BigDecimal totalAmount;
 
+    /** The due date extracted from the imported file. */
     @Column
     private LocalDateTime dueDate;
 
+    /** The bank name extracted from the imported file. */
     @Column(length = 100)
     private String bankName;
 
+    /** The last four digits of the card extracted from the imported file. */
     @Column(length = 20)
     private String cardLastFourDigits;
 
@@ -213,27 +240,77 @@ public class InvoiceImport {
     }
 
     // Getters
-    public Long getId() { return id; }
-    public User getUser() { return user; }
-    public CreditCard getCreditCard() { return creditCard; }
-    public ImportStatus getStatus() { return status; }
-    public ImportSource getSource() { return source; }
-    public String getOriginalFileName() { return originalFileName; }
-    public String getFilePath() { return filePath; }
-    public String getParsedData() { return parsedData; }
-    public String getErrorMessage() { return errorMessage; }
-    public LocalDateTime getImportedAt() { return importedAt; }
-    public LocalDateTime getProcessedAt() { return processedAt; }
-    public Invoice getCreatedInvoice() { return createdInvoice; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public LocalDateTime getDueDate() { return dueDate; }
-    public String getBankName() { return bankName; }
-    public String getCardLastFourDigits() { return cardLastFourDigits; }
+    public Long getId() {
+        return id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public CreditCard getCreditCard() {
+        return creditCard;
+    }
+
+    public ImportStatus getStatus() {
+        return status;
+    }
+
+    public ImportSource getSource() {
+        return source;
+    }
+
+    public String getOriginalFileName() {
+        return originalFileName;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public String getParsedData() {
+        return parsedData;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public LocalDateTime getImportedAt() {
+        return importedAt;
+    }
+
+    public LocalDateTime getProcessedAt() {
+        return processedAt;
+    }
+
+    public Invoice getCreatedInvoice() {
+        return createdInvoice;
+    }
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public LocalDateTime getDueDate() {
+        return dueDate;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public String getCardLastFourDigits() {
+        return cardLastFourDigits;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof InvoiceImport that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof InvoiceImport that)) {
+            return false;
+        }
         return Objects.equals(id, that.id);
     }
 

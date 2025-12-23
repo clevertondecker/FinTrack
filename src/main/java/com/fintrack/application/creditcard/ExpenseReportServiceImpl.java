@@ -27,7 +27,9 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class ExpenseReportServiceImpl implements ExpenseReportService {
 
+    /** The invoice repository. */
     private final InvoiceRepository invoiceRepository;
+    /** The invoice calculation service. */
     private final InvoiceCalculationService invoiceCalculationService;
 
     /**
@@ -49,6 +51,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         return expensesByCategory.getOrDefault(category, BigDecimal.ZERO);
     }
 
+    /** Category for items without a category. */
     private static final Category UNCATEGORIZED_CATEGORY = Category.of("Sem categoria", "#CCCCCC");
 
     @Override
@@ -137,7 +140,8 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
      * @param category the category to filter by. Can be null for uncategorized items.
      * @return a list of detailed expense entries. Never null.
      */
-    public List<ExpenseDetailResponse> getExpenseDetails(final User user, final YearMonth month, final Category category) {
+    public List<ExpenseDetailResponse> getExpenseDetails(
+            final User user, final YearMonth month, final Category category) {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
 

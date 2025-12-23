@@ -49,11 +49,11 @@ public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> 
      * @param month the month to find items for. Must not be null.
      * @return a list of items with shares for the user and month. Never null, may be empty.
      */
-    @Query("SELECT DISTINCT ii FROM InvoiceItem ii " +
-           "JOIN ii.shares s " +
-           "JOIN ii.invoice i " +
-           "WHERE s.user = :user " +
-           "AND i.month = :month")
+    @Query("SELECT DISTINCT ii FROM InvoiceItem ii "
+        + "JOIN ii.shares s "
+        + "JOIN ii.invoice i "
+        + "WHERE s.user = :user "
+        + "AND i.month = :month")
     List<InvoiceItem> findByUserShares(@Param("user") User user, 
                                       @Param("year") int year, 
                                       @Param("month") int month);
@@ -102,11 +102,11 @@ public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> 
      * @param month the month to find items for. Must not be null.
      * @return a list of items with shares for the user and month. Never null, may be empty.
      */
-    @Query("SELECT DISTINCT ii FROM InvoiceItem ii " +
-           "JOIN ii.shares s " +
-           "JOIN ii.invoice i " +
-           "WHERE s.user = :user " +
-           "AND i.month = :month")
+    @Query("SELECT DISTINCT ii FROM InvoiceItem ii "
+        + "JOIN ii.shares s "
+        + "JOIN ii.invoice i "
+        + "WHERE s.user = :user "
+        + "AND i.month = :month")
     List<InvoiceItem> findByUserSharesYearMonth(@Param("user") User user, 
                                                 @Param("month") YearMonth month);
 
@@ -157,12 +157,12 @@ public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> 
      * @param month the month to find items for. Must not be null.
      * @return a list of invoice items for the owner in the month. Never null, may be empty.
      */
-    @Query("SELECT DISTINCT ii FROM InvoiceItem ii " +
-           "LEFT JOIN FETCH ii.category " +
-           "JOIN ii.invoice i " +
-           "JOIN i.creditCard cc " +
-           "WHERE cc.owner = :owner " +
-           "AND i.month = :month")
+    @Query("SELECT DISTINCT ii FROM InvoiceItem ii "
+        + "LEFT JOIN FETCH ii.category "
+        + "JOIN ii.invoice i "
+        + "JOIN i.creditCard cc "
+        + "WHERE cc.owner = :owner "
+        + "AND i.month = :month")
     List<InvoiceItem> findItemsByOwnerAndMonthYearMonth(@Param("owner") User owner,
                                                        @Param("month") YearMonth month);
 } 

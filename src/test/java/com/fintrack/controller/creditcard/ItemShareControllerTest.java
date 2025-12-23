@@ -1,7 +1,11 @@
 package com.fintrack.controller.creditcard;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fintrack.domain.creditcard.*;
+import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.dto.creditcard.CreateItemShareRequest;
@@ -25,11 +29,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ItemShareController.class)
 @AutoConfigureMockMvc
@@ -74,8 +81,10 @@ class ItemShareControllerTest {
     @DisplayName("Should save and return shares correctly")
     void shouldSaveAndReturnSharesCorrectly() throws Exception {
         // Arrange
-        CreateItemShareRequest.UserShare share1 = new CreateItemShareRequest.UserShare(user1.getId(), new BigDecimal("0.6"), true);
-        CreateItemShareRequest.UserShare share2 = new CreateItemShareRequest.UserShare(user2.getId(), new BigDecimal("0.4"), false);
+        CreateItemShareRequest.UserShare share1 =
+            new CreateItemShareRequest.UserShare(user1.getId(), new BigDecimal("0.6"), true);
+        CreateItemShareRequest.UserShare share2 =
+            new CreateItemShareRequest.UserShare(user2.getId(), new BigDecimal("0.4"), false);
         CreateItemShareRequest request = new CreateItemShareRequest(List.of(share1, share2));
 
         // Mock user and item
@@ -83,8 +92,10 @@ class ItemShareControllerTest {
         when(invoiceService.getInvoiceItem(eq(1L), eq(1L), eq(user1))).thenReturn(invoiceItem);
 
         // Mock saving shares
-        ItemShare itemShare1 = ItemShare.of(user1, invoiceItem, new BigDecimal("0.6"), new BigDecimal("60.00"), true);
-        ItemShare itemShare2 = ItemShare.of(user2, invoiceItem, new BigDecimal("0.4"), new BigDecimal("40.00"), false);
+        ItemShare itemShare1 =
+            ItemShare.of(user1, invoiceItem, new BigDecimal("0.6"), new BigDecimal("60.00"), true);
+        ItemShare itemShare2 =
+            ItemShare.of(user2, invoiceItem, new BigDecimal("0.4"), new BigDecimal("40.00"), false);
         when(expenseSharingService.createSharesFromUserIds(eq(invoiceItem), anyList()))
                 .thenReturn(List.of(itemShare1, itemShare2));
         when(expenseSharingService.getSharesForItem(invoiceItem))
@@ -112,7 +123,7 @@ class ItemShareControllerTest {
     }
 
     /**
-     * Utility methods for setting IDs via reflection for test purposes
+     * Utility methods for setting IDs via reflection for test purposes.
      */
     private void setInvoiceId(Invoice invoice, Long id) {
         try {

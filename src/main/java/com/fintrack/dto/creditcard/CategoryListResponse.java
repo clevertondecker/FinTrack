@@ -9,6 +9,7 @@ public record CategoryListResponse(String message, List<CategoryResponse> catego
         List<CategoryResponse> categoryResponses = categories.stream()
             .map(CategoryResponse::from)
             .collect(Collectors.toList());
-        return new CategoryListResponse("Categories retrieved successfully", categoryResponses, categoryResponses.size());
+        return new CategoryListResponse(
+            "Categories retrieved successfully", categoryResponses, categoryResponses.size());
     }
 } 

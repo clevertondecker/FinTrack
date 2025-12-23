@@ -22,11 +22,11 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @param invoiceItem the invoice item to find shares for. Must not be null.
      * @return a list of shares for the item. Never null, may be empty.
      */
-    @Query("SELECT is FROM ItemShare is " +
-           "JOIN FETCH is.user " +
-           "JOIN FETCH is.invoiceItem ii " +
-           "JOIN FETCH ii.invoice i " +
-           "WHERE is.invoiceItem = :invoiceItem")
+    @Query("SELECT is FROM ItemShare is "
+        + "JOIN FETCH is.user "
+        + "JOIN FETCH is.invoiceItem ii "
+        + "JOIN FETCH ii.invoice i "
+        + "WHERE is.invoiceItem = :invoiceItem")
     List<ItemShare> findByInvoiceItem(@Param("invoiceItem") InvoiceItem invoiceItem);
 
     /**
@@ -76,11 +76,11 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @param month the month to find shares for. Must not be null.
      * @return a list of shares for the user in the month. Never null, may be empty.
      */
-    @Query("SELECT is FROM ItemShare is " +
-           "JOIN is.invoiceItem ii " +
-           "JOIN ii.invoice i " +
-           "WHERE is.user = :user " +
-           "AND i.month = :month")
+    @Query("SELECT is FROM ItemShare is "
+        + "JOIN is.invoiceItem ii "
+        + "JOIN ii.invoice i "
+        + "WHERE is.user = :user "
+        + "AND i.month = :month")
     List<ItemShare> findByUserAndMonthWithYearMonth(@Param("user") User user,
                                                     @Param("month") YearMonth month);
 } 

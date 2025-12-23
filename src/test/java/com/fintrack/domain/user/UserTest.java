@@ -188,7 +188,8 @@ public class UserTest {
         @DisplayName("Should be equal when users have same ID")
         void shouldBeEqualWhenUsersHaveSameId() {
             User user1 = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
-            User user2 = User.createLocalUser("Different Name", "different@email.com", "differentPassword", Set.of(Role.ADMIN));
+            User user2 = User.createLocalUser("Different Name", "different@email.com",
+                "differentPassword", Set.of(Role.ADMIN));
 
             // Set same ID using reflection
             setUserId(user1, 1L);

@@ -1,7 +1,6 @@
 package com.fintrack.dto.invoice;
 
 import com.fintrack.domain.invoice.ImportStatus;
-import com.fintrack.dto.invoice.ParsedInvoiceData;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

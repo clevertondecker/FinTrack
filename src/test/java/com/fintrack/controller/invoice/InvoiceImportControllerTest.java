@@ -166,7 +166,8 @@ class InvoiceImportControllerTest {
         when(invoiceImportService.getImportProgress(1L, testUser)).thenReturn(expectedResponse);
 
         // When
-        ResponseEntity<ImportProgressResponse> response = invoiceImportController.getImportProgress(1L, testUserDetails);
+        ResponseEntity<ImportProgressResponse> response =
+            invoiceImportController.getImportProgress(1L, testUserDetails);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -181,7 +182,8 @@ class InvoiceImportControllerTest {
             .thenThrow(new IllegalArgumentException("Import not found"));
 
         // When
-        ResponseEntity<ImportProgressResponse> response = invoiceImportController.getImportProgress(1L, testUserDetails);
+        ResponseEntity<ImportProgressResponse> response =
+            invoiceImportController.getImportProgress(1L, testUserDetails);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -229,7 +231,8 @@ class InvoiceImportControllerTest {
             .thenReturn(expectedResponses);
 
         // When
-        ResponseEntity<List<ImportInvoiceResponse>> response = invoiceImportController.getFailedImports(testUserDetails);
+        ResponseEntity<List<ImportInvoiceResponse>> response =
+            invoiceImportController.getFailedImports(testUserDetails);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -245,7 +248,8 @@ class InvoiceImportControllerTest {
             .thenReturn(expectedResponses);
 
         // When
-        ResponseEntity<List<ImportInvoiceResponse>> response = invoiceImportController.getManualReviewImports(testUserDetails);
+        ResponseEntity<List<ImportInvoiceResponse>> response =
+            invoiceImportController.getManualReviewImports(testUserDetails);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

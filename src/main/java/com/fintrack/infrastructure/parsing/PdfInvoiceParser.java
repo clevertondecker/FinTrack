@@ -34,9 +34,15 @@ public class PdfInvoiceParser {
     private static final Pattern AMOUNT_PATTERN = Pattern.compile("R\\$\\s*([0-9.,]+)");
     private static final Pattern DATE_PATTERN = Pattern.compile("(\\d{2})/(\\d{2})/(\\d{4})");
     private static final Pattern CARD_NUMBER_PATTERN = Pattern.compile("\\*{4}\\s*(\\d{4})");
-    private static final Pattern DUE_DATE_PATTERN = Pattern.compile("(?:vencimento|due date|vence em)\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})", Pattern.CASE_INSENSITIVE);
-    private static final Pattern TOTAL_PATTERN = Pattern.compile("(?:total|valor total|amount)\\s*:?\\s*R\\$\\s*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BANK_PATTERN = Pattern.compile("(?:banco|bank)\\s*:?\\s*([A-Za-z\\s]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DUE_DATE_PATTERN = Pattern.compile(
+        "(?:vencimento|due date|vence em)\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})",
+        Pattern.CASE_INSENSITIVE);
+    private static final Pattern TOTAL_PATTERN = Pattern.compile(
+        "(?:total|valor total|amount)\\s*:?\\s*R\\$\\s*([0-9.,]+)",
+        Pattern.CASE_INSENSITIVE);
+    private static final Pattern BANK_PATTERN = Pattern.compile(
+        "(?:banco|bank)\\s*:?\\s*([A-Za-z\\s]+)",
+        Pattern.CASE_INSENSITIVE);
     /**
      * Pattern to capture international transactions with values in reais and dollars.
      * Format: Date Description Foreign_Currency_Value CURRENCY_NAME Reais_Value Dollar_Value
@@ -44,7 +50,8 @@ public class PdfInvoiceParser {
      * Groups: 1=Date, 2=Description, 3=Foreign_Currency_Value, 4=Reais_Value, 5=Dollar_Value
      */
     private static final Pattern INTERNATIONAL_ITEM_PATTERN = Pattern.compile(
-        "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+([\\d.,]+)\\s+[A-Z\\s]+\\s+([\\d.,]+)\\s+([\\d.,]+)$"
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+([\\d.,]+)\\s+[A-Z\\s]+\\s+"
+            + "([\\d.,]+)\\s+([\\d.,]+)$"
     );
 
     /**
@@ -68,7 +75,9 @@ public class PdfInvoiceParser {
     );
 
     private static final List<String> IGNORE_KEYWORDS = List.of(
-        "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas", "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar", "central", "atendimento", "seguro", "prestamista", "valor parcelado"
+        "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas",
+        "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar",
+        "central", "atendimento", "seguro", "prestamista", "valor parcelado"
     );
 
     private static final List<String> IGNORE_NEGATIVE_KEYWORDS = List.of(
@@ -250,28 +259,12 @@ public class PdfInvoiceParser {
         return null;
     }
 
-    private boolean isValidItemLine(String line) {
-        String lower = line.toLowerCase();
-        for (String keyword : IGNORE_KEYWORDS) {
-            if (lower.contains(keyword)) return false;
-        }
-        // Ignorar linhas muito curtas ou muito longas
-        if (lower.length() < 4 || lower.length() > 80) return false;
-        return true;
-    }
-
-    private boolean isValidNegativeItem(String description) {
-        String lower = description.toLowerCase();
-        for (String keyword : IGNORE_NEGATIVE_KEYWORDS) {
-            if (lower.contains(keyword)) return false;
-        }
-        return true;
-    }
-
     private boolean shouldSkipLine(String line) {
         String lower = line.toLowerCase();
         for (String keyword : IGNORE_KEYWORDS) {
-            if (lower.contains(keyword)) return true;
+            if (lower.contains(keyword)) {
+                return true;
+            }
         }
         return false;
     }
@@ -401,9 +394,15 @@ public class PdfInvoiceParser {
                        // Use today's date for parceled items since they don't have specific dates
                        LocalDate date = LocalDate.now();
                        
-                       items.add(new ParsedInvoiceItem(description, amount, date, null, currentInstallment, totalInstallments, 0.9));
-                       logger.debug("Added parceled item: {} - R$ {} (parcela {}/{})", description, amount, currentInstallment, totalInstallments);
-                       processedLines.add("PARCELED: " + line + " -> R$ " + amount + " (parcela " + currentInstallment + "/" + totalInstallments + ")");
+                       items.add(new ParsedInvoiceItem(
+                           description, amount, date, null,
+                           currentInstallment, totalInstallments, 0.9));
+                       logger.debug(
+                           "Added parceled item: {} - R$ {} (parcela {}/{})",
+                           description, amount, currentInstallment, totalInstallments);
+                       processedLines.add(
+                           "PARCELED: " + line + " -> R$ " + amount
+                               + " (parcela " + currentInstallment + "/" + totalInstallments + ")");
                    } catch (Exception e) {
                        logger.warn("Erro ao processar item parcelado: {}", line, e);
                        ignoredLines.add("ERROR (parceled): " + line + " - " + e.getMessage());
@@ -463,20 +462,34 @@ public class PdfInvoiceParser {
      * @param items the extracted items. Cannot be null.
      * @return a confidence value between 0.0 and 1.0.
      */
-    private double calculateConfidence(String text, BigDecimal totalAmount, LocalDate dueDate, List<ParsedInvoiceItem> items) {
+    private double calculateConfidence(
+            String text, BigDecimal totalAmount, LocalDate dueDate,
+            List<ParsedInvoiceItem> items) {
         double confidence = 0.0;
 
         // Base confidence from text quality
-        if (text.length() > 100) confidence += 0.2;
-        if (text.length() > 500) confidence += 0.1;
+        if (text.length() > 100) {
+            confidence += 0.2;
+        }
+        if (text.length() > 500) {
+            confidence += 0.1;
+        }
 
         // Confidence from extracted data
-        if (totalAmount != null) confidence += 0.3;
-        if (dueDate != null) confidence += 0.2;
-        if (!items.isEmpty()) confidence += 0.2;
+        if (totalAmount != null) {
+            confidence += 0.3;
+        }
+        if (dueDate != null) {
+            confidence += 0.2;
+        }
+        if (!items.isEmpty()) {
+            confidence += 0.2;
+        }
 
         // Additional confidence for multiple items
-        if (items.size() > 1) confidence += 0.1;
+        if (items.size() > 1) {
+            confidence += 0.1;
+        }
 
         return Math.min(confidence, 1.0);
     }

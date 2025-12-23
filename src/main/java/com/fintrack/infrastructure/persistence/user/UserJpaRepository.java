@@ -20,7 +20,7 @@ public interface UserJpaRepository extends JpaRepository<User, Long>, UserReposi
     /**
      * Finds a user by email address.
      *
-     * @param email the email address to search for. Cannot be null.
+     * @param emailValue the email address to search for. Cannot be null.
      * @return an Optional containing the user if found, empty otherwise. Never null.
      */
     @Query("SELECT u FROM User u WHERE u.email.email = :emailValue")

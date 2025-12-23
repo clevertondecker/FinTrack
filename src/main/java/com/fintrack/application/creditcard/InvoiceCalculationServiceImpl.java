@@ -23,6 +23,7 @@ import java.util.Map;
 @Transactional
 public class InvoiceCalculationServiceImpl implements InvoiceCalculationService {
 
+    /** The expense sharing service. */
     private final ExpenseSharingServiceImpl expenseSharingService;
 
     /**

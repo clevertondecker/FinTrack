@@ -1,6 +1,11 @@
 package com.fintrack.application.creditcard;
 
-import com.fintrack.domain.creditcard.*;
+import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.InvoiceRepository;
+import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
@@ -59,7 +64,8 @@ class ExpenseSharingServiceImplTest {
 
         Invoice invoice = Invoice.of(card, YearMonth.now(), LocalDate.now());
         invoice = invoiceRepository.save(invoice);
-        invoiceItem = invoiceItemRepository.save(InvoiceItem.of(invoice, "Test Item", new BigDecimal("100.00"), null, LocalDate.now()));
+        invoiceItem = invoiceItemRepository.save(InvoiceItem.of(invoice, "Test Item",
+            new BigDecimal("100.00"), null, LocalDate.now()));
     }
 
     @Test

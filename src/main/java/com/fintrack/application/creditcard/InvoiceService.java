@@ -1,6 +1,13 @@
 package com.fintrack.application.creditcard;
 
-import com.fintrack.domain.creditcard.*;
+import com.fintrack.domain.creditcard.Category;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceCalculationService;
+import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.InvoiceItemRepository;
+import com.fintrack.domain.creditcard.InvoiceRepository;
+import com.fintrack.domain.creditcard.InvoiceStatus;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
@@ -11,7 +18,8 @@ import com.fintrack.dto.creditcard.InvoiceResponse;
 import com.fintrack.dto.creditcard.InvoiceItemResponse;
 import com.fintrack.dto.creditcard.InvoicePaymentRequest;
 import com.fintrack.dto.creditcard.InvoicePaymentResponse;
-import com.fintrack.infrastructure.persistence.creditcard.*;
+import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -34,12 +42,19 @@ import java.util.HashMap;
 @Transactional
 public class InvoiceService {
 
+    /** The invoice repository. */
     private final InvoiceRepository invoiceRepository;
+    /** The invoice item repository. */
     private final InvoiceItemRepository invoiceItemRepository;
+    /** The credit card repository. */
     private final CreditCardJpaRepository creditCardRepository;
+    /** The category repository. */
     private final CategoryJpaRepository categoryRepository;
+    /** The user repository. */
     private final UserRepository userRepository;
+    /** The invoice calculation service. */
     private final InvoiceCalculationService invoiceCalculationService;
+    /** The JDBC template. */
     private final JdbcTemplate jdbcTemplate;
 
     public InvoiceService(@Qualifier("invoiceJpaRepository") final InvoiceRepository theInvoiceRepository,

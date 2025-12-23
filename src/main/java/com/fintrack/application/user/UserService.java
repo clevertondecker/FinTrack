@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
 
+    /** The user repository. */
     private final UserRepository userRepository;
+    /** The password service. */
     private final PasswordService passwordService;
 
     public UserService(final UserRepository theUserRepository,
@@ -27,7 +29,7 @@ public class UserService {
         Validate.notNull(thePasswordService, "The passwordService cannot be null.");
 
         userRepository = theUserRepository;
-        passwordService = thePasswordService ;
+        passwordService = thePasswordService;
     }
 
     /**

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class PasswordService {
 
+    /** The password encoder. */
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**

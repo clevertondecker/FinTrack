@@ -20,7 +20,9 @@ import java.time.format.DateTimeFormatter;
 @Configuration
 public class JacksonConfig {
 
+    /** Date format pattern for LocalDate serialization. */
     private static final String DATE_FORMAT = "yyyy-MM-dd";
+    /** DateTime format pattern for LocalDateTime serialization. */
     private static final String DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
     @Bean

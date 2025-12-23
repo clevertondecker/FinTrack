@@ -28,7 +28,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for InvoiceService category update functionality.
@@ -160,7 +163,8 @@ class InvoiceServiceCategoryUpdateTest {
             // Given
             Invoice otherInvoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30));
             ReflectionTestUtils.setField(otherInvoice, "id", 2L);
-            InvoiceItem itemFromOtherInvoice = InvoiceItem.of(otherInvoice, "Other Item", BigDecimal.valueOf(50.00), null, LocalDate.now());
+            InvoiceItem itemFromOtherInvoice = InvoiceItem.of(otherInvoice, "Other Item",
+                BigDecimal.valueOf(50.00), null, LocalDate.now());
             ReflectionTestUtils.setField(itemFromOtherInvoice, "id", 1L);
 
             when(invoiceItemRepository.findByIdAndInvoiceCreditCardOwner(1L, testUser))
@@ -168,7 +172,8 @@ class InvoiceServiceCategoryUpdateTest {
 
             // When/Then
             assertThatThrownBy(() -> 
-                invoiceService.updateInvoiceItemCategory(1L, 1L, 1L, testUser) // Invoice ID = 1, but item belongs to invoice ID = 2
+                invoiceService.updateInvoiceItemCategory(1L, 1L, 1L, testUser)
+                    // Invoice ID = 1, but item belongs to invoice ID = 2
             ).isInstanceOf(IllegalArgumentException.class)
              .hasMessage("Item does not belong to the specified invoice");
 

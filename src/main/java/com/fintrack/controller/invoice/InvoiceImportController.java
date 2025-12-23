@@ -147,7 +147,8 @@ public class InvoiceImportController {
      * @return a list of import responses. Never null, may be empty.
      */
     @GetMapping
-    public ResponseEntity<List<ImportInvoiceResponse>> getUserImports(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<ImportInvoiceResponse>> getUserImports(
+            @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
 
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
@@ -190,7 +191,8 @@ public class InvoiceImportController {
      * @return a list of failed import responses. Never null, may be empty.
      */
     @GetMapping("/failed")
-    public ResponseEntity<List<ImportInvoiceResponse>> getFailedImports(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<ImportInvoiceResponse>> getFailedImports(
+            @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
 
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
@@ -209,7 +211,8 @@ public class InvoiceImportController {
      * @return a list of manual review import responses. Never null, may be empty.
      */
     @GetMapping("/manual-review")
-    public ResponseEntity<List<ImportInvoiceResponse>> getManualReviewImports(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<ImportInvoiceResponse>> getManualReviewImports(
+            @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
 
         User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))

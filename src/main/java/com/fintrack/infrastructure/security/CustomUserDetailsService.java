@@ -1,6 +1,9 @@
 package com.fintrack.infrastructure.security;
 
-import com.fintrack.domain.user.*;
+import com.fintrack.domain.user.Email;
+import com.fintrack.domain.user.Role;
+import com.fintrack.domain.user.User;
+import com.fintrack.domain.user.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

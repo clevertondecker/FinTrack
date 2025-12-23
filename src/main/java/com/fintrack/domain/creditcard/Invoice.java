@@ -1,7 +1,20 @@
 package com.fintrack.domain.creditcard;
 
 import com.fintrack.infrastructure.persistence.converter.YearMonthConverter;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,38 +33,48 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "invoices")
 public class Invoice {
 
+    /** The invoice's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The credit card this invoice belongs to. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "credit_card_id", nullable = false)
     private CreditCard creditCard;
 
+    /** The month/year of the invoice. */
     @Column(name = "invoice_month", nullable = false)
     @Convert(converter = YearMonthConverter.class)
     private YearMonth month;
 
+    /** The due date of the invoice. */
     @Column(nullable = false)
     private LocalDate dueDate;
 
+    /** The total amount of the invoice. */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    /** The amount already paid. */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal paidAmount = BigDecimal.ZERO;
 
+    /** The current status of the invoice. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InvoiceStatus status = InvoiceStatus.OPEN;
 
+    /** The items in this invoice. */
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL,
       orphanRemoval = true, fetch = FetchType.EAGER)
     private List<InvoiceItem> items = new ArrayList<>();
 
+    /** The invoice's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** The invoice's last update timestamp. */
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
@@ -191,42 +214,54 @@ public class Invoice {
      *
      * @return the invoice's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the credit card this invoice belongs to.
      *
      * @return the credit card. Never null.
      */
-    public CreditCard getCreditCard() { return creditCard; }
+    public CreditCard getCreditCard() {
+        return creditCard;
+    }
 
     /**
      * Gets the month/year of this invoice.
      *
      * @return the month/year. Never null.
      */
-    public YearMonth getMonth() { return month; }
+    public YearMonth getMonth() {
+        return month;
+    }
 
     /**
      * Gets the due date of this invoice.
      *
      * @return the due date. Never null.
      */
-    public LocalDate getDueDate() { return dueDate; }
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
 
     /**
      * Gets the amount already paid for this invoice.
      *
      * @return the paid amount. Never null may be zero.
      */
-    public BigDecimal getPaidAmount() { return paidAmount; }
+    public BigDecimal getPaidAmount() {
+        return paidAmount;
+    }
 
     /**
      * Gets the current status of this invoice.
      *
      * @return the invoice status. Never null.
      */
-    public InvoiceStatus getStatus() { return status; }
+    public InvoiceStatus getStatus() {
+        return status;
+    }
 
     /**
      * Calculates the current status dynamically based on real-time data.
@@ -236,11 +271,12 @@ public class Invoice {
      */
     public InvoiceStatus calculateCurrentStatus() {
         // If there's no amount to pay and past due date, consider it CLOSED
-        if (totalAmount.compareTo(BigDecimal.ZERO) == 0 && LocalDate.now().isAfter(dueDate)) {
+        if (totalAmount.compareTo(BigDecimal.ZERO) == 0
+            && LocalDate.now().isAfter(dueDate)) {
             return InvoiceStatus.CLOSED;
-        }
-        // Only consider PAID if there is a total amount and it is fully paid
-        else if (totalAmount.compareTo(BigDecimal.ZERO) > 0 && paidAmount.compareTo(totalAmount) >= 0) {
+        } else if (totalAmount.compareTo(BigDecimal.ZERO) > 0
+            && paidAmount.compareTo(totalAmount) >= 0) {
+            // Only consider PAID if there is a total amount and it is fully paid
             return InvoiceStatus.PAID;
         } else if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
             return InvoiceStatus.PARTIAL;
@@ -256,26 +292,36 @@ public class Invoice {
      *
      * @return a defensive copy of the item list. Never null, may be empty.
      */
-    public List<InvoiceItem> getItems() { return new ArrayList<>(items); }
+    public List<InvoiceItem> getItems() {
+        return new ArrayList<>(items);
+    }
 
     /**
      * Gets the invoice's creation timestamp.
      *
      * @return the creation timestamp. Never null.
      */
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     /**
      * Gets the invoice's last update timestamp.
      *
      * @return the last update timestamp. Never null.
      */
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Invoice invoice)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Invoice invoice)) {
+            return false;
+        }
         return Objects.equals(id, invoice.id);
     }
 
@@ -286,17 +332,17 @@ public class Invoice {
 
     @Override
     public String toString() {
-        return "Invoice{" +
-                "id=" + id +
-                ", creditCard=" + creditCard +
-                ", month=" + month +
-                ", dueDate=" + dueDate +
-                ", totalAmount=" + totalAmount +
-                ", paidAmount=" + paidAmount +
-                ", status=" + status +
-                ", items=" + items +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                '}';
+        return "Invoice{"
+            + "id=" + id
+            + ", creditCard=" + creditCard
+            + ", month=" + month
+            + ", dueDate=" + dueDate
+            + ", totalAmount=" + totalAmount
+            + ", paidAmount=" + paidAmount
+            + ", status=" + status
+            + ", items=" + items
+            + ", createdAt=" + createdAt
+            + ", updatedAt=" + updatedAt
+            + '}';
     }
 }

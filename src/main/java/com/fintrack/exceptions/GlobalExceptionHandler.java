@@ -82,9 +82,13 @@ public class GlobalExceptionHandler {
     String errorMessage = "Erro de integridade de dados";
     
     // Check if it's a duplicate email error
-    if (e.getMessage() != null && e.getMessage().contains("Duplicate entry") && e.getMessage().contains("users.UK6dotkott2kjsp8vw4d0m25fb7")) {
+    if (e.getMessage() != null
+        && e.getMessage().contains("Duplicate entry")
+        && e.getMessage().contains("users.UK6dotkott2kjsp8vw4d0m25fb7")) {
       errorMessage = "Este e-mail já está cadastrado. Tente outro e-mail.";
-    } else if (e.getMessage() != null && e.getMessage().contains("Duplicate entry") && e.getMessage().contains("email")) {
+    } else if (e.getMessage() != null
+        && e.getMessage().contains("Duplicate entry")
+        && e.getMessage().contains("email")) {
       errorMessage = "Este e-mail já está cadastrado. Tente outro e-mail.";
     }
 

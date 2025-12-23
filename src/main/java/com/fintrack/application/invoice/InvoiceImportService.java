@@ -70,27 +70,35 @@ public class InvoiceImportService {
     private static final double MANUAL_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
     
     /** Hexadecimal mask for byte-to-hex conversion in SHA-256 computation. */
+    /** Hex mask constant. */
     private static final int HEX_MASK = 0xff;
 
-    // Constants for performance optimization
+    /** Initial capacity for collections. */
     private static final int INITIAL_CAPACITY = 16;
+    /** Load factor for collections. */
     private static final float LOAD_FACTOR = 0.75f;
     
-    // Cached special item types for performance
+    /** Cached special item types for performance. */
     private static final Set<String> SPECIAL_ITEM_TYPES = Set.of(
         "iof", "taxa", "tarifa", "fee", "charge", "cobrança", "despesa no exterior",
         "foreign transaction", "international fee", "currency conversion"
     );
     
-    // Compiled regex pattern for whitespace normalization (better performance)
+    /** Compiled regex pattern for whitespace normalization. */
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
+    /** The invoice import repository. */
     private final InvoiceImportJpaRepository invoiceImportRepository;
+    /** The credit card repository. */
     private final CreditCardJpaRepository creditCardRepository;
+    /** The invoice repository. */
     private final InvoiceJpaRepository invoiceRepository;
+    /** The PDF invoice parser. */
     private final PdfInvoiceParser pdfInvoiceParser;
+    /** The object mapper for JSON processing. */
     private final ObjectMapper objectMapper;
 
+    /** The upload directory path. */
     @Value("${app.upload.directory:uploads}")
     private String uploadDirectory;
 
@@ -115,12 +123,14 @@ public class InvoiceImportService {
      * @return the import response. Never null.
      * @throws IOException if there's an error processing the file.
      */
-    public ImportInvoiceResponse importInvoice(MultipartFile file, ImportInvoiceRequest request, User user) throws IOException {
+    public ImportInvoiceResponse importInvoice(
+            MultipartFile file, ImportInvoiceRequest request, User user) throws IOException {
         Validate.notNull(file, "File must not be null.");
         Validate.notNull(request, "Request must not be null.");
         // User validation is handled in the controller
 
-        logger.info("Starting invoice import for user: {}, file: {}", user.getEmail(), file.getOriginalFilename());
+        logger.info(
+            "Starting invoice import for user: {}, file: {}", user.getEmail(), file.getOriginalFilename());
 
         // Validate and get credit card first
         CreditCard creditCard = validateAndGetCreditCard(request.creditCardId(), user);
@@ -222,7 +232,9 @@ public class InvoiceImportService {
             // Determine if manual review is needed
             if (requiresManualReview(parsedData.confidence())) {
                 importRecord.markForManualReview();
-                logger.info("Import {} marked for manual review due to low confidence: {}", importId, parsedData.confidence());
+                logger.info(
+                    "Import {} marked for manual review due to low confidence: {}",
+                    importId, parsedData.confidence());
             } else {
                 // Create invoice automatically
                 logger.info("Creating invoice for import: {}", importId);
@@ -288,8 +300,10 @@ public class InvoiceImportService {
         String extension = fileName.toLowerCase();
         if (extension.endsWith(".pdf")) {
             return ImportSource.PDF;
-        } else if (extension.endsWith(".jpg") || extension.endsWith(".jpeg") || 
-                   extension.endsWith(".png") || extension.endsWith(".gif")) {
+        } else if (extension.endsWith(".jpg")
+            || extension.endsWith(".jpeg")
+            || extension.endsWith(".png")
+            || extension.endsWith(".gif")) {
             return ImportSource.IMAGE;
         } else {
             return ImportSource.MANUAL;
@@ -360,8 +374,9 @@ public class InvoiceImportService {
         try {
             importRecord.setParsedData(objectMapper.writeValueAsString(parsedData));
             importRecord.setTotalAmount(parsedData.totalAmount());
-            importRecord.setDueDate(parsedData.dueDate() != null ? 
-                parsedData.dueDate().atStartOfDay() : null);
+            importRecord.setDueDate(parsedData.dueDate() != null
+                ? parsedData.dueDate().atStartOfDay()
+                : null);
             importRecord.setBankName(parsedData.bankName());
             importRecord.setCardLastFourDigits(parsedData.cardNumber());
         } catch (JsonProcessingException e) {
@@ -383,7 +398,9 @@ public class InvoiceImportService {
         
         CreditCard creditCard = validateCreditCard(importRecord);
         LocalDate dueDate = resolveDueDate(parsedData);
-        YearMonth invoiceMonth = parsedData.invoiceMonth() != null ? parsedData.invoiceMonth() : YearMonth.from(dueDate);
+        YearMonth invoiceMonth = parsedData.invoiceMonth() != null
+            ? parsedData.invoiceMonth()
+            : YearMonth.from(dueDate);
         Invoice invoice = findOrCreateInvoice(creditCard, invoiceMonth, dueDate);
         
         addItemsToInvoice(invoice, parsedData.items());
@@ -657,8 +674,8 @@ public class InvoiceImportService {
      */
     private boolean isSameItem(InvoiceItem existingItem, ParsedInvoiceData.ParsedInvoiceItem parsedItem) {
         // Early return for basic mismatch (fastest checks first)
-        if (!existingItem.getDescription().equals(parsedItem.description()) ||
-            !existingItem.getAmount().equals(parsedItem.amount())) {
+        if (!existingItem.getDescription().equals(parsedItem.description())
+            || !existingItem.getAmount().equals(parsedItem.amount())) {
             return false;
         }
         
@@ -677,8 +694,8 @@ public class InvoiceImportService {
         int resolvedInstallments = resolveInstallments(parsedItem.installments());
         int resolvedTotalInstallments = resolveInstallments(parsedItem.totalInstallments());
         
-        return existingItem.getInstallments().equals(resolvedInstallments) &&
-               existingItem.getTotalInstallments().equals(resolvedTotalInstallments);
+        return existingItem.getInstallments().equals(resolvedInstallments)
+            && existingItem.getTotalInstallments().equals(resolvedTotalInstallments);
     }
 
     /**

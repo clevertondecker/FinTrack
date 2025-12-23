@@ -1,6 +1,19 @@
 package com.fintrack.domain.user;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Objects;
@@ -16,31 +29,39 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "users")
 public class User {
 
+    /** The user's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The user's name. */
     @Column(nullable = false)
     private String name;
 
+    /** The user's email address. */
     @Embedded
     private Email email;
 
+    /** The user's password (encoded). */
     @Column(nullable = false)
     private String password;
 
+    /** The user's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** The user's last update timestamp. */
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    /** The user's roles. */
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private Set<Role> roles = new HashSet<>();
 
+    /** The authentication provider. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider provider = AuthProvider.LOCAL;
@@ -111,8 +132,15 @@ public class User {
     }
 
     /**
+     * Creates a new local user with email/password authentication.
      * @deprecated Use {@link #createLocalUser(String, String, String, Set)} instead.
      * This method is kept for backward compatibility.
+     *
+     * @param name the user's name. Cannot be null or blank.
+     * @param email the user's email as a string. Cannot be null.
+     * @param password the user's password. Cannot be null or blank.
+     * @param roles the user's roles. Must not be null or empty.
+     * @return a validated User entity with LOCAL provider. Never null.
      */
     @Deprecated
     public static User of(final String name, final String email,
@@ -125,49 +153,63 @@ public class User {
      *
      * @return the user's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the user's name.
      *
      * @return the user's name. Never null or blank.
      */
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
     /**
      * Gets the user's email.
      *
      * @return the user's email. Never null.
      */
-    public Email getEmail() { return email; }
+    public Email getEmail() {
+        return email;
+    }
 
     /**
      * Gets the user's creation timestamp.
      *
      * @return the creation timestamp. Never null.
      */
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     /**
      * Gets the user's last update timestamp.
      *
      * @return the last update timestamp. Never null.
      */
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
     /**
      * Gets the user's password.
      *
      * @return the user's password. Never null or blank.
      */
-    public String getPassword() { return password; }
+    public String getPassword() {
+        return password;
+    }
 
     /**
      * Gets the user's roles.
      *
      * @return the user's roles. Never null, may be empty.
      */
-    public Set<Role> getRoles() { return roles; }
+    public Set<Role> getRoles() {
+        return roles;
+    }
 
     /**
      * Gets the user's authentication provider.
@@ -210,8 +252,12 @@ public class User {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof User user)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof User user)) {
+            return false;
+        }
         return Objects.equals(id, user.id);
     }
 

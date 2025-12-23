@@ -22,10 +22,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtFilter.class);
+    /** Bearer token prefix. */
     private static final String BEARER_PREFIX = "Bearer ";
+    /** Length of bearer prefix. */
     private static final int BEARER_PREFIX_LENGTH = BEARER_PREFIX.length();
 
+    /** The JWT utility. */
     private final JwtUtil jwtUtil;
+    /** The user details service. */
     private final UserDetailsService userDetailsService;
 
     public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {

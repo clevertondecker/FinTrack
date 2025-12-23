@@ -1,6 +1,16 @@
 package com.fintrack.domain.creditcard;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,36 +28,46 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "invoice_items")
 public class InvoiceItem {
 
+    /** The invoice item's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The invoice this item belongs to. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
 
+    /** The item's description. */
     @Column(nullable = false)
     private String description;
 
+    /** The item's amount. */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    /** The item's category. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
+    /** The purchase date. */
     @Column(nullable = false)
     private LocalDate purchaseDate;
 
+    /** The current installment number. */
     @Column(nullable = false)
     private Integer installments = 1;
 
+    /** The total number of installments. */
     @Column(nullable = false)
     private Integer totalInstallments = 1;
 
+    /** The shares for this item. */
     @OneToMany(mappedBy = "invoiceItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ItemShare> shares = new ArrayList<>();
 
+    /** The invoice item's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -78,7 +98,8 @@ public class InvoiceItem {
         Validate.isTrue(theInstallments > 0, "Installments must be positive.");
         Validate.notNull(theTotalInstallments, "Total installments must not be null.");
         Validate.isTrue(theTotalInstallments > 0, "Total installments must be positive.");
-        Validate.isTrue(theInstallments <= theTotalInstallments, "Current installment cannot exceed total installments.");
+        Validate.isTrue(theInstallments <= theTotalInstallments,
+            "Current installment cannot exceed total installments.");
 
         invoice = theInvoice;
         description = theDescription;
@@ -102,10 +123,12 @@ public class InvoiceItem {
      * @param totalInstallments the total number of installments. Must be positive.
      * @return a validated InvoiceItem entity. Never null.
      */
-    public static InvoiceItem of(final Invoice invoice, final String description, final BigDecimal amount,
-                                final Category category, final LocalDate purchaseDate,
-                                final Integer installments, final Integer totalInstallments) {
-        return new InvoiceItem(invoice, description, amount, category, purchaseDate, installments, totalInstallments);
+    public static InvoiceItem of(
+            final Invoice invoice, final String description, final BigDecimal amount,
+            final Category category, final LocalDate purchaseDate,
+            final Integer installments, final Integer totalInstallments) {
+        return new InvoiceItem(
+            invoice, description, amount, category, purchaseDate, installments, totalInstallments);
     }
 
     /**
@@ -200,56 +223,72 @@ public class InvoiceItem {
      *
      * @return the invoice item's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the invoice this item belongs to.
      *
      * @return the invoice. Never null.
      */
-    public Invoice getInvoice() { return invoice; }
+    public Invoice getInvoice() {
+        return invoice;
+    }
 
     /**
      * Gets the item's description.
      *
      * @return the description. Never null or blank.
      */
-    public String getDescription() { return description; }
+    public String getDescription() {
+        return description;
+    }
 
     /**
      * Gets the item's amount.
      *
      * @return the amount. Never null, always positive.
      */
-    public BigDecimal getAmount() { return amount; }
+    public BigDecimal getAmount() {
+        return amount;
+    }
 
     /**
      * Gets the item's category.
      *
      * @return the category. May be null.
      */
-    public Category getCategory() { return category; }
+    public Category getCategory() {
+        return category;
+    }
 
     /**
      * Gets the purchase date.
      *
      * @return the purchase date. Never null.
      */
-    public LocalDate getPurchaseDate() { return purchaseDate; }
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
 
     /**
      * Gets the current installment number.
      *
      * @return the current installment. Never null, always positive.
      */
-    public Integer getInstallments() { return installments; }
+    public Integer getInstallments() {
+        return installments;
+    }
 
     /**
      * Gets the total number of installments.
      *
      * @return the total installments. Never null, always positive.
      */
-    public Integer getTotalInstallments() { return totalInstallments; }
+    public Integer getTotalInstallments() {
+        return totalInstallments;
+    }
 
     /**
      * Gets all shares for this item.
@@ -267,12 +306,18 @@ public class InvoiceItem {
      *
      * @return the creation timestamp. Never null.
      */
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof InvoiceItem invoiceItem)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof InvoiceItem invoiceItem)) {
+            return false;
+        }
         return Objects.equals(id, invoiceItem.id);
     }
 
@@ -283,17 +328,17 @@ public class InvoiceItem {
 
     @Override
     public String toString() {
-        return "InvoiceItem{" +
-                "id=" + id +
-                ", invoice=" + invoice +
-                ", description='" + description + '\'' +
-                ", amount=" + amount +
-                ", category=" + category +
-                ", purchaseDate=" + purchaseDate +
-                ", installments=" + installments +
-                ", totalInstallments=" + totalInstallments +
-                ", shares=" + shares +
-                ", createdAt=" + createdAt +
-                '}';
+        return "InvoiceItem{"
+            + "id=" + id
+            + ", invoice=" + invoice
+            + ", description='" + description + '\''
+            + ", amount=" + amount
+            + ", category=" + category
+            + ", purchaseDate=" + purchaseDate
+            + ", installments=" + installments
+            + ", totalInstallments=" + totalInstallments
+            + ", shares=" + shares
+            + ", createdAt=" + createdAt
+            + '}';
     }
 } 

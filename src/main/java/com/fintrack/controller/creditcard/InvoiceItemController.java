@@ -28,6 +28,7 @@ import java.util.Optional;
 @RequestMapping("/api/invoices")
 public class InvoiceItemController {
 
+    /** The invoice service. */
     private final InvoiceService invoiceService;
 
     public InvoiceItemController(InvoiceService invoiceService) {
@@ -58,8 +59,8 @@ public class InvoiceItemController {
         List<InvoiceItem> items = invoiceService.getInvoiceItems(invoiceId, user);
 
         InvoiceItem createdItem = items.stream()
-            .filter(item -> item.getDescription().equals(request.description()) &&
-                           item.getAmount().equals(request.amount()))
+            .filter(item -> item.getDescription().equals(request.description())
+                && item.getAmount().equals(request.amount()))
             .findFirst()
             .orElse(null);
 

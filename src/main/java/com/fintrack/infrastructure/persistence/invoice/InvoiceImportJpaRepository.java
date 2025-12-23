@@ -60,9 +60,9 @@ public interface InvoiceImportJpaRepository extends JpaRepository<InvoiceImport,
      * @param endDate the end date. Cannot be null.
      * @return a list of imports within the date range. Never null, may be empty.
      */
-    @Query("SELECT ii FROM InvoiceImport ii WHERE ii.user = :user " +
-           "AND ii.importedAt BETWEEN :startDate AND :endDate " +
-           "ORDER BY ii.importedAt DESC")
+    @Query("SELECT ii FROM InvoiceImport ii WHERE ii.user = :user "
+        + "AND ii.importedAt BETWEEN :startDate AND :endDate "
+        + "ORDER BY ii.importedAt DESC")
     List<InvoiceImport> findByUserAndDateRange(@Param("user") User user,
                                               @Param("startDate") LocalDateTime startDate,
                                               @Param("endDate") LocalDateTime endDate);
@@ -91,7 +91,9 @@ public interface InvoiceImportJpaRepository extends JpaRepository<InvoiceImport,
      * @param user the user to find imports for. Cannot be null.
      * @return a list of imports requiring manual review. Never null, may be empty.
      */
-    @Query("SELECT ii FROM InvoiceImport ii WHERE ii.user = :user AND ii.status = 'MANUAL_REVIEW' ORDER BY ii.importedAt DESC")
+    @Query("SELECT ii FROM InvoiceImport ii "
+        + "WHERE ii.user = :user AND ii.status = 'MANUAL_REVIEW' "
+        + "ORDER BY ii.importedAt DESC")
     List<InvoiceImport> findManualReviewImportsByUser(@Param("user") User user);
 
     /**

@@ -1,6 +1,11 @@
 package com.fintrack.domain.creditcard;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.Objects;
 
 import org.apache.commons.lang3.Validate;
@@ -13,13 +18,16 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "categories")
 public class Category {
 
+    /** The category's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The category's name. */
     @Column(nullable = false, unique = true)
     private String name;
 
+    /** The category's color in hex format. */
     @Column
     private String color;
 
@@ -57,26 +65,36 @@ public class Category {
      *
      * @return the category's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the category's name.
      *
      * @return the category's name. Never null or blank.
      */
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
     /**
      * Gets the category's color.
      *
      * @return the category's color in hex format. May be null.
      */
-    public String getColor() { return color; }
+    public String getColor() {
+        return color;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Category category)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Category category)) {
+            return false;
+        }
         return Objects.equals(id, category.id);
     }
 
@@ -87,10 +105,10 @@ public class Category {
 
     @Override
     public String toString() {
-        return "Category{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", color='" + color + '\'' +
-                '}';
+        return "Category{"
+            + "id=" + id
+            + ", name='" + name + '\''
+            + ", color='" + color + '\''
+            + '}';
     }
 }

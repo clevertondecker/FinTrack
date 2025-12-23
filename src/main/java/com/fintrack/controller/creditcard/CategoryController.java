@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/categories")
 public class CategoryController {
 
+    /** The category repository. */
     private final CategoryJpaRepository categoryRepository;
 
     public CategoryController(CategoryJpaRepository categoryRepository) {

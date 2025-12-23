@@ -1,7 +1,17 @@
 package com.fintrack.domain.creditcard;
 
 import com.fintrack.domain.user.User;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -16,44 +26,56 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "credit_cards")
 public class CreditCard {
 
+    /** The credit card's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The credit card's name. */
     @Column(nullable = false)
     private String name;
 
+    /** The last four digits of the credit card. */
     @Column(nullable = false, length = 4)
     private String lastFourDigits;
 
+    /** The credit card's limit. */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal creditLimit;
 
+    /** The credit card's owner. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    /** The bank that issued the credit card. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_id", nullable = false)
     private Bank bank;
 
+    /** The credit card's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** The credit card's last update timestamp. */
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    /** Whether the credit card is active. */
     @Column(nullable = false)
     private boolean active = true;
 
+    /** The type of the credit card. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CardType cardType = CardType.PHYSICAL;
 
+    /** The parent card for additional cards. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_card_id")
     private CreditCard parentCard;
 
+    /** The name on the card. */
     @Column(length = 100)
     private String cardholderName;
 
@@ -220,89 +242,117 @@ public class CreditCard {
      *
      * @return the credit card's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the credit card's name.
      *
      * @return the credit card's name. Never null or blank.
      */
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
     /**
      * Gets the last four digits of the credit card.
      *
      * @return the last four digits. Never null or blank, exactly 4 characters.
      */
-    public String getLastFourDigits() { return lastFourDigits; }
+    public String getLastFourDigits() {
+        return lastFourDigits;
+    }
 
     /**
      * Gets the credit card's limit.
      *
      * @return the credit card's limit. Never null, always positive.
      */
-    public BigDecimal getLimit() { return creditLimit; }
+    public BigDecimal getLimit() {
+        return creditLimit;
+    }
 
     /**
      * Gets the credit card's owner.
      *
      * @return the credit card's owner. Never null.
      */
-    public User getOwner() { return owner; }
+    public User getOwner() {
+        return owner;
+    }
 
     /**
      * Gets the bank that issued the credit card.
      *
      * @return the bank. Never null.
      */
-    public Bank getBank() { return bank; }
+    public Bank getBank() {
+        return bank;
+    }
 
     /**
      * Gets the credit card's creation timestamp.
      *
      * @return the creation timestamp. Never null.
      */
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     /**
      * Gets the credit card's last update timestamp.
      *
      * @return the last update timestamp. Never null.
      */
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
     /**
      * Checks if the credit card is active.
      *
      * @return true if the credit card is active, false otherwise.
      */
-    public boolean isActive() { return active; }
+    public boolean isActive() {
+        return active;
+    }
 
     /**
      * Gets the credit card's type.
      *
      * @return the credit card's type. Never null.
      */
-    public CardType getCardType() { return cardType; }
+    public CardType getCardType() {
+        return cardType;
+    }
 
     /**
      * Gets the parent card for additional cards.
      *
      * @return the parent card. May be null for physical and virtual cards.
      */
-    public CreditCard getParentCard() { return parentCard; }
+    public CreditCard getParentCard() {
+        return parentCard;
+    }
 
     /**
      * Gets the name on the card.
      *
      * @return the cardholder name. May be null.
      */
-    public String getCardholderName() { return cardholderName; }
+    public String getCardholderName() {
+        return cardholderName;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof CreditCard creditCard)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof CreditCard creditCard)) {
+            return false;
+        }
         return Objects.equals(id, creditCard.id);
     }
 
@@ -313,19 +363,19 @@ public class CreditCard {
 
     @Override
     public String toString() {
-        return "CreditCard{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", lastFourDigits='" + lastFourDigits + '\'' +
-                ", limit=" + creditLimit +
-                ", owner=" + owner +
-                ", bank=" + bank +
-                ", cardType=" + cardType +
-                ", parentCard=" + (parentCard != null ? parentCard.getId() : "null") +
-                ", cardholderName='" + cardholderName + '\'' +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                ", active=" + active +
-                '}';
+        return "CreditCard{"
+            + "id=" + id
+            + ", name='" + name + '\''
+            + ", lastFourDigits='" + lastFourDigits + '\''
+            + ", limit=" + creditLimit
+            + ", owner=" + owner
+            + ", bank=" + bank
+            + ", cardType=" + cardType
+            + ", parentCard=" + (parentCard != null ? parentCard.getId() : "null")
+            + ", cardholderName='" + cardholderName + '\''
+            + ", createdAt=" + createdAt
+            + ", updatedAt=" + updatedAt
+            + ", active=" + active
+            + '}';
     }
 }

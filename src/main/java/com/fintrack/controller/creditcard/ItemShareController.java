@@ -7,7 +7,13 @@ import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
-import com.fintrack.dto.creditcard.*;
+import com.fintrack.dto.creditcard.CreateItemShareRequest;
+import com.fintrack.dto.creditcard.ItemShareCreateResponse;
+import com.fintrack.dto.creditcard.ItemShareListResponse;
+import com.fintrack.dto.creditcard.ItemShareResponse;
+import com.fintrack.dto.creditcard.MySharesResponse;
+import com.fintrack.dto.creditcard.MarkShareAsPaidRequest;
+import com.fintrack.dto.creditcard.MyShareResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,7 +35,9 @@ import java.util.Optional;
 @RequestMapping("/api/invoices")
 public class ItemShareController {
 
+    /** The expense sharing service. */
     private final ExpenseSharingServiceImpl expenseSharingService;
+    /** The invoice service. */
     private final InvoiceService invoiceService;
 
     public ItemShareController(ExpenseSharingServiceImpl expenseSharingService, InvoiceService invoiceService) {

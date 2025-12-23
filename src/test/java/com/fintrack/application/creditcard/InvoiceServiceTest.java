@@ -1,6 +1,11 @@
 package com.fintrack.application.creditcard;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -20,14 +25,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fintrack.domain.creditcard.*;
+import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.Category;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceCalculationService;
+import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.InvoiceStatus;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
-import com.fintrack.infrastructure.persistence.creditcard.*;
+import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.InvoiceItemJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.InvoiceJpaRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,7 +89,8 @@ class InvoiceServiceTest {
         testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
         testCategory = Category.of("Food", "#FF0000");
-        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"), testCategory, LocalDate.of(2024, 1, 15));
+        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"),
+            testCategory, LocalDate.of(2024, 1, 15));
         
         // Add the item to the invoice
         testInvoice.addItem(testInvoiceItem);

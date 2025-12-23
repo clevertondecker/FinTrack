@@ -4,7 +4,11 @@ import com.fintrack.application.creditcard.ExpenseReportServiceImpl;
 import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.user.User;
-import com.fintrack.dto.creditcard.*;
+import com.fintrack.dto.creditcard.CategoryExpenseSummary;
+import com.fintrack.dto.creditcard.CategoryResponse;
+import com.fintrack.dto.creditcard.ExpenseByCategoryResponse;
+import com.fintrack.dto.creditcard.ExpenseDetailResponse;
+import com.fintrack.dto.creditcard.ExpenseReportResponse;
 import com.fintrack.dto.user.UserResponse;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +31,9 @@ import java.util.Optional;
 @RequestMapping("/api/expenses")
 public class ExpenseReportController {
 
+    /** The expense report service. */
     private final ExpenseReportServiceImpl expenseReportService;
+    /** The invoice service. */
     private final InvoiceService invoiceService;
 
     /**

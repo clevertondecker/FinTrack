@@ -32,7 +32,8 @@ class ItemShareTest {
         CreditCard testCreditCard = CreditCard.of("Test Card", "1234", new BigDecimal("5000.00"), testUser, testBank);
         testInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 15));
         testCategory = Category.of("Food", "#FF0000");
-        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"), testCategory, LocalDate.of(2024, 1, 10));
+        testInvoiceItem = InvoiceItem.of(testInvoice, "Test Item", new BigDecimal("100.00"),
+            testCategory, LocalDate.of(2024, 1, 10));
     }
 
     @Nested
@@ -42,7 +43,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should create ItemShare with valid parameters successfully")
         void shouldCreateItemShareWithValidParametersSuccessfully() {
-            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"), new BigDecimal("50.00"), false);
+            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"),
+                new BigDecimal("50.00"), false);
 
             assertThat(share.getInvoiceItem()).isEqualTo(testInvoiceItem);
             assertThat(share.getUser()).isEqualTo(testUser);
@@ -56,7 +58,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should create ItemShare with responsible flag")
         void shouldCreateItemShareWithResponsibleFlag() {
-            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.3"), new BigDecimal("30.00"), true);
+            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.3"),
+                new BigDecimal("30.00"), true);
 
             assertThat(share.isResponsible()).isTrue();
         }
@@ -64,7 +67,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should create ItemShare with minimum percentage")
         void shouldCreateItemShareWithMinimumPercentage() {
-            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.01"), new BigDecimal("1.00"), false);
+            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.01"),
+                new BigDecimal("1.00"), false);
 
             assertThat(share.getPercentage()).isEqualByComparingTo(new BigDecimal("0.01"));
             assertThat(share.getAmount()).isEqualByComparingTo(new BigDecimal("1.00")); // 1% of 100.00
@@ -73,7 +77,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should create ItemShare with maximum percentage")
         void shouldCreateItemShareWithMaximumPercentage() {
-            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("1.0"), new BigDecimal("100.00"), false);
+            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("1.0"),
+                new BigDecimal("100.00"), false);
 
             assertThat(share.getPercentage()).isEqualByComparingTo(new BigDecimal("1.0"));
             assertThat(share.getAmount()).isEqualByComparingTo(new BigDecimal("100.00")); // 100% of 100.00
@@ -87,7 +92,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when user is null")
         void shouldThrowExceptionWhenUserIsNull() {
-            assertThatThrownBy(() -> ItemShare.of(null, testInvoiceItem, new BigDecimal("0.5"), new BigDecimal("50.00"), false))
+            assertThatThrownBy(() -> ItemShare.of(null, testInvoiceItem, new BigDecimal("0.5"),
+                new BigDecimal("50.00"), false))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("User must not be null.");
         }
@@ -95,7 +101,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when invoice item is null")
         void shouldThrowExceptionWhenInvoiceItemIsNull() {
-            assertThatThrownBy(() -> ItemShare.of(testUser, null, new BigDecimal("0.5"), new BigDecimal("50.00"), false))
+            assertThatThrownBy(() -> ItemShare.of(testUser, null,
+                new BigDecimal("0.5"), new BigDecimal("50.00"), false))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("Invoice item must not be null.");
         }
@@ -103,7 +110,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when percentage is null")
         void shouldThrowExceptionWhenPercentageIsNull() {
-            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem, null, new BigDecimal("50.00"), false))
+            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem, null,
+                new BigDecimal("50.00"), false))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("Percentage must not be null.");
         }
@@ -111,7 +119,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when amount is null")
         void shouldThrowExceptionWhenAmountIsNull() {
-            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"), null, false))
+            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem,
+                new BigDecimal("0.5"), null, false))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("Amount must not be null.");
         }
@@ -119,7 +128,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when percentage exceeds one")
         void shouldThrowExceptionWhenPercentageExceedsOne() {
-            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem, new BigDecimal("1.1"), new BigDecimal("50.00"), false))
+            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem,
+                new BigDecimal("1.1"), new BigDecimal("50.00"), false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Percentage cannot exceed 1.0 (100%).");
         }
@@ -127,7 +137,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should throw exception when percentage is negative")
         void shouldThrowExceptionWhenPercentageIsNegative() {
-            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem, new BigDecimal("-0.1"), new BigDecimal("50.00"), false))
+            assertThatThrownBy(() -> ItemShare.of(testUser, testInvoiceItem,
+                new BigDecimal("-0.1"), new BigDecimal("50.00"), false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Percentage must be non-negative.");
         }
@@ -309,7 +320,8 @@ class ItemShareTest {
         @Test
         @DisplayName("Should return meaningful string representation")
         void shouldReturnMeaningfulStringRepresentation() {
-            ItemShare share = ItemShare.of(testUser, testInvoiceItem, new BigDecimal("0.5"), new BigDecimal("50.00"), true);
+            ItemShare share = ItemShare.of(testUser, testInvoiceItem,
+                new BigDecimal("0.5"), new BigDecimal("50.00"), true);
 
             String toString = share.toString();
 

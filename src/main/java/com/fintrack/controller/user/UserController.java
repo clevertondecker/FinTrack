@@ -40,7 +40,9 @@ public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
+    /** The user service. */
     private final UserService userService;
+    /** The user repository. */
     private final UserRepository userRepository;
 
     public UserController(final UserService theUserService, final UserRepository theUserRepository) {

@@ -1,7 +1,15 @@
 package com.fintrack.domain.creditcard;
 
 import com.fintrack.domain.user.User;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -16,39 +24,50 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "item_shares")
 public class ItemShare {
 
+    /** The share's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The user this share belongs to. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    /** The invoice item this share belongs to. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_item_id", nullable = false)
     private InvoiceItem invoiceItem;
 
+    /** The percentage of the item (0.0 to 1.0). */
     @Column(nullable = false, precision = 5, scale = 4)
     private BigDecimal percentage;
 
+    /** The amount this user is responsible for. */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    /** Whether this user is responsible for paying. */
     @Column(nullable = false)
     private boolean responsible = false;
 
+    /** Whether this share has been paid. */
     @Column(nullable = false)
     private boolean paid = false;
 
+    /** The payment method used. */
     @Column(length = 50)
     private String paymentMethod;
 
+    /** The date and time when the share was paid. */
     @Column
     private LocalDateTime paidAt;
 
+    /** The share's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** The share's last update timestamp. */
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
@@ -206,61 +225,81 @@ public class ItemShare {
      *
      * @return the item share's ID. May be null if not persisted.
      */
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Gets the user this share belongs to.
      *
      * @return the user. Never null.
      */
-    public User getUser() { return user; }
+    public User getUser() {
+        return user;
+    }
 
     /**
      * Gets the invoice item this share belongs to.
      *
      * @return the invoice item. Never null.
      */
-    public InvoiceItem getInvoiceItem() { return invoiceItem; }
+    public InvoiceItem getInvoiceItem() {
+        return invoiceItem;
+    }
 
     /**
      * Gets the percentage of the item this user is responsible for.
      *
      * @return the percentage (0.0 to 1.0). Never null, always between 0 and 1.
      */
-    public BigDecimal getPercentage() { return percentage; }
+    public BigDecimal getPercentage() {
+        return percentage;
+    }
 
     /**
      * Gets the amount this user is responsible for.
      *
      * @return the amount. Never null, always positive.
      */
-    public BigDecimal getAmount() { return amount; }
+    public BigDecimal getAmount() {
+        return amount;
+    }
 
     /**
      * Checks if this user is responsible for paying this share.
      *
      * @return true if the user is responsible, false otherwise.
      */
-    public boolean isResponsible() { return responsible; }
+    public boolean isResponsible() {
+        return responsible;
+    }
 
     /**
      * Gets the item share's creation timestamp.
      *
      * @return the creation timestamp. Never null.
      */
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     /**
      * Gets the item share's last update timestamp.
      *
      * @return the last update timestamp. Never null.
      */
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ItemShare itemShare)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ItemShare itemShare)) {
+            return false;
+        }
         return Objects.equals(id, itemShare.id);
     }
 
@@ -271,15 +310,15 @@ public class ItemShare {
 
     @Override
     public String toString() {
-        return "ItemShare{" +
-                "id=" + id +
-                ", user=" + user +
-                ", invoiceItem=" + invoiceItem +
-                ", percentage=" + percentage +
-                ", amount=" + amount +
-                ", responsible=" + responsible +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                '}';
+        return "ItemShare{"
+            + "id=" + id
+            + ", user=" + user
+            + ", invoiceItem=" + invoiceItem
+            + ", percentage=" + percentage
+            + ", amount=" + amount
+            + ", responsible=" + responsible
+            + ", createdAt=" + createdAt
+            + ", updatedAt=" + updatedAt
+            + '}';
     }
 } 

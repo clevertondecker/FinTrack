@@ -26,8 +26,11 @@ import java.util.HashMap;
 @Transactional
 public class CreditCardService {
 
+    /** The credit card repository. */
     private final CreditCardJpaRepository creditCardRepository;
+    /** The bank repository. */
     private final BankJpaRepository bankRepository;
+    /** The user repository. */
     private final UserRepository userRepository;
 
     /**
@@ -290,7 +293,8 @@ public class CreditCardService {
      * @param bank the bank. Cannot be null.
      * @param parentCard the parent card. Can be null.
      */
-    private void updateCreditCardFields(CreditCard creditCard, CreateCreditCardRequest request, Bank bank, CreditCard parentCard) {
+    private void updateCreditCardFields(
+            CreditCard creditCard, CreateCreditCardRequest request, Bank bank, CreditCard parentCard) {
         creditCard.updateName(request.name());
         creditCard.updateLimit(request.limit());
         creditCard.updateBank(bank);

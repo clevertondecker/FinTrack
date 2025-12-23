@@ -14,7 +14,12 @@ import org.junit.jupiter.api.Test;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Invoice Tests")
 class InvoiceTest {
@@ -83,8 +88,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should record payment successfully")
         void shouldRecordPaymentSuccessfully() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
 
             BigDecimal paymentAmount = new BigDecimal("50.00");
@@ -97,8 +104,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should record full payment")
         void shouldRecordFullPayment() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
 
             invoice.recordPayment(new BigDecimal("100.00"));
@@ -127,8 +136,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should throw exception when payment amount exceeds total")
         void shouldThrowExceptionWhenPaymentAmountExceedsTotal() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             assertThrows(IllegalArgumentException.class, () -> 
@@ -138,8 +149,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should calculate remaining amount correctly")
         void shouldCalculateRemainingAmountCorrectly() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.recordPayment(new BigDecimal("30.00"));
@@ -155,8 +168,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should update status to PAID when fully paid")
         void shouldUpdateStatusToPaidWhenFullyPaid() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.recordPayment(new BigDecimal("100.00"));
@@ -167,8 +182,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should update status to PARTIAL when partially paid")
         void shouldUpdateStatusToPartialWhenPartiallyPaid() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.recordPayment(new BigDecimal("50.00"));
@@ -180,7 +197,8 @@ class InvoiceTest {
         @DisplayName("Should update status to OVERDUE when past due date")
         void shouldUpdateStatusToOverdueWhenPastDueDate() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.updateStatus();
@@ -192,7 +210,8 @@ class InvoiceTest {
         @DisplayName("Should keep status as OPEN when not paid and not overdue")
         void shouldKeepStatusAsOpenWhenNotPaidAndNotOverdue() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.now().plusDays(30));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.updateStatus();
@@ -226,7 +245,8 @@ class InvoiceTest {
         @DisplayName("Should update status to CLOSED when all items removed and past due date")
         void shouldUpdateStatusToClosedWhenAllItemsRemovedAndPastDueDate() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             // Remove the item, making totalAmount zero
@@ -267,7 +287,8 @@ class InvoiceTest {
             assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
             
             // Add an item - should recalculate status
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             // Should now be OVERDUE because has amount and is past due date
@@ -283,7 +304,8 @@ class InvoiceTest {
             assertEquals(InvoiceStatus.OPEN, invoice.getStatus());
             
             // Add an item - should recalculate status
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             // Should now be OPEN because has amount and is not past due date
@@ -294,7 +316,8 @@ class InvoiceTest {
         @DisplayName("Should return to CLOSED when removing all items from overdue invoice")
         void shouldReturnToClosedWhenRemovingAllItemsFromOverdueInvoice() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 1, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             // Should be OVERDUE because has amount and is past due date
@@ -317,7 +340,8 @@ class InvoiceTest {
             assertEquals(InvoiceStatus.CLOSED, invoice.getStatus());
             
             // Add an item - should be allowed, and status should change
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             // Should now be OVERDUE because has amount and is past due date
@@ -350,8 +374,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should add item successfully")
         void shouldAddItemSuccessfully() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             
             invoice.addItem(item);
             
@@ -363,9 +389,12 @@ class InvoiceTest {
         @Test
         @DisplayName("Should add multiple items")
         void shouldAddMultipleItems() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
-            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch", new BigDecimal("50.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch",
+                new BigDecimal("50.00"), testCategory, LocalDate.now());
             
             invoice.addItem(item1);
             invoice.addItem(item2);
@@ -377,8 +406,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should remove item successfully")
         void shouldRemoveItemSuccessfully() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.removeItem(item);
@@ -392,9 +423,12 @@ class InvoiceTest {
         @DisplayName("Should recalculate total when items are added")
         void shouldRecalculateTotalWhenItemsAreAdded() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
-            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch", new BigDecimal("50.00"), testCategory, LocalDate.now());
-            InvoiceItem item3 = InvoiceItem.of(invoice, "Breakfast", new BigDecimal("25.00"), testCategory, LocalDate.now());
+            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch",
+                new BigDecimal("50.00"), testCategory, LocalDate.now());
+            InvoiceItem item3 = InvoiceItem.of(invoice, "Breakfast",
+                new BigDecimal("25.00"), testCategory, LocalDate.now());
             
             invoice.addItem(item1);
             assertEquals(new BigDecimal("100.00"), invoice.getTotalAmount());
@@ -410,9 +444,12 @@ class InvoiceTest {
         @DisplayName("Should recalculate total when items are removed")
         void shouldRecalculateTotalWhenItemsAreRemoved() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
-            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch", new BigDecimal("50.00"), testCategory, LocalDate.now());
-            InvoiceItem item3 = InvoiceItem.of(invoice, "Breakfast", new BigDecimal("25.00"), testCategory, LocalDate.now());
+            InvoiceItem item1 = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item2 = InvoiceItem.of(invoice, "Lunch",
+                new BigDecimal("50.00"), testCategory, LocalDate.now());
+            InvoiceItem item3 = InvoiceItem.of(invoice, "Breakfast",
+                new BigDecimal("25.00"), testCategory, LocalDate.now());
             invoice.addItem(item1);
             invoice.addItem(item2);
             invoice.addItem(item3);
@@ -455,10 +492,10 @@ class InvoiceTest {
             
             LocalDateTime afterCreation = LocalDateTime.now();
 
-            assertTrue(invoice.getCreatedAt().isAfter(beforeCreation) || 
-                      invoice.getCreatedAt().equals(beforeCreation));
-            assertTrue(invoice.getCreatedAt().isBefore(afterCreation) || 
-                      invoice.getCreatedAt().equals(afterCreation));
+            assertTrue(invoice.getCreatedAt().isAfter(beforeCreation)
+                || invoice.getCreatedAt().equals(beforeCreation));
+            assertTrue(invoice.getCreatedAt().isBefore(afterCreation)
+                || invoice.getCreatedAt().equals(afterCreation));
         }
 
         @Test
@@ -491,8 +528,10 @@ class InvoiceTest {
         @Test
         @DisplayName("Should update updatedAt when recording payment")
         void shouldUpdateUpdatedAtWhenRecordingPayment() {
-            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                LocalDate.of(2024, 2, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"),
+                testCategory, LocalDate.now());
             invoice.addItem(item);
             
             LocalDateTime beforeUpdate = invoice.getUpdatedAt();
@@ -570,7 +609,8 @@ class InvoiceTest {
         @DisplayName("Should handle very large amounts")
         void shouldHandleVeryLargeAmounts() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Expensive item", new BigDecimal("999999.99"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Expensive item",
+                new BigDecimal("999999.99"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             assertEquals(new BigDecimal("999999.99"), invoice.getTotalAmount());
@@ -580,7 +620,8 @@ class InvoiceTest {
         @DisplayName("Should handle decimal amounts")
         void shouldHandleDecimalAmounts() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), LocalDate.of(2024, 2, 10));
-            InvoiceItem item = InvoiceItem.of(invoice, "Item with cents", new BigDecimal("123.45"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Item with cents",
+                new BigDecimal("123.45"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             assertEquals(new BigDecimal("123.45"), invoice.getTotalAmount());
@@ -601,7 +642,8 @@ class InvoiceTest {
         void shouldHandlePastDueDates() {
             LocalDate pastDate = LocalDate.now().minusDays(30);
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1), pastDate);
-            InvoiceItem item = InvoiceItem.of(invoice, "Dinner", new BigDecimal("100.00"), testCategory, LocalDate.now());
+            InvoiceItem item = InvoiceItem.of(invoice, "Dinner",
+                new BigDecimal("100.00"), testCategory, LocalDate.now());
             invoice.addItem(item);
             
             invoice.updateStatus();

@@ -41,7 +41,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for InvoiceImportService.
@@ -215,7 +220,8 @@ class InvoiceImportServiceTest {
             .thenReturn(imports);
 
         // When
-        List<ImportInvoiceResponse> responses = invoiceImportService.getUserImportsByStatus(testUser, ImportStatus.PENDING);
+        List<ImportInvoiceResponse> responses =
+            invoiceImportService.getUserImportsByStatus(testUser, ImportStatus.PENDING);
 
         // Then
         assertThat(responses).hasSize(1);
@@ -318,8 +324,10 @@ class InvoiceImportServiceTest {
         // Given
         InvoiceImport importRecord = createTestImportRecord();
         List<ParsedInvoiceData.ParsedInvoiceItem> items = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99), LocalDate.now(), null, 1, 1, 0.9),
-            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90), LocalDate.now(), null, 1, 1, 0.9)
+            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99),
+                LocalDate.now(), null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90),
+                LocalDate.now(), null, 1, 1, 0.9)
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(items);
         
@@ -354,8 +362,10 @@ class InvoiceImportServiceTest {
         
         // Same items as existing (should be skipped)
         List<ParsedInvoiceData.ParsedInvoiceItem> duplicateItems = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99), LocalDate.now(), null, 1, 1, 0.9),
-            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90), LocalDate.now(), null, 1, 1, 0.9)
+            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99),
+                LocalDate.now(), null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90),
+                LocalDate.now(), null, 1, 1, 0.9)
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(duplicateItems);
         
@@ -389,10 +399,14 @@ class InvoiceImportServiceTest {
         
         // Mix of existing and new items
         List<ParsedInvoiceData.ParsedInvoiceItem> mixedItems = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99), LocalDate.now(), null, 1, 1, 0.9), // Duplicate
-            new ParsedInvoiceData.ParsedInvoiceItem("Spotify Premium", BigDecimal.valueOf(19.90), LocalDate.now(), null, 1, 1, 0.9), // New
-            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90), LocalDate.now(), null, 1, 1, 0.9), // Duplicate
-            new ParsedInvoiceData.ParsedInvoiceItem("Uber Ride", BigDecimal.valueOf(25.50), LocalDate.now(), null, 1, 1, 0.9) // New
+            new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", BigDecimal.valueOf(99.99),
+                LocalDate.now(), null, 1, 1, 0.9), // Duplicate
+            new ParsedInvoiceData.ParsedInvoiceItem("Spotify Premium", BigDecimal.valueOf(19.90),
+                LocalDate.now(), null, 1, 1, 0.9), // New
+            new ParsedInvoiceData.ParsedInvoiceItem("Netflix Subscription", BigDecimal.valueOf(29.90),
+                LocalDate.now(), null, 1, 1, 0.9), // Duplicate
+            new ParsedInvoiceData.ParsedInvoiceItem("Uber Ride", BigDecimal.valueOf(25.50),
+                LocalDate.now(), null, 1, 1, 0.9) // New
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(mixedItems);
         
@@ -426,9 +440,12 @@ class InvoiceImportServiceTest {
         
         // Same purchase but different installment numbers (should not be duplicates)
         List<ParsedInvoiceData.ParsedInvoiceItem> installmentItems = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00), LocalDate.now(), null, 1, 12, 0.9), // Duplicate
-            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00), LocalDate.now(), null, 2, 12, 0.9), // New (different installment)
-            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00), LocalDate.now(), null, 3, 12, 0.9)  // New (different installment)
+            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00),
+                LocalDate.now(), null, 1, 12, 0.9), // Duplicate
+            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00),
+                LocalDate.now(), null, 2, 12, 0.9), // New (different installment)
+            new ParsedInvoiceData.ParsedInvoiceItem("iPhone 15 Pro", BigDecimal.valueOf(500.00),
+                LocalDate.now(), null, 3, 12, 0.9)  // New (different installment)
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(installmentItems);
         
@@ -501,14 +518,16 @@ class InvoiceImportServiceTest {
     }
 
     @Test
-    void processImportAsync_WithInvoiceAlreadyReferencedByAnotherImport_ShouldMarkWithoutReference() throws IOException {
+    void processImportAsync_WithInvoiceAlreadyReferencedByAnotherImport_ShouldMarkWithoutReference()
+        throws IOException {
         // Given
         InvoiceImport importRecord = createTestImportRecord();
         InvoiceImport existingImport = createTestImportRecord();
         ReflectionTestUtils.setField(existingImport, "id", 2L);
         
         List<ParsedInvoiceData.ParsedInvoiceItem> items = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("New Item", BigDecimal.valueOf(50.00), LocalDate.now(), null, 1, 1, 0.9)
+            new ParsedInvoiceData.ParsedInvoiceItem("New Item", BigDecimal.valueOf(50.00),
+                LocalDate.now(), null, 1, 1, 0.9)
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(items);
         
@@ -519,7 +538,8 @@ class InvoiceImportServiceTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
         when(invoiceRepository.findByCreditCardAndMonth(any(), any())).thenReturn(List.of(existingInvoice));
         when(invoiceRepository.save(any(Invoice.class))).thenReturn(existingInvoice);
-        when(invoiceImportRepository.findByCreatedInvoiceId(1L)).thenReturn(List.of(existingImport)); // Existing import found
+        // Existing import found
+        when(invoiceImportRepository.findByCreatedInvoiceId(1L)).thenReturn(List.of(existingImport));
 
         // When
         invoiceImportService.processImportAsync(1L);
@@ -537,7 +557,8 @@ class InvoiceImportServiceTest {
         // Given
         InvoiceImport importRecord = createTestImportRecord();
         List<ParsedInvoiceData.ParsedInvoiceItem> items = List.of(
-            new ParsedInvoiceData.ParsedInvoiceItem("New Item", BigDecimal.valueOf(50.00), LocalDate.now(), null, 1, 1, 0.9)
+            new ParsedInvoiceData.ParsedInvoiceItem("New Item", BigDecimal.valueOf(50.00),
+                LocalDate.now(), null, 1, 1, 0.9)
         );
         ParsedInvoiceData parsedData = createParsedDataWithItems(items);
         
@@ -722,7 +743,8 @@ class InvoiceImportServiceTest {
 
         // When
         String signature1 = invokeComputeItemSignature(regularDescription, amount, date, 1, 1);
-        String signature2 = invokeComputeItemSignature(regularDescription, amount, date, 2, 2); // Different installments
+        // Different installments
+        String signature2 = invokeComputeItemSignature(regularDescription, amount, date, 2, 2);
 
         // Then
         assertThat(signature1).isNotEqualTo(signature2); // Different installments should produce different signatures
@@ -770,7 +792,8 @@ class InvoiceImportServiceTest {
         // When
         InvoiceImportService.ItemProcessingResult addedResult = InvoiceImportService.ItemProcessingResult.added();
         InvoiceImportService.ItemProcessingResult skippedResult = InvoiceImportService.ItemProcessingResult.skipped();
-        InvoiceImportService.ItemProcessingResult conditionalResult = InvoiceImportService.ItemProcessingResult.fromCondition(true);
+        InvoiceImportService.ItemProcessingResult conditionalResult =
+            InvoiceImportService.ItemProcessingResult.fromCondition(true);
 
         // Then
         assertThat(addedResult.wasAdded()).isTrue();
@@ -809,8 +832,10 @@ class InvoiceImportServiceTest {
         ReflectionTestUtils.setField(invoice, "id", 1L);
         
         // Add existing items
-        InvoiceItem item1 = InvoiceItem.of(invoice, "Amazon Purchase", BigDecimal.valueOf(99.99), null, LocalDate.now(), 1, 1);
-        InvoiceItem item2 = InvoiceItem.of(invoice, "Netflix Subscription", BigDecimal.valueOf(29.90), null, LocalDate.now(), 1, 1);
+        InvoiceItem item1 = InvoiceItem.of(invoice, "Amazon Purchase", BigDecimal.valueOf(99.99),
+            null, LocalDate.now(), 1, 1);
+        InvoiceItem item2 = InvoiceItem.of(invoice, "Netflix Subscription", BigDecimal.valueOf(29.90),
+            null, LocalDate.now(), 1, 1);
         
         ReflectionTestUtils.setField(item1, "id", 1L);
         ReflectionTestUtils.setField(item2, "id", 2L);
@@ -826,7 +851,8 @@ class InvoiceImportServiceTest {
         ReflectionTestUtils.setField(invoice, "id", 1L);
         
         // Add existing installment item
-        InvoiceItem item1 = InvoiceItem.of(invoice, "iPhone 15 Pro", BigDecimal.valueOf(500.00), null, LocalDate.now(), 1, 12);
+        InvoiceItem item1 = InvoiceItem.of(invoice, "iPhone 15 Pro", BigDecimal.valueOf(500.00),
+            null, LocalDate.now(), 1, 12);
         ReflectionTestUtils.setField(item1, "id", 1L);
         
         invoice.addItem(item1);
@@ -841,16 +867,21 @@ class InvoiceImportServiceTest {
         return (boolean) method.invoke(invoiceImportService, description);
     }
 
-    private boolean invokeIsItemAlreadyInDatabase(Invoice invoice, ParsedInvoiceData.ParsedInvoiceItem newItem) throws Exception {
-        Method method = InvoiceImportService.class.getDeclaredMethod("isItemAlreadyInDatabase", Invoice.class, ParsedInvoiceData.ParsedInvoiceItem.class);
+    private boolean invokeIsItemAlreadyInDatabase(Invoice invoice,
+        ParsedInvoiceData.ParsedInvoiceItem newItem) throws Exception {
+        Method method = InvoiceImportService.class.getDeclaredMethod("isItemAlreadyInDatabase",
+            Invoice.class, ParsedInvoiceData.ParsedInvoiceItem.class);
         method.setAccessible(true);
         return (boolean) method.invoke(invoiceImportService, invoice, newItem);
     }
 
-    private String invokeComputeItemSignature(String description, BigDecimal amount, LocalDate date, int installmentNumber, int totalInstallments) throws Exception {
-        Method method = InvoiceImportService.class.getDeclaredMethod("computeItemSignature", String.class, BigDecimal.class, LocalDate.class, int.class, int.class);
+    private String invokeComputeItemSignature(String description, BigDecimal amount, LocalDate date,
+        int installmentNumber, int totalInstallments) throws Exception {
+        Method method = InvoiceImportService.class.getDeclaredMethod("computeItemSignature",
+            String.class, BigDecimal.class, LocalDate.class, int.class, int.class);
         method.setAccessible(true);
-        return (String) method.invoke(invoiceImportService, description, amount, date, installmentNumber, totalInstallments);
+        return (String) method.invoke(invoiceImportService, description, amount, date,
+            installmentNumber, totalInstallments);
     }
 
     private Set<String> invokeBuildExistingSignatures(Invoice invoice) throws Exception {

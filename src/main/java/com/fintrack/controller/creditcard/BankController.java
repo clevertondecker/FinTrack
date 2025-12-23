@@ -22,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/banks")
 public class BankController {
 
+    /** The bank repository. */
     private final BankJpaRepository bankRepository;
 
     public BankController(BankJpaRepository bankRepository) {
