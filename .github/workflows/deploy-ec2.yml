@@ -1,0 +1,159 @@
+name: Deploy Fintrack to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  id-token: write   # necessário para OIDC (assumir role AWS)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # 🔑 IMPORTANTE: conecta este job ao Environment
+    environment: production
+
+    # 🔹 Variáveis vindas do Environment
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      S3_BUCKET: ${{ vars.FINTRACK_S3_BUCKET }}
+      INSTANCE_ID: ${{ vars.FINTRACK_EC2_INSTANCE_ID }}
+      HOST_URL: ${{ vars.FINTRACK_HOST_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # Setup Java (backend)
+      # -----------------------------
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # -----------------------------
+      # Setup Node (frontend)
+      # -----------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # -----------------------------
+      # Build BACKEND
+      # -----------------------------
+      - name: Build backend
+        run: |
+          set -e
+          cd backend
+          ./mvnw -B -DskipTests package
+
+          mkdir -p ../artifact/backend
+          cp target/*.jar ../artifact/backend/fintrack.jar
+
+      # -----------------------------
+      # Build FRONTEND
+      # -----------------------------
+      - name: Build frontend
+        run: |
+          set -e
+          cd frontend
+          npm ci
+          npm run build
+
+          mkdir -p ../artifact/frontend
+          rsync -av build/ ../artifact/frontend/
+
+      # -----------------------------
+      # Empacotar artefato
+      # -----------------------------
+      - name: Pack artifact
+        run: |
+          set -e
+          cd artifact
+          zip -r ../fintrack-${{ github.sha }}.zip .
+          cd ..
+
+      # -----------------------------
+      # Autenticar na AWS via OIDC
+      # -----------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # -----------------------------
+      # Upload do ZIP para S3
+      # -----------------------------
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp fintrack-${{ github.sha }}.zip \
+            s3://${S3_BUCKET}/releases/fintrack-${{ github.sha }}.zip
+
+      # -----------------------------
+      # Deploy na EC2 via SSM
+      # -----------------------------
+      - name: Deploy on EC2 via SSM
+        id: deploy
+        run: |
+          set -e
+
+          ART="s3://${S3_BUCKET}/releases/fintrack-${{ github.sha }}.zip"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy Fintrack ${{ github.sha }}" \
+            --parameters commands="[
+              'set -e',
+              'WORK=/tmp/fintrack-${{ github.sha }}',
+              'rm -rf ${WORK} && mkdir -p ${WORK}',
+              'aws s3 cp ${ART} ${WORK}/artifact.zip',
+              'unzip -o ${WORK}/artifact.zip -d ${WORK}',
+
+              'echo Deploy backend...',
+              'sudo systemctl stop fintrack || true',
+              'sudo cp ${WORK}/artifact/backend/fintrack.jar /opt/fintrack/fintrack.jar',
+              'sudo systemctl start fintrack',
+
+              'echo Deploy frontend...',
+              'sudo mkdir -p /usr/share/nginx/html/app',
+              'sudo rsync -av --delete ${WORK}/artifact/frontend/ /usr/share/nginx/html/app/',
+              'sudo chmod -R a+rX /usr/share/nginx/html/app',
+
+              'echo Reload nginx...',
+              'sudo nginx -t',
+              'sudo systemctl reload nginx',
+
+              'echo Smoke tests...',
+              'curl -fsI ${HOST_URL}/app/ | head -n 1',
+              'curl -fsI ${HOST_URL}/oauth2/authorization/google | head -n 1',
+
+              'echo DEPLOY_OK'
+            ]" \
+            --query "Command.CommandId" --output text)
+
+          echo "command_id=${COMMAND_ID}" >> $GITHUB_OUTPUT
+
+      # -----------------------------
+      # Aguardar execução do SSM
+      # -----------------------------
+      - name: Wait for SSM command
+        run: |
+          aws ssm wait command-executed \
+            --command-id "${{ steps.deploy.outputs.command_id }}" \
+            --instance-id "${INSTANCE_ID}"
+
+          aws ssm get-command-invocation \
+            --command-id "${{ steps.deploy.outputs.command_id }}" \
+            --instance-id "${INSTANCE_ID}" \
+            --query "StandardOutputContent" \
+            --output text
