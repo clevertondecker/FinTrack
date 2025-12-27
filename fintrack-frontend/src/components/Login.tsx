@@ -34,8 +34,9 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to backend OAuth2 endpoint
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    // Redirect to backend OAuth2 endpoint (relative URL works with nginx proxy)
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
+    window.location.href = `${backendUrl}/oauth2/authorization/google`;
   };
 
   return (

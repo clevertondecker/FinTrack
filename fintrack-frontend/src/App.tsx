@@ -12,7 +12,7 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename="/app">
         <div className="App">
           <Routes>
             <Route path="/login" element={<Login />} />

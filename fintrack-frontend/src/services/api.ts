@@ -40,8 +40,11 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
+    // Use environment variable or default to relative /api (for production behind nginx proxy)
+    const baseURL = process.env.REACT_APP_API_URL || '/api';
+    
     this.api = axios.create({
-      baseURL: 'http://localhost:8080/api',
+      baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -69,10 +72,10 @@ class ApiService {
       (error) => {
         if (
           error.response?.status === 401 &&
-          window.location.pathname !== '/login'
+          !window.location.pathname.endsWith('/login')
         ) {
           localStorage.removeItem('token');
-          window.location.href = '/login';
+          window.location.href = '/app/login';
         }
         return Promise.reject(error);
       }

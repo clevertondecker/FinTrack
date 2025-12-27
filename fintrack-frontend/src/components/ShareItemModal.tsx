@@ -56,8 +56,8 @@ const ShareItemModal: React.FC<ShareItemModalProps> = ({
   const loadUsers = async () => {
     try {
       const response = await apiService.getUsers();
-      const loadedUsers = response.users.filter(user => user.id !== 1); // Exclude current user
-      setUsers(loadedUsers);
+      // Show all users including the current user for equal division
+      setUsers(response.users);
     } catch (err) {
       console.error('Error loading users:', err);
       throw err;
