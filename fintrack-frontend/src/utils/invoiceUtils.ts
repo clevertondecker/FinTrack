@@ -17,7 +17,10 @@ export const getStatusColor = (status: string): string => {
   }
 };
 
-export const getStatusText = (status: string, t: (key: string) => string): string => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TranslateFunction = (key: string, opts?: any) => any;
+
+export const getStatusText = (status: string, t: TranslateFunction): string => {
   switch (status) {
     case 'PAID': return t('invoices.status.paid');
     case 'OVERDUE': return t('invoices.status.overdue');
@@ -27,7 +30,7 @@ export const getStatusText = (status: string, t: (key: string) => string): strin
   }
 };
 
-export const getUrgencyText = (dueDate: string, status: string, t: (key: string, opts?: any) => string): string => {
+export const getUrgencyText = (dueDate: string, status: string, t: TranslateFunction): string => {
   if (status === 'PAID' || status === 'CLOSED') return '';
   const today = new Date();
   const due = new Date(dueDate);

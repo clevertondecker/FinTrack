@@ -11,8 +11,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    # 🔑 IMPORTANTE: conecta este job ao Environment
     environment: production
 
     # 🔹 Variáveis vindas do Environment
@@ -35,7 +33,6 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-
       # -----------------------------
       # Setup Node (frontend)
       # -----------------------------
@@ -49,26 +46,55 @@ jobs:
       # -----------------------------
       - name: Build backend
         run: |
-          set -e
-          cd backend
-          ./mvnw -B -DskipTests package
+          set -euo pipefail
 
-          mkdir -p ../artifact/backend
-          cp target/*.jar ../artifact/backend/fintrack.jar
+          echo "Building backend (project root)..."
+          if [ -x ./mvnw ]; then
+            ./mvnw -B -DskipTests package
+          else
+            mvn -B -DskipTests package
+          fi
+
+          mkdir -p artifact/backend
+          cp target/*.jar artifact/backend/fintrack.jar
+          echo "Backend artifact created at artifact/backend/fintrack.jar"
+      
 
       # -----------------------------
       # Build FRONTEND
       # -----------------------------
       - name: Build frontend
         run: |
-          set -e
-          cd frontend
-          npm ci
+          set -euo pipefail
+
+          if [ ! -d "fintrack-frontend" ]; then
+            echo "No fintrack-frontend directory found, skipping frontend build"
+            mkdir -p artifact/frontend
+            exit 0
+          fi
+
+          echo "Building frontend in fintrack-frontend..."
+          cd fintrack-frontend
+
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
           npm run build
 
           mkdir -p ../artifact/frontend
-          rsync -av build/ ../artifact/frontend/
+          if [ -d "build" ]; then
+            rsync -av --delete build/ ../artifact/frontend/
+          elif [ -d "dist" ]; then
+            rsync -av --delete dist/ ../artifact/frontend/
+          else
+            echo "Build output not found (expected build/ or dist/)"
+            exit 1
+          fi
 
+          echo "Frontend artifact ready at artifact/frontend/"
       # -----------------------------
       # Empacotar artefato
       # -----------------------------
