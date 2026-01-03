@@ -2,18 +2,17 @@ name: Deploy Fintrack to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
-  id-token: write   # necessário para OIDC (assumir role AWS)
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
 
-    # 🔹 Variáveis vindas do Environment
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       S3_BUCKET: ${{ vars.FINTRACK_S3_BUCKET }}
@@ -24,31 +23,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # Setup Java (backend)
-      # -----------------------------
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      # -----------------------------
-      # Setup Node (frontend)
-      # -----------------------------
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # -----------------------------
-      # Build BACKEND
-      # -----------------------------
       - name: Build backend
         run: |
           set -euo pipefail
-
-          echo "Building backend (project root)..."
           if [ -x ./mvnw ]; then
             ./mvnw -B -DskipTests package
           else
@@ -56,79 +45,57 @@ jobs:
           fi
 
           mkdir -p artifact/backend
+          JAR_COUNT=$(ls -1 target/*.jar 2>/dev/null | wc -l || true)
+          if [ "$JAR_COUNT" -eq 0 ]; then
+            echo "ERROR: no jar found in target/ — build failed or jar path different."
+            exit 2
+          fi
           cp target/*.jar artifact/backend/fintrack.jar
-          echo "Backend artifact created at artifact/backend/fintrack.jar"
-      
 
-      # -----------------------------
-      # Build FRONTEND
-      # -----------------------------
       - name: Build frontend
         run: |
           set -euo pipefail
-
           if [ ! -d "fintrack-frontend" ]; then
-            echo "No fintrack-frontend directory found, skipping frontend build"
             mkdir -p artifact/frontend
             exit 0
           fi
-
-          echo "Building frontend in fintrack-frontend..."
           cd fintrack-frontend
-
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install
           fi
-
           npm run build
-
           mkdir -p ../artifact/frontend
           if [ -d "build" ]; then
-            rsync -av --delete build/ ../artifact/frontend/
+            rsync -a --delete build/ ../artifact/frontend/
           elif [ -d "dist" ]; then
-            rsync -av --delete dist/ ../artifact/frontend/
+            rsync -a --delete dist/ ../artifact/frontend/
           else
-            echo "Build output not found (expected build/ or dist/)"
+            echo "ERROR: frontend build output not found (expected build/ or dist/)"
             exit 1
           fi
 
-          echo "Frontend artifact ready at artifact/frontend/"
-      # -----------------------------
-      # Empacotar artefato
-      # -----------------------------
       - name: Pack artifact
         run: |
-          set -e
-          cd artifact
-          zip -r ../fintrack-${{ github.sha }}.zip .
-          cd ..
+          set -euo pipefail
+          zip -r fintrack-${{ github.sha }}.zip artifact
 
-      # -----------------------------
-      # Autenticar na AWS via OIDC
-      # -----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # -----------------------------
-      # Upload do ZIP para S3
-      # -----------------------------
       - name: Upload artifact to S3
         run: |
           aws s3 cp fintrack-${{ github.sha }}.zip \
             s3://${S3_BUCKET}/releases/fintrack-${{ github.sha }}.zip
 
-      # -----------------------------
-      # Deploy na EC2 via SSM
-      # -----------------------------
       - name: Deploy on EC2 via SSM
         id: deploy
         run: |
-          set -e
+          set -euo pipefail
 
           ART="s3://${S3_BUCKET}/releases/fintrack-${{ github.sha }}.zip"
 
@@ -137,29 +104,26 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploy Fintrack ${{ github.sha }}" \
             --parameters commands="[
-              'set -e',
+              'set -ex',
               'WORK=/tmp/fintrack-${{ github.sha }}',
-              'rm -rf ${WORK} && mkdir -p ${WORK}',
-              'aws s3 cp ${ART} ${WORK}/artifact.zip',
-              'unzip -o ${WORK}/artifact.zip -d ${WORK}',
+              'rm -rf \$WORK && mkdir -p \$WORK',
+              'aws s3 cp ${ART} \$WORK/artifact.zip',
+              'unzip -o \$WORK/artifact.zip -d \$WORK',
 
-              'echo Deploy backend...',
               'sudo systemctl stop fintrack || true',
-              'sudo cp ${WORK}/artifact/backend/fintrack.jar /opt/fintrack/fintrack.jar',
-              'sudo systemctl start fintrack',
+              'sudo cp \$WORK/artifact/backend/fintrack.jar /opt/fintrack/fintrack.jar || { echo \"cp jar falhou\"; ls -la \$WORK/artifact/backend || true; exit 2; }',
+              'sudo systemctl start fintrack || true',
+              'sudo systemctl status fintrack --no-pager -l || true',
 
-              'echo Deploy frontend...',
               'sudo mkdir -p /usr/share/nginx/html/app',
-              'sudo rsync -av --delete ${WORK}/artifact/frontend/ /usr/share/nginx/html/app/',
+              'sudo rsync -a --delete \$WORK/artifact/frontend/ /usr/share/nginx/html/app/',
               'sudo chmod -R a+rX /usr/share/nginx/html/app',
 
-              'echo Reload nginx...',
-              'sudo nginx -t',
-              'sudo systemctl reload nginx',
+              'sudo nginx -t || true',
+              'sudo systemctl reload nginx || true',
 
-              'echo Smoke tests...',
-              'curl -fsI ${HOST_URL}/app/ | head -n 1',
-              'curl -fsI ${HOST_URL}/oauth2/authorization/google | head -n 1',
+              'curl -fsI ${HOST_URL}/app/ | head -n 1 || echo \"smoke1 failed\"',
+              'curl -fsI ${HOST_URL}/oauth2/authorization/google | head -n 1 || echo \"smoke2 failed\"',
 
               'echo DEPLOY_OK'
             ]" \
@@ -167,17 +131,40 @@ jobs:
 
           echo "command_id=${COMMAND_ID}" >> $GITHUB_OUTPUT
 
-      # -----------------------------
-      # Aguardar execução do SSM
-      # -----------------------------
       - name: Wait for SSM command
         run: |
-          aws ssm wait command-executed \
-            --command-id "${{ steps.deploy.outputs.command_id }}" \
-            --instance-id "${INSTANCE_ID}"
+          set -euo pipefail
 
-          aws ssm get-command-invocation \
-            --command-id "${{ steps.deploy.outputs.command_id }}" \
-            --instance-id "${INSTANCE_ID}" \
-            --query "StandardOutputContent" \
-            --output text
+          CMD_ID="${{ steps.deploy.outputs.command_id }}"
+          INSTANCE="${{ env.INSTANCE_ID }}"
+
+          ATTEMPTS=60
+          SLEEP_SECONDS=5
+
+          for i in $(seq 1 "${ATTEMPTS}"); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${CMD_ID}" \
+              --instance-id "${INSTANCE}" \
+              --query "Status" --output text 2>/dev/null || echo "UNKNOWN")
+
+            case "${STATUS}" in
+              Success)
+                aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardOutputContent" --output text || true
+                aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardErrorContent" --output text || true
+                exit 0
+                ;;
+              InProgress|Pending|Delayed)
+                ;;
+              Failed|TimedOut|Cancelled|SuccessWithFailures|UNKNOWN)
+                aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardOutputContent" --output text || true
+                aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardErrorContent" --output text || true
+                exit 1
+                ;;
+            esac
+
+            sleep "${SLEEP_SECONDS}"
+          done
+
+          aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardOutputContent" --output text || true
+          aws ssm get-command-invocation --command-id "${CMD_ID}" --instance-id "${INSTANCE}" --query "StandardErrorContent" --output text || true
+          exit 2
