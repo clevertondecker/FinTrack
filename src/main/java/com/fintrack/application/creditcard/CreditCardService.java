@@ -136,16 +136,48 @@ public class CreditCardService {
 
     /**
      * Deactivates a credit card for a user.
+     * The user can deactivate a card if they are the owner OR if they own the parent card.
      *
      * @param creditCardId the credit card ID. Cannot be null.
      * @param user the authenticated user. Cannot be null.
      * @return the deactivated credit card. Never null.
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
+     * @throws IllegalArgumentException if credit card not found or user doesn't have permission.
      */
     public CreditCard deactivateCreditCard(Long creditCardId, User user) {
-        CreditCard creditCard = getCreditCard(creditCardId, user);
+        CreditCard creditCard = getCreditCardWithParentPermission(creditCardId, user);
         creditCard.deactivate();
         return creditCardRepository.save(creditCard);
+    }
+
+    /**
+     * Gets a credit card by ID, allowing access if user owns the card OR owns the parent card.
+     *
+     * @param creditCardId the credit card ID. Cannot be null.
+     * @param user the authenticated user. Cannot be null.
+     * @return the credit card. Never null.
+     * @throws IllegalArgumentException if credit card not found or user doesn't have permission.
+     */
+    private CreditCard getCreditCardWithParentPermission(Long creditCardId, User user) {
+        // First, try to find by owner
+        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(creditCardId, user);
+        if (creditCardOpt.isPresent()) {
+            return creditCardOpt.get();
+        }
+        
+        // If not owner, check if user owns the parent card
+        Optional<CreditCard> cardOpt = creditCardRepository.findById(creditCardId);
+        if (cardOpt.isEmpty()) {
+            throw new IllegalArgumentException("Credit card not found");
+        }
+        
+        CreditCard card = cardOpt.get();
+        CreditCard parentCard = card.getParentCard();
+        
+        if (parentCard != null && parentCard.getOwner().getId().equals(user.getId())) {
+            return card;
+        }
+        
+        throw new IllegalArgumentException("Credit card not found or access denied");
     }
 
     /**
