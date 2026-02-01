@@ -1,9 +1,14 @@
 import React from 'react';
-import { CreditCard, FileText, Users, BarChart2, Home, Upload } from 'lucide-react';
+import { CreditCard, FileText, Users, BarChart2, Home, Upload, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -17,6 +22,9 @@ export default function Sidebar() {
   ];
 
   const handleMenuClick = (view: string) => {
+    // Close sidebar on mobile after navigation
+    onClose();
+    
     // Usar URLs específicas para cada seção
     switch (view) {
       case 'main':
@@ -43,25 +51,50 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-60 bg-darkBg text-lightText flex flex-col shadow-lg z-20">
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-700">
-        <span className="text-2xl font-bold tracking-tight">FinTrack</span>
-      </div>
-      <nav className="flex-1 py-4">
-        <ul className="space-y-2">
-          {menuItems.map((item) => (
-            <li key={item.label}>
-              <button
-                onClick={() => !item.disabled && handleMenuClick(item.view)}
-                className={`w-full flex items-center gap-3 px-6 py-3 rounded-lg transition-colors hover:bg-primary/20 ${item.disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
-              >
-                {item.icon}
-                <span className="text-base font-medium">{item.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </aside>
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed left-0 top-0 h-full w-60 bg-darkBg text-lightText flex flex-col shadow-lg z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0
+        `}
+      >
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
+          <span className="text-2xl font-bold tracking-tight">FinTrack</span>
+          {/* Close button for mobile */}
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-gray-700 transition-colors md:hidden"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        <nav className="flex-1 py-4">
+          <ul className="space-y-2">
+            {menuItems.map((item) => (
+              <li key={item.label}>
+                <button
+                  onClick={() => !item.disabled && handleMenuClick(item.view)}
+                  className={`w-full flex items-center gap-3 px-6 py-3 rounded-lg transition-colors hover:bg-primary/20 ${item.disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
+                >
+                  {item.icon}
+                  <span className="text-base font-medium">{item.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+    </>
   );
 } 
