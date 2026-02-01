@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CardType;
@@ -258,6 +259,92 @@ class CreditCardServiceTest {
 
             assertNotNull(result);
             assertFalse(result.isActive());
+        }
+
+        @Test
+        @DisplayName("Parent card owner should be able to deactivate child cards")
+        void parentCardOwnerShouldDeactivateChildCards() {
+            // Setup: User A owns a physical card, User B has a virtual card linked to it
+            User parentCardOwner = User.createLocalUser(
+                "Parent Owner", "parent@example.com", "password123", Set.of(Role.USER));
+            User childCardOwner = User.createLocalUser(
+                "Child Owner", "child@example.com", "password123", Set.of(Role.USER));
+            
+            ReflectionTestUtils.setField(parentCardOwner, "id", 1L);
+            ReflectionTestUtils.setField(childCardOwner, "id", 2L);
+            
+            CreditCard parentCard = CreditCard.of("Physical Card", "1111", new BigDecimal("10000.00"), 
+                parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner");
+            ReflectionTestUtils.setField(parentCard, "id", 100L);
+            
+            CreditCard childCard = CreditCard.of("Virtual Card", "2222", new BigDecimal("5000.00"), 
+                childCardOwner, testBank, CardType.VIRTUAL, parentCard, "Child Owner");
+            ReflectionTestUtils.setField(childCard, "id", 200L);
+
+            // Parent owner tries to deactivate child card (not their own card)
+            when(creditCardRepository.findByIdAndOwner(200L, parentCardOwner))
+              .thenReturn(Optional.empty()); // Not direct owner
+            when(creditCardRepository.findById(200L))
+              .thenReturn(Optional.of(childCard)); // But card exists
+            when(creditCardRepository.save(any())).thenReturn(childCard);
+
+            // Should succeed because parentCardOwner owns the parent card
+            CreditCard result = creditCardService.deactivateCreditCard(200L, parentCardOwner);
+
+            assertNotNull(result);
+            assertFalse(result.isActive());
+        }
+
+        @Test
+        @DisplayName("Child card owner should NOT be able to deactivate parent card")
+        void childCardOwnerShouldNotDeactivateParentCard() {
+            // Setup: User A owns a physical card, User B has a virtual card linked to it
+            User parentCardOwner = User.createLocalUser(
+                "Parent Owner", "parent@example.com", "password123", Set.of(Role.USER));
+            User childCardOwner = User.createLocalUser(
+                "Child Owner", "child@example.com", "password123", Set.of(Role.USER));
+            
+            ReflectionTestUtils.setField(parentCardOwner, "id", 1L);
+            ReflectionTestUtils.setField(childCardOwner, "id", 2L);
+            
+            CreditCard parentCard = CreditCard.of("Physical Card", "1111", new BigDecimal("10000.00"), 
+                parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner");
+            ReflectionTestUtils.setField(parentCard, "id", 100L);
+
+            // Child owner tries to deactivate parent card (NOT their card)
+            when(creditCardRepository.findByIdAndOwner(100L, childCardOwner))
+              .thenReturn(Optional.empty()); // Not direct owner
+            when(creditCardRepository.findById(100L))
+              .thenReturn(Optional.of(parentCard)); // Card exists but has no parent
+
+            // Should fail - child card owner cannot deactivate parent card of another user
+            assertThrows(IllegalArgumentException.class, () ->
+                creditCardService.deactivateCreditCard(100L, childCardOwner));
+        }
+
+        @Test
+        @DisplayName("User should NOT be able to deactivate unrelated card")
+        void userShouldNotDeactivateUnrelatedCard() {
+            // Setup: Two unrelated users with their own cards
+            User userA = User.createLocalUser("User A", "usera@example.com", "password123", Set.of(Role.USER));
+            User userB = User.createLocalUser("User B", "userb@example.com", "password123", Set.of(Role.USER));
+            
+            ReflectionTestUtils.setField(userA, "id", 1L);
+            ReflectionTestUtils.setField(userB, "id", 2L);
+            
+            CreditCard userBCard = CreditCard.of("User B Card", "3333", new BigDecimal("5000.00"), 
+                userB, testBank, CardType.PHYSICAL, null, "User B");
+            ReflectionTestUtils.setField(userBCard, "id", 300L);
+
+            // User A tries to deactivate User B's card
+            when(creditCardRepository.findByIdAndOwner(300L, userA))
+              .thenReturn(Optional.empty()); // Not owner
+            when(creditCardRepository.findById(300L))
+              .thenReturn(Optional.of(userBCard)); // Card exists but no parent relationship
+
+            // Should fail - no permission
+            assertThrows(IllegalArgumentException.class, () ->
+                creditCardService.deactivateCreditCard(300L, userA));
         }
     }
 
