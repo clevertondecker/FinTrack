@@ -278,6 +278,95 @@ class ExpenseReportControllerTest {
                     .andExpect(jsonPath("$.expensesByCategory[0].totalAmount").value(100.00))
                     .andExpect(jsonPath("$.expensesByCategory[1].totalAmount").value(50.00));
         }
+
+        @Test
+        @WithMockUser(username = "john@example.com")
+        @DisplayName("Should return total expenses when showTotal is true")
+        void shouldReturnTotalExpensesWhenShowTotalIsTrue() throws Exception {
+            // Given
+            Map<Category, BigDecimal> totalExpensesByCategory = Map.of(
+                    foodCategory, new BigDecimal("200.00")
+            );
+
+            List<ExpenseDetailResponse> totalDetails = List.of(
+                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("200.00"),
+                            LocalDate.of(2024, 10, 15), 1L)
+            );
+
+            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
+            when(expenseReportService.getTotalExpensesByCategory(testUser, testMonth))
+                    .thenReturn(totalExpensesByCategory);
+            when(expenseReportService.getTotalExpenseDetails(testUser, testMonth, foodCategory))
+                    .thenReturn(totalDetails);
+            when(expenseReportService.getGrandTotalExpenses(testUser, testMonth))
+                    .thenReturn(new BigDecimal("200.00"));
+
+            // When & Then
+            mockMvc.perform(get("/api/expenses/by-category")
+                    .param("month", "2024-11")
+                    .param("showTotal", "true")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalAmount").value(200.00))
+                    .andExpect(jsonPath("$.expensesByCategory[0].totalAmount").value(200.00));
+        }
+
+        @Test
+        @WithMockUser(username = "john@example.com")
+        @DisplayName("Should return user expenses when showTotal is false")
+        void shouldReturnUserExpensesWhenShowTotalIsFalse() throws Exception {
+            // Given
+            Map<Category, BigDecimal> userExpensesByCategory = Map.of(
+                    foodCategory, new BigDecimal("100.00")
+            );
+
+            List<ExpenseDetailResponse> userDetails = List.of(
+                    new ExpenseDetailResponse(1L, 1L, "Groceries", new BigDecimal("100.00"),
+                            LocalDate.of(2024, 10, 15), 1L)
+            );
+
+            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
+            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
+                    .thenReturn(userExpensesByCategory);
+            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
+                    .thenReturn(userDetails);
+            when(expenseReportService.getTotalExpenses(testUser, testMonth))
+                    .thenReturn(new BigDecimal("100.00"));
+
+            // When & Then
+            mockMvc.perform(get("/api/expenses/by-category")
+                    .param("month", "2024-11")
+                    .param("showTotal", "false")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalAmount").value(100.00))
+                    .andExpect(jsonPath("$.expensesByCategory[0].totalAmount").value(100.00));
+        }
+
+        @Test
+        @WithMockUser(username = "john@example.com")
+        @DisplayName("Should default showTotal to false when not provided")
+        void shouldDefaultShowTotalToFalseWhenNotProvided() throws Exception {
+            // Given
+            Map<Category, BigDecimal> userExpensesByCategory = Map.of(
+                    foodCategory, new BigDecimal("100.00")
+            );
+
+            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
+            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
+                    .thenReturn(userExpensesByCategory);
+            when(expenseReportService.getExpenseDetails(any(), any(), any()))
+                    .thenReturn(List.of());
+            when(expenseReportService.getTotalExpenses(testUser, testMonth))
+                    .thenReturn(new BigDecimal("100.00"));
+
+            // When & Then - should call getExpensesByCategory (not getTotalExpensesByCategory)
+            mockMvc.perform(get("/api/expenses/by-category")
+                    .param("month", "2024-11")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalAmount").value(100.00));
+        }
     }
 
     @Nested

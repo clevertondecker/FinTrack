@@ -587,6 +587,247 @@ class ExpenseReportServiceImplTest {
     }
 
     @Nested
+    @DisplayName("getTotalExpensesByCategory Tests (Show Total Feature)")
+    class GetTotalExpensesByCategoryTests {
+
+        @Test
+        @DisplayName("Should return all expenses for cards owned by user")
+        void shouldReturnAllExpensesForCardsOwnedByUser() throws Exception {
+            // Given
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item1 = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            InvoiceItem item2 = InvoiceItem.of(invoice, "Transport", new BigDecimal("50.00"),
+                    transportCategory, LocalDate.of(2024, 10, 20));
+
+            // Share item1 with otherUser (50%)
+            ItemShare share = ItemShare.of(otherUser, item1, new BigDecimal("0.50"),
+                    new BigDecimal("50.00"), true);
+            item1.addShare(share);
+
+            // Set category IDs
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            java.lang.reflect.Field transportIdField = Category.class.getDeclaredField("id");
+            transportIdField.setAccessible(true);
+            transportIdField.set(transportCategory, 2L);
+
+            invoice.addItem(item1);
+            invoice.addItem(item2);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - card owner requests total (includes all expenses, not just their share)
+            Map<Category, BigDecimal> result =
+                expenseReportService.getTotalExpensesByCategory(cardOwner, testMonth);
+
+            // Then - should get full item amounts, not just user's share
+            assertThat(result).hasSize(2);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("100.00"));
+            assertThat(result.get(transportCategory)).isEqualByComparingTo(new BigDecimal("50.00"));
+        }
+
+        @Test
+        @DisplayName("Should not include expenses from cards not owned by user")
+        void shouldNotIncludeExpensesFromCardsNotOwnedByUser() throws Exception {
+            // Given - card owned by cardOwner
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            invoice.addItem(item);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - otherUser requests total (but doesn't own the card)
+            Map<Category, BigDecimal> result =
+                expenseReportService.getTotalExpensesByCategory(otherUser, testMonth);
+
+            // Then - should get nothing because they don't own the card
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Should return empty map when no invoices exist")
+        void shouldReturnEmptyMapWhenNoInvoicesExist() {
+            // Given
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+
+            // When
+            Map<Category, BigDecimal> result =
+                expenseReportService.getTotalExpensesByCategory(cardOwner, testMonth);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("getGrandTotalExpenses Tests (Show Total Feature)")
+    class GetGrandTotalExpensesTests {
+
+        @Test
+        @DisplayName("Should return grand total for cards owned by user")
+        void shouldReturnGrandTotalForCardsOwnedByUser() throws Exception {
+            // Given
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item1 = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            InvoiceItem item2 = InvoiceItem.of(invoice, "Transport", new BigDecimal("50.00"),
+                    transportCategory, LocalDate.of(2024, 10, 20));
+
+            // Share item1 with otherUser (50%)
+            ItemShare share = ItemShare.of(otherUser, item1, new BigDecimal("0.50"),
+                    new BigDecimal("50.00"), true);
+            item1.addShare(share);
+
+            invoice.addItem(item1);
+            invoice.addItem(item2);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - card owner requests grand total
+            BigDecimal result = expenseReportService.getGrandTotalExpenses(cardOwner, testMonth);
+
+            // Then - should get total invoice amount (100 + 50 = 150)
+            assertThat(result).isEqualByComparingTo(new BigDecimal("150.00"));
+        }
+
+        @Test
+        @DisplayName("Should not include totals from cards not owned by user")
+        void shouldNotIncludeTotalsFromCardsNotOwnedByUser() {
+            // Given - card owned by cardOwner
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            invoice.addItem(item);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - otherUser requests grand total (but doesn't own the card)
+            BigDecimal result = expenseReportService.getGrandTotalExpenses(otherUser, testMonth);
+
+            // Then - should get zero because they don't own the card
+            assertThat(result).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("Should return zero when no invoices exist")
+        void shouldReturnZeroWhenNoInvoicesExist() {
+            // Given
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+
+            // When
+            BigDecimal result = expenseReportService.getGrandTotalExpenses(cardOwner, testMonth);
+
+            // Then
+            assertThat(result).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
+    @Nested
+    @DisplayName("getTotalExpenseDetails Tests (Show Total Feature)")
+    class GetTotalExpenseDetailsTests {
+
+        @Test
+        @DisplayName("Should return all expense details for cards owned by user")
+        void shouldReturnAllExpenseDetailsForCardsOwnedByUser() throws Exception {
+            // Given
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+
+            // Share with otherUser (50%)
+            ItemShare share = ItemShare.of(otherUser, item, new BigDecimal("0.50"),
+                    new BigDecimal("50.00"), true);
+            item.addShare(share);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            invoice.addItem(item);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - card owner requests total details
+            List<ExpenseDetailResponse> result =
+                expenseReportService.getTotalExpenseDetails(cardOwner, testMonth, foodCategory);
+
+            // Then - should get full item amount
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).amount()).isEqualByComparingTo(new BigDecimal("100.00"));
+            assertThat(result.get(0).shareId()).isNull(); // No specific share for total view
+        }
+
+        @Test
+        @DisplayName("Should not include details from cards not owned by user")
+        void shouldNotIncludeDetailsFromCardsNotOwnedByUser() throws Exception {
+            // Given - card owned by cardOwner
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(invoice, "Groceries", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            invoice.addItem(item);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When - otherUser requests total details (but doesn't own the card)
+            List<ExpenseDetailResponse> result =
+                expenseReportService.getTotalExpenseDetails(otherUser, testMonth, foodCategory);
+
+            // Then - should get nothing because they don't own the card
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Should filter details by category")
+        void shouldFilterDetailsByCategory() throws Exception {
+            // Given
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem foodItem = InvoiceItem.of(invoice, "Food", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            InvoiceItem transportItem = InvoiceItem.of(invoice, "Transport", new BigDecimal("50.00"),
+                    transportCategory, LocalDate.of(2024, 10, 20));
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            java.lang.reflect.Field transportIdField = Category.class.getDeclaredField("id");
+            transportIdField.setAccessible(true);
+            transportIdField.set(transportCategory, 2L);
+
+            invoice.addItem(foodItem);
+            invoice.addItem(transportItem);
+
+            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+
+            // When
+            List<ExpenseDetailResponse> foodResult =
+                expenseReportService.getTotalExpenseDetails(cardOwner, testMonth, foodCategory);
+            List<ExpenseDetailResponse> transportResult =
+                expenseReportService.getTotalExpenseDetails(cardOwner, testMonth, transportCategory);
+
+            // Then
+            assertThat(foodResult).hasSize(1);
+            assertThat(foodResult.get(0).itemDescription()).isEqualTo("Food");
+            assertThat(transportResult).hasSize(1);
+            assertThat(transportResult.get(0).itemDescription()).isEqualTo("Transport");
+        }
+    }
+
+    @Nested
     @DisplayName("Edge Cases Tests")
     class EdgeCasesTests {
 
