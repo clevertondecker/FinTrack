@@ -95,13 +95,13 @@ public class CreditCardService {
     }
 
     /**
-     * Gets all credit cards for a user.
+     * Gets all active credit cards for a user.
      *
      * @param user the authenticated user. Cannot be null.
-     * @return list of credit cards. Never null, may be empty.
+     * @return list of active credit cards. Never null, may be empty.
      */
     public List<CreditCard> getUserCreditCards(User user) {
-        return creditCardRepository.findByOwner(user);
+        return creditCardRepository.findByOwnerAndActiveTrue(user);
     }
 
     /**

@@ -157,10 +157,10 @@ class CreditCardServiceTest {
     class GetUserCreditCardsTests {
 
         @Test
-        @DisplayName("Should return user credit cards")
-        void shouldReturnUserCreditCards() {
+        @DisplayName("Should return only active user credit cards")
+        void shouldReturnOnlyActiveUserCreditCards() {
             List<CreditCard> expectedCards = List.of(testCreditCard);
-            when(creditCardRepository.findByOwner(testUser)).thenReturn(expectedCards);
+            when(creditCardRepository.findByOwnerAndActiveTrue(testUser)).thenReturn(expectedCards);
 
             List<CreditCard> result = creditCardService.getUserCreditCards(testUser);
 
