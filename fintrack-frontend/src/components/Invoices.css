@@ -1560,7 +1560,7 @@
 /* Summary Section - Aumentando especificidade */
 .invoices-container .invoices-summary {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  grid-template-columns: repeat(4, 1fr) !important;
   gap: 20px !important;
   margin-bottom: 30px !important;
 }
@@ -1568,13 +1568,18 @@
 .invoices-container .summary-card {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
   border-radius: 12px !important;
-  padding: 1.5rem !important;
+  padding: 1.5rem 1rem !important;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
   border: 1px solid #e5e5e5 !important;
   text-align: center !important;
   transition: all 0.3s ease !important;
   position: relative !important;
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 120px !important;
 }
 
 .invoices-container .summary-card::before {
@@ -1599,19 +1604,24 @@
 }
 
 .invoices-container .summary-card h3 {
-  margin: 0 0 0.75rem 0 !important;
-  font-size: 0.875rem !important;
+  margin: 0 0 0.5rem 0 !important;
+  font-size: 0.75rem !important;
   color: #525252 !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .invoices-container .summary-value {
-  font-size: 1.75rem !important;
+  font-size: 1.5rem !important;
   font-weight: 700 !important;
   color: #262626 !important;
   margin: 0 !important;
+  text-align: center !important;
+  width: 100% !important;
+  word-break: break-word !important;
 }
 
 .invoices-container .summary-card.total .summary-value {
@@ -1621,17 +1631,46 @@
 
 .invoices-container .summary-card.amount .summary-value {
   color: #10b981 !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
 }
 
 .invoices-container .summary-card.paid .summary-value {
   color: #f59e0b !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
 }
 
 .invoices-container .summary-card.remaining .summary-value {
   color: #ef4444 !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
+}
+
+/* Responsividade para summary cards */
+@media (max-width: 1024px) {
+  .invoices-container .invoices-summary {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .invoices-container .invoices-summary {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .invoices-container .summary-card {
+    padding: 1rem !important;
+    min-height: 100px !important;
+  }
+  
+  .invoices-container .summary-value {
+    font-size: 1.25rem !important;
+  }
+  
+  .invoices-container .summary-card.total .summary-value,
+  .invoices-container .summary-card.amount .summary-value,
+  .invoices-container .summary-card.paid .summary-value,
+  .invoices-container .summary-card.remaining .summary-value {
+    font-size: 1.25rem !important;
+  }
 }
 
 /* Filters Section - Aumentando especificidade */
@@ -1713,7 +1752,7 @@
 /* Fallback styles para garantir que funcionem */
 .invoices-summary {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  grid-template-columns: repeat(4, 1fr) !important;
   gap: 20px !important;
   margin-bottom: 30px !important;
 }
@@ -1721,29 +1760,39 @@
 .summary-card {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
   border-radius: 12px !important;
-  padding: 1.5rem !important;
+  padding: 1.5rem 1rem !important;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
   border: 1px solid #e5e5e5 !important;
   text-align: center !important;
   transition: all 0.3s ease !important;
   position: relative !important;
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 120px !important;
 }
 
 .summary-card h3 {
-  margin: 0 0 0.75rem 0 !important;
-  font-size: 0.875rem !important;
+  margin: 0 0 0.5rem 0 !important;
+  font-size: 0.75rem !important;
   color: #525252 !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .summary-value {
-  font-size: 1.75rem !important;
+  font-size: 1.5rem !important;
   font-weight: 700 !important;
   color: #262626 !important;
   margin: 0 !important;
+  text-align: center !important;
+  width: 100% !important;
+  word-break: break-word !important;
 }
 
 .summary-card.total .summary-value {
@@ -1753,17 +1802,39 @@
 
 .summary-card.amount .summary-value {
   color: #10b981 !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
 }
 
 .summary-card.paid .summary-value {
   color: #f59e0b !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
 }
 
 .summary-card.remaining .summary-value {
   color: #ef4444 !important;
-  font-size: 1.875rem !important;
+  font-size: 1.5rem !important;
+}
+
+/* Responsividade para summary cards (fallback) */
+@media (max-width: 1024px) {
+  .invoices-summary {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .invoices-summary {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .summary-card {
+    padding: 1rem !important;
+    min-height: 100px !important;
+  }
+  
+  .summary-value {
+    font-size: 1.25rem !important;
+  }
 }
 
 /* Header Actions */
