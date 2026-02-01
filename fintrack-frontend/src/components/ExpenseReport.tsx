@@ -20,6 +20,7 @@ const ExpenseReport: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [showTotal, setShowTotal] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -27,7 +28,7 @@ const ExpenseReport: React.FC = () => {
 
   useEffect(() => {
     loadExpenseReport();
-  }, [selectedMonth, selectedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedMonth, selectedCategoryId, showTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCategories = async () => {
     try {
@@ -50,7 +51,8 @@ const ExpenseReport: React.FC = () => {
       setError(null);
       const response = await apiService.getExpensesByCategory(
         selectedMonth,
-        selectedCategoryId || undefined
+        selectedCategoryId || undefined,
+        showTotal
       );
       setReport(response);
     } catch (err: any) {
@@ -192,6 +194,20 @@ const ExpenseReport: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="filter-group view-toggle">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={showTotal}
+                onChange={(e) => setShowTotal(e.target.checked)}
+                className="toggle-checkbox"
+              />
+              <span className="toggle-text">
+                {showTotal ? t('expenseReport.showingTotal') : t('expenseReport.showingMine')}
+              </span>
+            </label>
           </div>
         </div>
       </div>

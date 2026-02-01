@@ -290,10 +290,15 @@ class ApiService {
   }
 
   // Expense Report endpoints
-  async getExpensesByCategory(month?: string, categoryId?: number): Promise<ExpenseReportResponse> {
+  async getExpensesByCategory(
+    month?: string,
+    categoryId?: number,
+    showTotal?: boolean
+  ): Promise<ExpenseReportResponse> {
     const params = new URLSearchParams();
     if (month) params.append('month', month);
     if (categoryId) params.append('categoryId', categoryId.toString());
+    if (showTotal) params.append('showTotal', 'true');
     
     const queryString = params.toString();
     const url = `/expenses/by-category${queryString ? `?${queryString}` : ''}`;

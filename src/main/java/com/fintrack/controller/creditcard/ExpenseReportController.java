@@ -54,6 +54,8 @@ public class ExpenseReportController {
      *
      * @param month the month to generate the report for (format: yyyy-MM). Optional, defaults to current month.
      * @param categoryId optional category ID to filter by a specific category.
+     * @param showTotal if true, show total expenses (all users) instead of just user's share.
+     *                  Only available for card owners.
      * @param userDetails the authenticated user details.
      * @return a response with expenses grouped by category.
      */
@@ -61,6 +63,7 @@ public class ExpenseReportController {
     public ResponseEntity<ExpenseReportResponse> getExpensesByCategory(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false, defaultValue = "false") boolean showTotal,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
@@ -74,8 +77,10 @@ public class ExpenseReportController {
             month = YearMonth.now();
         }
 
-        // Get expenses by category
-        Map<Category, BigDecimal> expensesByCategory = expenseReportService.getExpensesByCategory(user, month);
+        // Get expenses by category (optionally showing total for card owners)
+        Map<Category, BigDecimal> expensesByCategory = showTotal
+            ? expenseReportService.getTotalExpensesByCategory(user, month)
+            : expenseReportService.getExpensesByCategory(user, month);
 
         // Filter by specific category if requested
         if (categoryId != null) {
@@ -93,14 +98,16 @@ public class ExpenseReportController {
         List<ExpenseByCategoryResponse> categoryExpenses = new ArrayList<>();
         for (Map.Entry<Category, BigDecimal> entry : expensesByCategory.entrySet()) {
             Category category = entry.getKey();
-            BigDecimal totalAmount = entry.getValue();
+            BigDecimal amount = entry.getValue();
 
             // Get detailed expense information for this category
-            List<ExpenseDetailResponse> details = expenseReportService.getExpenseDetails(user, month, category);
+            List<ExpenseDetailResponse> details = showTotal
+                ? expenseReportService.getTotalExpenseDetails(user, month, category)
+                : expenseReportService.getExpenseDetails(user, month, category);
             
             ExpenseByCategoryResponse expenseResponse = new ExpenseByCategoryResponse(
                     CategoryResponse.from(category),
-                    totalAmount,
+                    amount,
                     details.size(),
                     details
             );
@@ -110,7 +117,9 @@ public class ExpenseReportController {
         // Sort by total amount descending
         categoryExpenses.sort((a, b) -> b.totalAmount().compareTo(a.totalAmount()));
 
-        BigDecimal totalAmount = expenseReportService.getTotalExpenses(user, month);
+        BigDecimal totalAmount = showTotal
+            ? expenseReportService.getGrandTotalExpenses(user, month)
+            : expenseReportService.getTotalExpenses(user, month);
 
         ExpenseReportResponse response = new ExpenseReportResponse(
                 toUserResponse(user),

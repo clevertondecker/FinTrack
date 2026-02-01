@@ -404,6 +404,8 @@
     "detailsNotAvailable": "Transaction details not available at the moment",
     "noDetailsAvailable": "No details available",
     "shared": "Shared",
-    "unshared": "Unshared"
+    "unshared": "Unshared",
+    "showingMine": "My expenses",
+    "showingTotal": "Total expenses"
   }
 } 

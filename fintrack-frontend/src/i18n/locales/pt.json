@@ -406,6 +406,8 @@
     "detailsNotAvailable": "Detalhes das transações não disponíveis no momento",
     "noDetailsAvailable": "Nenhum detalhe disponível",
     "shared": "Compartilhado",
-    "unshared": "Não compartilhado"
+    "unshared": "Não compartilhado",
+    "showingMine": "Meus gastos",
+    "showingTotal": "Gastos totais"
   }
 } 

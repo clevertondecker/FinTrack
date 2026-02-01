@@ -131,6 +131,96 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     }
 
     /**
+     * Gets total expenses by category for all users on cards owned by the given user.
+     * Only includes expenses from invoices on credit cards where the user is the owner.
+     *
+     * @param user the card owner. Must not be null.
+     * @param month the month to get expenses for. Must not be null.
+     * @return a map of category to total expense amount. Never null.
+     */
+    public Map<Category, BigDecimal> getTotalExpensesByCategory(final User user, final YearMonth month) {
+        Map<Category, BigDecimal> expensesMap = new HashMap<>();
+
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        
+        for (Invoice invoice : invoices) {
+            // Only include invoices from cards owned by this user
+            if (!invoice.getCreditCard().getOwner().equals(user)) {
+                continue;
+            }
+            
+            for (InvoiceItem item : invoice.getItems()) {
+                Category category = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
+                expensesMap.merge(category, item.getAmount(), BigDecimal::add);
+            }
+        }
+
+        return expensesMap;
+    }
+
+    /**
+     * Gets grand total expenses for all items on cards owned by the given user.
+     *
+     * @param user the card owner. Must not be null.
+     * @param month the month to get expenses for. Must not be null.
+     * @return the total expense amount. Never null.
+     */
+    public BigDecimal getGrandTotalExpenses(final User user, final YearMonth month) {
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        BigDecimal total = BigDecimal.ZERO;
+        
+        for (Invoice invoice : invoices) {
+            // Only include invoices from cards owned by this user
+            if (!invoice.getCreditCard().getOwner().equals(user)) {
+                continue;
+            }
+            total = total.add(invoice.getTotalAmount());
+        }
+        
+        return total;
+    }
+
+    /**
+     * Gets detailed total expense information for all users on a card owned by the given user.
+     *
+     * @param user the card owner. Must not be null.
+     * @param month the month to get expenses for. Must not be null.
+     * @param category the category to filter by. Can be null for uncategorized items.
+     * @return a list of detailed expense entries. Never null.
+     */
+    public List<ExpenseDetailResponse> getTotalExpenseDetails(
+            final User user, final YearMonth month, final Category category) {
+        List<ExpenseDetailResponse> details = new ArrayList<>();
+        Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
+
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        
+        for (Invoice invoice : invoices) {
+            // Only include invoices from cards owned by this user
+            if (!invoice.getCreditCard().getOwner().equals(user)) {
+                continue;
+            }
+            
+            for (InvoiceItem item : invoice.getItems()) {
+                Category itemCategory = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
+                
+                if (matchesCategory(itemCategory, targetCategory)) {
+                    details.add(new ExpenseDetailResponse(
+                        null, // No specific share for total view
+                        item.getId(),
+                        item.getDescription(),
+                        item.getAmount(),
+                        item.getPurchaseDate(),
+                        item.getInvoice().getId()
+                    ));
+                }
+            }
+        }
+
+        return details;
+    }
+
+    /**
      * Gets detailed expense information for a specific user, month, and category.
      * Returns both shared amounts (ItemShare) and unshared amounts (for card owner).
      * Uses the same logic as getExpensesByCategory to ensure consistency.
