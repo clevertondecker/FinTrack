@@ -108,8 +108,18 @@ class ApiService {
   }
 
   // Credit Card endpoints
-  async getCreditCards(): Promise<{ message: string; creditCards: any[]; groupedCards: any[]; count: number }> {
-    const response = await this.api.get<{ message: string; creditCards: any[]; groupedCards: any[]; count: number }>('/credit-cards');
+  async getCreditCards(includeInactive: boolean = false): Promise<{
+    message: string;
+    creditCards: any[];
+    groupedCards: any[];
+    count: number
+  }> {
+    const response = await this.api.get<{
+      message: string;
+      creditCards: any[];
+      groupedCards: any[];
+      count: number
+    }>('/credit-cards', { params: { includeInactive } });
     return response.data;
   }
 

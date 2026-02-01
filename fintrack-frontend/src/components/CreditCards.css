@@ -440,6 +440,60 @@
   color: #dc3545;
 }
 
+.mini-button.activate {
+  background: #e8f5e9;
+  color: #28a745;
+}
+
 .mini-button:hover {
   filter: brightness(0.95);
+}
+
+/* Header actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.show-inactive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #666;
+  cursor: pointer;
+}
+
+.show-inactive-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Inactive card styles */
+.sub-card-item.inactive {
+  opacity: 0.6;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+}
+
+.inactive-badge {
+  display: inline-block;
+  background: #f8d7da;
+  color: #721c24;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Inactive group header */
+.credit-card-group.inactive .group-header {
+  background: #f0f0f0;
+  opacity: 0.8;
 }

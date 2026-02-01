@@ -133,7 +133,10 @@
     "cardholderName": "Nome no Cartão",
     "cardholderNameLabel": "Nome no Cartão",
     "cardholderNamePlaceholder": "Nome impresso no cartão",
-    "cardTypeLabel": "Tipo"
+    "cardTypeLabel": "Tipo",
+    "showInactive": "Mostrar inativos",
+    "inactive": "Inativo",
+    "activate": "Ativar"
   },
   "invoices": {
     "title": "Faturas",

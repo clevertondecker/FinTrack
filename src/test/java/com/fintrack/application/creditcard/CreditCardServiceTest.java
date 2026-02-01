@@ -157,14 +157,29 @@ class CreditCardServiceTest {
     class GetUserCreditCardsTests {
 
         @Test
-        @DisplayName("Should return only active user credit cards")
-        void shouldReturnOnlyActiveUserCreditCards() {
+        @DisplayName("Should return only active credit cards when includeInactive is false")
+        void shouldReturnOnlyActiveCardsWhenIncludeInactiveIsFalse() {
             List<CreditCard> expectedCards = List.of(testCreditCard);
             when(creditCardRepository.findByOwnerAndActiveTrue(testUser)).thenReturn(expectedCards);
 
-            List<CreditCard> result = creditCardService.getUserCreditCards(testUser);
+            List<CreditCard> result = creditCardService.getUserCreditCards(testUser, false);
 
             assertEquals(expectedCards, result);
+        }
+
+        @Test
+        @DisplayName("Should return all credit cards when includeInactive is true")
+        void shouldReturnAllCardsWhenIncludeInactiveIsTrue() {
+            CreditCard inactiveCard = CreditCard.of(
+                "Inactive Card", "5678", new BigDecimal("3000.00"), testUser, testBank);
+            inactiveCard.deactivate();
+            List<CreditCard> expectedCards = List.of(testCreditCard, inactiveCard);
+            when(creditCardRepository.findByOwner(testUser)).thenReturn(expectedCards);
+
+            List<CreditCard> result = creditCardService.getUserCreditCards(testUser, true);
+
+            assertEquals(expectedCards, result);
+            assertEquals(2, result.size());
         }
     }
 

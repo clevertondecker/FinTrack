@@ -71,11 +71,13 @@ public class CreditCardController {
     /**
      * Gets all credit cards for the authenticated user.
      *
+     * @param includeInactive whether to include inactive cards. Defaults to false.
      * @param authentication the authenticated user details.
      * @return a response with the user's credit cards.
      */
     @GetMapping
     public ResponseEntity<CreditCardListResponse> getUserCreditCards(
+            @RequestParam(defaultValue = "false") boolean includeInactive,
             Authentication authentication) {
 
         Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
@@ -85,7 +87,7 @@ public class CreditCardController {
         User user = userOpt.get();
 
         // Get credit cards using service
-        List<CreditCard> creditCards = creditCardService.getUserCreditCards(user);
+        List<CreditCard> creditCards = creditCardService.getUserCreditCards(user, includeInactive);
         
         // Convert to CreditCardResponse list
         List<CreditCardResponse> creditCardResponses = creditCardService.toCreditCardResponseList(creditCards);

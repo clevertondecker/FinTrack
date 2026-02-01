@@ -157,7 +157,7 @@ public class CreditCardControllerTest {
         List<CreditCardResponse> creditCardResponses = List.of(creditCardResponse1, creditCardResponse2);
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
-        when(creditCardService.getUserCreditCards(eq(testUser))).thenReturn(creditCards);
+        when(creditCardService.getUserCreditCards(eq(testUser), eq(false))).thenReturn(creditCards);
         when(creditCardService.toCreditCardResponseList(eq(creditCards))).thenReturn(creditCardResponses);
 
         // When & Then

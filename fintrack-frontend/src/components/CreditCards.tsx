@@ -13,6 +13,7 @@ const CreditCards: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [formData, setFormData] = useState<CreateCreditCardRequest>({
     name: '',
@@ -33,12 +34,12 @@ const CreditCards: React.FC = () => {
       setError(t('common.noAuthToken'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
+  }, [t, showInactive]);
 
   const loadCreditCards = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getCreditCards();
+      const response = await apiService.getCreditCards(showInactive);
       setCreditCards(response.creditCards);
       setGroupedCards(response.groupedCards || []);
       setError(null);
@@ -120,7 +121,6 @@ const CreditCards: React.FC = () => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleActivate = async (id: number) => {
     if (window.confirm(t('creditCards.confirmActivate'))) {
       try {
@@ -156,12 +156,22 @@ const CreditCards: React.FC = () => {
     <div className="credit-cards-container">
       <header className="credit-cards-header">
         <h1>{t('creditCards.title')}</h1>
-        <button 
-          className="add-button"
-          onClick={() => setShowCreateForm(true)}
-        >
-          {t('creditCards.addCard')}
-        </button>
+        <div className="header-actions">
+          <label className="show-inactive-toggle">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            {t('creditCards.showInactive')}
+          </label>
+          <button 
+            className="add-button"
+            onClick={() => setShowCreateForm(true)}
+          >
+            {t('creditCards.addCard')}
+          </button>
+        </div>
       </header>
 
       {error && <div className="error-message">{error}</div>}
@@ -309,22 +319,32 @@ const CreditCards: React.FC = () => {
 
               <div className="sub-cards-list">
                 {/* Render Parent Card as first item */}
-                <div className="sub-card-item">
+                <div className={`sub-card-item ${!group.parentCard.active ? 'inactive' : ''}`}>
                   <div className="sub-card-info">
-                    <span className="sub-card-name">{group.parentCard.name} (Titular)</span>
+                    <span className="sub-card-name">
+                      {group.parentCard.name} (Titular)
+                      {!group.parentCard.active && <span className="inactive-badge">{t('creditCards.inactive')}</span>}
+                    </span>
                     <span className="sub-card-meta">**** {group.parentCard.lastFourDigits} | {t('creditCards.cardTypePhysical')}</span>
                   </div>
                   <div className="sub-card-actions">
                     <button onClick={() => handleEdit(group.parentCard)} className="mini-button edit">{t('common.edit')}</button>
-                    <button onClick={() => handleDelete(group.parentCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                    {group.parentCard.active ? (
+                      <button onClick={() => handleDelete(group.parentCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                    ) : (
+                      <button onClick={() => handleActivate(group.parentCard.id)} className="mini-button activate">{t('creditCards.activate')}</button>
+                    )}
                   </div>
                 </div>
 
                 {/* Render Sub Cards */}
                 {group.subCards.map(subCard => (
-                  <div key={subCard.id} className="sub-card-item">
+                  <div key={subCard.id} className={`sub-card-item ${!subCard.active ? 'inactive' : ''}`}>
                     <div className="sub-card-info">
-                      <span className="sub-card-name">{subCard.name}</span>
+                      <span className="sub-card-name">
+                        {subCard.name}
+                        {!subCard.active && <span className="inactive-badge">{t('creditCards.inactive')}</span>}
+                      </span>
                       <span className="sub-card-meta">
                         **** {subCard.lastFourDigits} | 
                         {subCard.cardType === 'VIRTUAL' ? t('creditCards.cardTypeVirtual') : t('creditCards.cardTypeAdditional')}
@@ -333,7 +353,11 @@ const CreditCards: React.FC = () => {
                     </div>
                     <div className="sub-card-actions">
                       <button onClick={() => handleEdit(subCard)} className="mini-button edit">{t('common.edit')}</button>
-                      <button onClick={() => handleDelete(subCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                      {subCard.active ? (
+                        <button onClick={() => handleDelete(subCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                      ) : (
+                        <button onClick={() => handleActivate(subCard.id)} className="mini-button activate">{t('creditCards.activate')}</button>
+                      )}
                     </div>
                   </div>
                 ))}

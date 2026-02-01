@@ -133,7 +133,10 @@
     "cardholderName": "Cardholder Name",
     "cardholderNameLabel": "Cardholder",
     "cardholderNamePlaceholder": "Name on the card",
-    "cardTypeLabel": "Type"
+    "cardTypeLabel": "Type",
+    "showInactive": "Show inactive",
+    "inactive": "Inactive",
+    "activate": "Activate"
   },
   "invoices": {
     "title": "Invoices",
