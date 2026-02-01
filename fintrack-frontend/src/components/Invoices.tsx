@@ -78,6 +78,26 @@ const Invoices: React.FC = () => {
     return invoice.userShare !== null && invoice.userShare !== undefined ? invoice.userShare : (invoice.totalAmount || 0);
   };
 
+  // Calculate user's proportional paid amount for shared invoices
+  const getInvoiceUserPaid = (invoice: Invoice): number => {
+    const userAmount = getInvoiceUserAmount(invoice);
+    const totalInvoiceAmount = invoice.totalAmount || 0;
+    const totalPaid = invoice.paidAmount || 0;
+    
+    if (totalInvoiceAmount > 0 && userAmount !== totalInvoiceAmount) {
+      // Shared invoice: calculate user's proportional share of the payment
+      const paidPercentage = Math.min(totalPaid / totalInvoiceAmount, 1);
+      return userAmount * paidPercentage;
+    }
+    // Not shared: user's paid amount is the invoice paid amount (capped at user amount)
+    return Math.min(totalPaid, userAmount);
+  };
+
+  // Calculate user's remaining amount
+  const getInvoiceUserRemaining = (invoice: Invoice): number => {
+    return Math.max(0, getInvoiceUserAmount(invoice) - getInvoiceUserPaid(invoice));
+  };
+
   useEffect(() => {
     loadInvoices();
     loadCreditCards();
@@ -202,12 +222,29 @@ const Invoices: React.FC = () => {
 
     invoices.forEach(invoice => {
       // Use userShare if available, otherwise use totalAmount
-      const userAmount = invoice.userShare !== null && invoice.userShare !== undefined ? invoice.userShare : (invoice.totalAmount || 0);
-      const paid = invoice.paidAmount || 0;
+      const userAmount = invoice.userShare !== null && invoice.userShare !== undefined 
+        ? invoice.userShare 
+        : (invoice.totalAmount || 0);
+      const totalInvoiceAmount = invoice.totalAmount || 0;
+      const totalPaid = invoice.paidAmount || 0;
+      
+      // Calculate user's proportional paid amount
+      // If the invoice is shared, calculate what portion of the payment applies to the user
+      let userPaid: number;
+      if (totalInvoiceAmount > 0 && userAmount !== totalInvoiceAmount) {
+        // Shared invoice: calculate user's proportional share of the payment
+        const paidPercentage = Math.min(totalPaid / totalInvoiceAmount, 1);
+        userPaid = userAmount * paidPercentage;
+      } else {
+        // Not shared: user's paid amount is the invoice paid amount (capped at user amount)
+        userPaid = Math.min(totalPaid, userAmount);
+      }
+      
+      const userRemaining = Math.max(0, userAmount - userPaid);
       
       summary.totalAmount += userAmount;
-      summary.totalPaid += paid;
-      summary.totalRemaining += (userAmount - paid);
+      summary.totalPaid += userPaid;
+      summary.totalRemaining += userRemaining;
 
       switch (invoice.status) {
         case 'OVERDUE':
@@ -754,12 +791,12 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
                     </div>
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -827,12 +864,12 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
                     </div>
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -898,12 +935,12 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
                     </div>
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
                     </div>
                     
                     <div className="progress-bar">
@@ -974,7 +1011,7 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
                     </div>
                     
                     <div className="detail-item">
@@ -1034,12 +1071,12 @@ const Invoices: React.FC = () => {
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(invoice.paidAmount)}</span>
+                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
                     </div>
                     
                     <div className="detail-item">
                       <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserAmount(invoice) - (invoice.paidAmount || 0))}</span>
+                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
                     </div>
                     
                     <div className="urgency-badge">
@@ -1367,8 +1404,8 @@ const Invoices: React.FC = () => {
               <div className="pay-info">
                 <p><strong>{t('invoices.creditCardLabel')}:</strong> {invoiceToPay.creditCardName}</p>
                 <p><strong>{t('invoices.totalAmountLabel')}:</strong> {formatInvoiceAmount(invoiceToPay)}</p>
-                <p><strong>{t('invoices.paidAmountLabel')}:</strong> {formatCurrency(invoiceToPay.paidAmount)}</p>
-                <p><strong>{t('invoices.remainingAmountLabel')}:</strong> {formatCurrency(getInvoiceUserAmount(invoiceToPay) - (invoiceToPay.paidAmount || 0))}</p>
+                <p><strong>{t('invoices.paidAmountLabel')}:</strong> {formatCurrency(getInvoiceUserPaid(invoiceToPay))}</p>
+                <p><strong>{t('invoices.remainingAmountLabel')}:</strong> {formatCurrency(getInvoiceUserRemaining(invoiceToPay))}</p>
               </div>
 
               <form onSubmit={handlePayInvoice} className="pay-form">
