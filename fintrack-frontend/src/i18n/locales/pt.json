@@ -129,6 +129,7 @@
     "parentCard": "Cartão Principal",
     "parentCardLabel": "Cartão Principal",
     "selectParentCard": "Selecione o cartão principal",
+    "noParentCard": "Sem cartão principal (independente)",
     "cardholderName": "Nome no Cartão",
     "cardholderNameLabel": "Nome no Cartão",
     "cardholderNamePlaceholder": "Nome impresso no cartão",

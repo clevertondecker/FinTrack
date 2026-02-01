@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
-import { CreditCard, CreateCreditCardRequest, Bank } from '../types/creditCard';
+import { CreditCard, CreateCreditCardRequest, Bank, CreditCardGroup } from '../types/creditCard';
 import './CreditCards.css';
 
 const CreditCards: React.FC = () => {
   const { t } = useTranslation();
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [groupedCards, setGroupedCards] = useState<CreditCardGroup[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,7 @@ const CreditCards: React.FC = () => {
       setLoading(true);
       const response = await apiService.getCreditCards();
       setCreditCards(response.creditCards);
+      setGroupedCards(response.groupedCards || []);
       setError(null);
     } catch (err) {
       setError(t('creditCards.failedToLoad'));
@@ -118,6 +120,7 @@ const CreditCards: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleActivate = async (id: number) => {
     if (window.confirm(t('creditCards.confirmActivate'))) {
       try {
@@ -245,7 +248,7 @@ const CreditCards: React.FC = () => {
                 </select>
               </div>
 
-              {formData.cardType === 'ADDITIONAL' && (
+              {(formData.cardType === 'VIRTUAL' || formData.cardType === 'ADDITIONAL') && (
                 <div className="form-group">
                   <label htmlFor="parentCardId">{t('creditCards.parentCard')}</label>
                   <select
@@ -253,11 +256,10 @@ const CreditCards: React.FC = () => {
                     name="parentCardId"
                     value={formData.parentCardId || ''}
                     onChange={handleInputChange}
-                    required
                   >
-                    <option value="">{t('creditCards.selectParentCard')}</option>
+                    <option value="">{t('creditCards.noParentCard')}</option>
                     {creditCards
-                      .filter(card => card.cardType !== 'ADDITIONAL')
+                      .filter(card => card.cardType === 'PHYSICAL' && card.id !== editingCard?.id)
                       .map(card => (
                         <option key={card.id} value={card.id}>
                           {card.name} (**** {card.lastFourDigits})
@@ -292,83 +294,49 @@ const CreditCards: React.FC = () => {
         </div>
       )}
 
-      <div className="credit-cards-grid">
-        {creditCards.length === 0 ? (
+      <div className="credit-cards-groups">
+        {groupedCards.length === 0 ? (
           <div className="empty-state">
             <p>{t('creditCards.emptyState')}</p>
           </div>
         ) : (
-          creditCards.map(card => (
-            <div key={card.id} className={`credit-card ${!card.active ? 'inactive' : ''}`} data-card-type={card.cardType}>
-              <div className="card-header">
-                <h3>{card.name}</h3>
-                <span className={`status ${card.active ? 'active' : 'inactive'}`}>
-                  {card.active ? t('creditCards.status.active') : t('creditCards.status.inactive')}
-                </span>
-              </div>
-              
-              <div className="card-details">
-                <div className="detail-item">
-                  <span className="label">{t('creditCards.lastFourDigitsLabel')}:</span>
-                  <span className="value">**** {card.lastFourDigits}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="label">{t('creditCards.bankLabel')}:</span>
-                  <span className="value">{card.bankName}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="label">{t('creditCards.cardTypeLabel')}:</span>
-                  <span className="value card-type">
-                    {card.cardType === 'PHYSICAL' && t('creditCards.cardTypePhysical')}
-                    {card.cardType === 'VIRTUAL' && t('creditCards.cardTypeVirtual')}
-                    {card.cardType === 'ADDITIONAL' && t('creditCards.cardTypeAdditional')}
-                  </span>
-                </div>
-
-                {card.parentCardName && (
-                  <div className="detail-item">
-                    <span className="label">{t('creditCards.parentCardLabel')}:</span>
-                    <span className="value">{card.parentCardName}</span>
-                  </div>
-                )}
-
-                {card.cardholderName && (
-                  <div className="detail-item">
-                    <span className="label">{t('creditCards.cardholderNameLabel')}:</span>
-                    <span className="value">{card.cardholderName}</span>
-                  </div>
-                )}
-                
-                <div className="detail-item">
-                  <span className="label">{t('creditCards.limitLabel')}:</span>
-                  <span className="value limit">{formatCurrency(card.limit)}</span>
-                </div>
+          groupedCards.map(group => (
+            <div key={group.parentCard.id} className="credit-card-group">
+              <div className="group-header">
+                <h2>{group.parentCard.bankName} - {group.parentCard.name}</h2>
+                <span className="group-limit">{t('creditCards.limitLabel')}: {formatCurrency(group.parentCard.limit)}</span>
               </div>
 
-              <div className="card-actions">
-                <button 
-                  onClick={() => handleEdit(card)}
-                  className="edit-button"
-                >
-                  {t('common.edit')}
-                </button>
-                {card.active ? (
-                  <button 
-                    onClick={() => handleDelete(card.id)}
-                    className="delete-button"
-                  >
-                    {t('creditCards.deactivate')}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => handleActivate(card.id)}
-                    className="activate-button"
-                  >
-                    {t('creditCards.activate')}
-                  </button>
-                )}
+              <div className="sub-cards-list">
+                {/* Render Parent Card as first item */}
+                <div className="sub-card-item">
+                  <div className="sub-card-info">
+                    <span className="sub-card-name">{group.parentCard.name} (Titular)</span>
+                    <span className="sub-card-meta">**** {group.parentCard.lastFourDigits} | {t('creditCards.cardTypePhysical')}</span>
+                  </div>
+                  <div className="sub-card-actions">
+                    <button onClick={() => handleEdit(group.parentCard)} className="mini-button edit">{t('common.edit')}</button>
+                    <button onClick={() => handleDelete(group.parentCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                  </div>
+                </div>
+
+                {/* Render Sub Cards */}
+                {group.subCards.map(subCard => (
+                  <div key={subCard.id} className="sub-card-item">
+                    <div className="sub-card-info">
+                      <span className="sub-card-name">{subCard.name}</span>
+                      <span className="sub-card-meta">
+                        **** {subCard.lastFourDigits} | 
+                        {subCard.cardType === 'VIRTUAL' ? t('creditCards.cardTypeVirtual') : t('creditCards.cardTypeAdditional')}
+                        {subCard.cardholderName ? ` | ${subCard.cardholderName}` : ''}
+                      </span>
+                    </div>
+                    <div className="sub-card-actions">
+                      <button onClick={() => handleEdit(subCard)} className="mini-button edit">{t('common.edit')}</button>
+                      <button onClick={() => handleDelete(subCard.id)} className="mini-button delete">{t('creditCards.deactivate')}</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))

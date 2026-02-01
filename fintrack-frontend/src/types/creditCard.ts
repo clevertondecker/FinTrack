@@ -24,9 +24,15 @@ export interface CreateCreditCardRequest {
   cardholderName?: string;
 }
 
+export interface CreditCardGroup {
+  parentCard: CreditCard;
+  subCards: CreditCard[];
+}
+
 export interface CreditCardResponse {
   message: string;
   creditCards: CreditCard[];
+  groupedCards: CreditCardGroup[];
   count: number;
 }
 

@@ -7,6 +7,7 @@ import com.fintrack.dto.creditcard.CreditCardListResponse;
 import com.fintrack.dto.creditcard.CreditCardDetailResponse;
 import com.fintrack.dto.creditcard.CreditCardActionResponse;
 import com.fintrack.dto.creditcard.CreditCardResponse;
+import com.fintrack.dto.creditcard.CreditCardGroupResponse;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
 import org.springframework.http.ResponseEntity;
@@ -88,10 +89,12 @@ public class CreditCardController {
         
         // Convert to CreditCardResponse list
         List<CreditCardResponse> creditCardResponses = creditCardService.toCreditCardResponseList(creditCards);
+        List<CreditCardGroupResponse> groupedCards = creditCardService.toGroupedCreditCardResponseList(creditCards);
 
         CreditCardListResponse response = new CreditCardListResponse(
             "Credit cards retrieved successfully",
             creditCardResponses,
+            groupedCards,
             creditCardResponses.size()
         );
 

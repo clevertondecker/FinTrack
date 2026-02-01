@@ -6,6 +6,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
+import com.fintrack.dto.creditcard.CreditCardGroupResponse;
 import com.fintrack.dto.creditcard.CreditCardResponse;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
@@ -233,6 +234,47 @@ public class CreditCardService {
         return creditCards.stream()
             .map(this::toCreditCardResponse)
             .toList();
+    }
+
+    /**
+     * Groups credit cards by their parent card.
+     *
+     * @param creditCards the list of credit cards to group.
+     * @return a list of grouped credit card responses.
+     */
+    public List<CreditCardGroupResponse> toGroupedCreditCardResponseList(List<CreditCard> creditCards) {
+        if (creditCards == null) {
+            throw new IllegalArgumentException("Credit cards list cannot be null");
+        }
+
+        List<CreditCardResponse> allResponses = toCreditCardResponseList(creditCards);
+        Map<Long, CreditCardGroupResponse> groups = new HashMap<>();
+        List<CreditCardResponse> standaloneCards = new ArrayList<>();
+
+        // First pass: identify all parent cards
+        for (CreditCardResponse card : allResponses) {
+            if (card.parentCardId() == null) {
+                groups.put(card.id(), new CreditCardGroupResponse(card, new ArrayList<>()));
+            }
+        }
+
+        // Second pass: assign children to parents or identify standalone cards
+        for (CreditCardResponse card : allResponses) {
+            if (card.parentCardId() != null) {
+                CreditCardGroupResponse group = groups.get(card.parentCardId());
+                if (group != null) {
+                    group.subCards().add(card);
+                } else {
+                    // Parent not in the list (should not happen with proper data), treat as standalone
+                    standaloneCards.add(card);
+                }
+            } else {
+                // Already processed as parent, but we need to keep track of standalone if they have no children
+                // Actually, every card with parentCardId == null is a potential group head
+            }
+        }
+
+        return new ArrayList<>(groups.values());
     }
 
     /**

@@ -129,6 +129,7 @@
     "parentCard": "Parent Card",
     "parentCardLabel": "Parent Card",
     "selectParentCard": "Select parent card",
+    "noParentCard": "No parent card (standalone)",
     "cardholderName": "Cardholder Name",
     "cardholderNameLabel": "Cardholder",
     "cardholderNamePlaceholder": "Name on the card",

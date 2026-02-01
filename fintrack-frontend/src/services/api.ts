@@ -40,8 +40,11 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
-    // Use environment variable or default to relative /api (for production behind nginx proxy)
-    const baseURL = process.env.REACT_APP_API_URL || '/api';
+    // In development, use backend on port 8080
+    // In production, use relative /api (nginx proxies to backend)
+    const baseURL = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:8080/api' 
+      : '/api';
     
     this.api = axios.create({
       baseURL,
@@ -105,8 +108,8 @@ class ApiService {
   }
 
   // Credit Card endpoints
-  async getCreditCards(): Promise<{ message: string; creditCards: any[]; count: number }> {
-    const response = await this.api.get<{ message: string; creditCards: any[]; count: number }>('/credit-cards');
+  async getCreditCards(): Promise<{ message: string; creditCards: any[]; groupedCards: any[]; count: number }> {
+    const response = await this.api.get<{ message: string; creditCards: any[]; groupedCards: any[]; count: number }>('/credit-cards');
     return response.data;
   }
 
