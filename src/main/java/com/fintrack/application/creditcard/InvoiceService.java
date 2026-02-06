@@ -56,6 +56,8 @@ public class InvoiceService {
     private final InvoiceCalculationService invoiceCalculationService;
     /** The JDBC template. */
     private final JdbcTemplate jdbcTemplate;
+    /** The merchant categorization service. */
+    private final MerchantCategorizationService merchantCategorizationService;
 
     public InvoiceService(@Qualifier("invoiceJpaRepository") final InvoiceRepository theInvoiceRepository,
                          @Qualifier("invoiceItemJpaRepository") final InvoiceItemRepository theInvoiceItemRepository,
@@ -63,7 +65,8 @@ public class InvoiceService {
                          final CategoryJpaRepository theCategoryRepository,
                          final UserRepository theUserRepository,
                          final InvoiceCalculationService theInvoiceCalculationService,
-                         final JdbcTemplate theJdbcTemplate) {
+                         final JdbcTemplate theJdbcTemplate,
+                         final MerchantCategorizationService theMerchantCategorizationService) {
         invoiceRepository = theInvoiceRepository;
         invoiceItemRepository = theInvoiceItemRepository;
         creditCardRepository = theCreditCardRepository;
@@ -71,6 +74,7 @@ public class InvoiceService {
         userRepository = theUserRepository;
         invoiceCalculationService = theInvoiceCalculationService;
         jdbcTemplate = theJdbcTemplate;
+        merchantCategorizationService = theMerchantCategorizationService;
     }
 
     /**
@@ -306,7 +310,13 @@ public class InvoiceService {
         InvoiceItem item = findAndValidateInvoiceItem(invoiceId, itemId, user);
         Category category = resolveCategoryById(categoryId);
         
+        // Update item category
         item.updateCategory(category);
+        
+        // Record the manual categorization to create/update merchant rule
+        if (category != null) {
+            merchantCategorizationService.recordManualCategorization(item, category, user);
+        }
         
         return invoiceItemRepository.save(item);
     }

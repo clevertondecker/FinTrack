@@ -3,6 +3,8 @@ package com.fintrack.domain.creditcard;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -70,6 +72,20 @@ public class InvoiceItem {
     /** The invoice item's creation timestamp. */
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /** The normalized merchant key extracted from the description. */
+    @Column(name = "merchant_key", length = 255)
+    private String merchantKey;
+
+    /** How the category was assigned to this item. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categorization_source", length = 20)
+    private CategorizationSource categorizationSource;
+
+    /** The rule that was used to categorize this item (for auditing). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "applied_rule_id")
+    private MerchantCategoryRule appliedRule;
 
     /**
      * Protected constructor for JPA only.
@@ -216,6 +232,33 @@ public class InvoiceItem {
      */
     public void updateCategory(final Category newCategory) {
         this.category = newCategory;
+        this.categorizationSource = CategorizationSource.MANUAL;
+        this.appliedRule = null;
+    }
+
+    /**
+     * Updates the category of this invoice item with full categorization metadata.
+     *
+     * @param newCategory the new category to assign. Can be null to remove category.
+     * @param source the source of the categorization. Can be null.
+     * @param rule the rule that was applied. Can be null.
+     */
+    public void updateCategory(
+            final Category newCategory,
+            final CategorizationSource source,
+            final MerchantCategoryRule rule) {
+        this.category = newCategory;
+        this.categorizationSource = source;
+        this.appliedRule = rule;
+    }
+
+    /**
+     * Sets the normalized merchant key for this item.
+     *
+     * @param key the normalized merchant key. Can be null.
+     */
+    public void setMerchantKey(final String key) {
+        this.merchantKey = key;
     }
 
     /**
@@ -308,6 +351,33 @@ public class InvoiceItem {
      */
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    /**
+     * Gets the normalized merchant key.
+     *
+     * @return the merchant key. May be null.
+     */
+    public String getMerchantKey() {
+        return merchantKey;
+    }
+
+    /**
+     * Gets the categorization source.
+     *
+     * @return the categorization source. May be null if not categorized.
+     */
+    public CategorizationSource getCategorizationSource() {
+        return categorizationSource;
+    }
+
+    /**
+     * Gets the rule that was applied to categorize this item.
+     *
+     * @return the applied rule. May be null.
+     */
+    public MerchantCategoryRule getAppliedRule() {
+        return appliedRule;
     }
 
     @Override

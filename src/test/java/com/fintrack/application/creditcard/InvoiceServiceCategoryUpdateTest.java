@@ -46,6 +46,9 @@ class InvoiceServiceCategoryUpdateTest {
     @Mock
     private CategoryJpaRepository categoryRepository;
 
+    @Mock
+    private MerchantCategorizationService merchantCategorizationService;
+
     @InjectMocks
     private InvoiceService invoiceService;
 

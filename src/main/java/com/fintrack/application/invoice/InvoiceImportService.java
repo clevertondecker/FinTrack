@@ -2,6 +2,7 @@ package com.fintrack.application.invoice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.creditcard.MerchantCategorizationService;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceItem;
@@ -97,6 +98,8 @@ public class InvoiceImportService {
     private final PdfInvoiceParser pdfInvoiceParser;
     /** The object mapper for JSON processing. */
     private final ObjectMapper objectMapper;
+    /** The merchant categorization service. */
+    private final MerchantCategorizationService merchantCategorizationService;
 
     /** The upload directory path. */
     @Value("${app.upload.directory:uploads}")
@@ -106,12 +109,14 @@ public class InvoiceImportService {
                                CreditCardJpaRepository creditCardRepository,
                                InvoiceJpaRepository invoiceRepository,
                                PdfInvoiceParser pdfInvoiceParser,
-                               ObjectMapper objectMapper) {
+                               ObjectMapper objectMapper,
+                               MerchantCategorizationService merchantCategorizationService) {
         this.invoiceImportRepository = invoiceImportRepository;
         this.creditCardRepository = creditCardRepository;
         this.invoiceRepository = invoiceRepository;
         this.pdfInvoiceParser = pdfInvoiceParser;
         this.objectMapper = objectMapper;
+        this.merchantCategorizationService = merchantCategorizationService;
     }
 
     /**
@@ -404,6 +409,11 @@ public class InvoiceImportService {
         Invoice invoice = findOrCreateInvoice(creditCard, invoiceMonth, dueDate);
         
         addItemsToInvoice(invoice, parsedData.items());
+        
+        // Apply merchant categorization rules to new items
+        User owner = creditCard.getOwner();
+        int categorized = merchantCategorizationService.applyRulesToItems(invoice.getItems(), owner);
+        logger.info("Auto-categorized {} items for import {}", categorized, importRecord.getId());
         
         return invoiceRepository.save(invoice);
     }

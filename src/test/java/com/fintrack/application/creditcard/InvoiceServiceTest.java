@@ -69,6 +69,9 @@ class InvoiceServiceTest {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
+    @Mock
+    private MerchantCategorizationService merchantCategorizationService;
+
     private InvoiceService invoiceService;
 
     private User testUser;
@@ -82,7 +85,8 @@ class InvoiceServiceTest {
     void setUp() throws Exception {
         invoiceService = new InvoiceService(
             invoiceRepository, invoiceItemRepository, creditCardRepository,
-            categoryRepository, userRepository, invoiceCalculationService, jdbcTemplate);
+            categoryRepository, userRepository, invoiceCalculationService, jdbcTemplate,
+            merchantCategorizationService);
 
         testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");

@@ -69,6 +69,9 @@ class InvoiceImportServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private com.fintrack.application.creditcard.MerchantCategorizationService merchantCategorizationService;
+
     @InjectMocks
     private InvoiceImportService invoiceImportService;
 
