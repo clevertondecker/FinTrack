@@ -36,5 +36,8 @@ public record CreateCreditCardRequest(
     Long parentCardId,
     
     @Size(max = 100, message = "Cardholder name must be at most 100 characters.")
-    String cardholderName
+    String cardholderName,
+    
+    /** ID of the user this card is assigned to (who uses it). Null means the card is for the owner. */
+    Long assignedUserId
 ) {} 

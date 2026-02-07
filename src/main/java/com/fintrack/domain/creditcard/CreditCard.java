@@ -80,6 +80,14 @@ public class CreditCard {
     private String cardholderName;
 
     /**
+     * The user this card is assigned to (who uses it).
+     * When null, the card is for the owner. Used for additional/virtual cards used by other people.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_user_id")
+    private User assignedUser;
+
+    /**
      * Protected constructor for JPA only.
      */
     protected CreditCard() {}
@@ -95,10 +103,12 @@ public class CreditCard {
      * @param theCardType the type of the card. Must not be null.
      * @param theParentCard the parent card for additional cards. Can be null.
      * @param theCardholderName the name on the card. Can be null.
+     * @param theAssignedUser the user this card is assigned to (who uses it). Can be null.
      */
     private CreditCard(final String theName, final String theLastFourDigits,
                       final BigDecimal theLimit, final User theOwner, final Bank theBank,
-                      final CardType theCardType, final CreditCard theParentCard, final String theCardholderName) {
+                      final CardType theCardType, final CreditCard theParentCard, final String theCardholderName,
+                      final User theAssignedUser) {
         Validate.notBlank(theName, "Credit card name must not be null or blank.");
         Validate.notBlank(theLastFourDigits, "Last four digits must not be null or blank.");
         Validate.isTrue(theLastFourDigits.length() == 4, "Last four digits must be exactly 4 characters.");
@@ -117,6 +127,7 @@ public class CreditCard {
         cardType = theCardType;
         parentCard = theParentCard;
         cardholderName = theCardholderName;
+        assignedUser = theAssignedUser;
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
@@ -133,11 +144,33 @@ public class CreditCard {
      */
     public static CreditCard of(final String name, final String lastFourDigits,
                                final BigDecimal limit, final User owner, final Bank bank) {
-        return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null);
+        return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null, null);
     }
 
     /**
      * Static factory method to create a new CreditCard instance with specific type.
+     *
+     * @param name the credit card's name. Cannot be null or blank.
+     * @param lastFourDigits the last four digits of the card. Must be exactly 4 digits.
+     * @param limit the credit card's limit. Must be positive.
+     * @param owner the credit card's owner. Cannot be null.
+     * @param bank the bank that issued the card. Cannot be null.
+     * @param cardType the type of the card. Cannot be null.
+     * @param parentCard the parent card for additional cards. Can be null.
+     * @param cardholderName the name on the card. Can be null.
+     * @param assignedUser the user this card is assigned to (who uses it). Can be null.
+     * @return a validated CreditCard entity. Never null.
+     */
+    public static CreditCard of(final String name, final String lastFourDigits,
+                               final BigDecimal limit, final User owner, final Bank bank,
+                               final CardType cardType, final CreditCard parentCard, final String cardholderName,
+                               final User assignedUser) {
+        return new CreditCard(
+            name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName, assignedUser);
+    }
+
+    /**
+     * Static factory for credit card with type, parent and cardholder (no assigned user).
      *
      * @param name the credit card's name. Cannot be null or blank.
      * @param lastFourDigits the last four digits of the card. Must be exactly 4 digits.
@@ -152,7 +185,7 @@ public class CreditCard {
     public static CreditCard of(final String name, final String lastFourDigits,
                                final BigDecimal limit, final User owner, final Bank bank,
                                final CardType cardType, final CreditCard parentCard, final String cardholderName) {
-        return new CreditCard(name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName);
+        return of(name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName, null);
     }
 
     /**
@@ -234,6 +267,16 @@ public class CreditCard {
      */
     public void updateCardholderName(final String newCardholderName) {
         cardholderName = newCardholderName;
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the user this card is assigned to.
+     *
+     * @param newAssignedUser the assigned user. Can be null.
+     */
+    public void updateAssignedUser(final User newAssignedUser) {
+        assignedUser = newAssignedUser;
         updatedAt = LocalDateTime.now();
     }
 
@@ -345,6 +388,15 @@ public class CreditCard {
         return cardholderName;
     }
 
+    /**
+     * Gets the user this card is assigned to (who uses it).
+     *
+     * @return the assigned user. May be null (card is for the owner).
+     */
+    public User getAssignedUser() {
+        return assignedUser;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -373,6 +425,7 @@ public class CreditCard {
             + ", cardType=" + cardType
             + ", parentCard=" + (parentCard != null ? parentCard.getId() : "null")
             + ", cardholderName='" + cardholderName + '\''
+            + ", assignedUser=" + (assignedUser != null ? assignedUser.getId() : "null")
             + ", createdAt=" + createdAt
             + ", updatedAt=" + updatedAt
             + ", active=" + active

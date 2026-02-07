@@ -119,6 +119,9 @@
     "limitLabel": "Limite",
     "deactivate": "Desativar",
     "activate": "Ativar",
+    "assignedTo": "Usado por",
+    "selectAssignedUser": "Usuário que utiliza o cartão",
+    "noAssignedUser": "Eu mesmo (titular)",
     "status": {
       "active": "Ativo",
       "inactive": "Inativo"

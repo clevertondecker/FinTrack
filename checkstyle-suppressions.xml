@@ -7,5 +7,7 @@
     <!-- Allow star imports in test files -->
     <suppress files=".*Test\.java$" checks="AvoidStarImport"/>
     <suppress files=".*Tests\.java$" checks="AvoidStarImport"/>
+    <!-- CreditCard factory needs 9 params for assignedUser -->
+    <suppress files="CreditCard\.java" checks="ParameterNumber"/>
 </suppressions>
 

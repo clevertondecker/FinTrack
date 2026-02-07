@@ -10,6 +10,8 @@ export interface CreditCard {
   parentCardId?: number;
   parentCardName?: string;
   cardholderName?: string;
+  assignedUserId?: number | null;
+  assignedUserName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +24,8 @@ export interface CreateCreditCardRequest {
   cardType: 'PHYSICAL' | 'VIRTUAL' | 'ADDITIONAL';
   parentCardId?: number;
   cardholderName?: string;
+  /** ID of the user this card is assigned to (who uses it). Omit or null = card is for the owner. */
+  assignedUserId?: number | null;
 }
 
 export interface CreditCardGroup {
