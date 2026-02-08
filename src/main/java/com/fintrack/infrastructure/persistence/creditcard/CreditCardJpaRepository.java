@@ -35,6 +35,26 @@ public interface CreditCardJpaRepository extends JpaRepository<CreditCard, Long>
     List<CreditCard> findByOwner(User user);
 
     /**
+     * Finds all credit cards the user can manage: owned by the user or whose parent card is owned by the user.
+     *
+     * @param user the user. Cannot be null.
+     * @return list of credit cards. Never null, may be empty.
+     */
+    @Query("SELECT cc FROM CreditCard cc WHERE cc.owner = :user "
+            + "OR (cc.parentCard IS NOT NULL AND cc.parentCard.owner = :user)")
+    List<CreditCard> findByOwnerOrParentCardOwner(@Param("user") User user);
+
+    /**
+     * Finds all active credit cards the user can manage.
+     *
+     * @param user the user. Cannot be null.
+     * @return list of active credit cards. Never null, may be empty.
+     */
+    @Query("SELECT cc FROM CreditCard cc WHERE cc.active = true AND (cc.owner = :user "
+            + "OR (cc.parentCard IS NOT NULL AND cc.parentCard.owner = :user))")
+    List<CreditCard> findByOwnerOrParentCardOwnerAndActiveTrue(@Param("user") User user);
+
+    /**
      * Finds all active credit cards owned by a specific user.
      *
      * @param user the user to find active credit cards for. Cannot be null.

@@ -119,6 +119,17 @@
     "limitLabel": "Limit",
     "deactivate": "Deactivate",
     "activate": "Activate",
+    "assignedTo": "Used by",
+    "selectAssignedUser": "User who uses this card",
+    "noAssignedUser": "Myself (owner)",
+    "connectUserTitle": "Add to Circle of Trust",
+    "connectUserPlaceholder": "User email",
+    "connectUserButton": "Connect",
+    "connectUserSuccess": "User connected. They can now be selected above.",
+    "connectUserErrorNotFound": "No user found with this email.",
+    "connectUserErrorSelf": "You cannot connect to yourself.",
+    "connectUserErrorAlready": "This user is already in your Circle of Trust.",
+    "connectUserErrorInvalid": "Invalid email.",
     "status": {
       "active": "Active",
       "inactive": "Inactive"

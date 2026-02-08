@@ -13,11 +13,16 @@ import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepositor
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.fintrack.domain.creditcard.CardType;
 
 /**
  * Service for managing credit card-related business logic.
@@ -27,7 +32,9 @@ import java.util.HashMap;
 @Transactional
 public class CreditCardService {
 
-    /** The credit card repository. */
+    /** Placeholder for last four digits when parent card is not loaded. */
+    private static final String MASKED_LAST_FOUR_DIGITS = "****";
+
     private final CreditCardJpaRepository creditCardRepository;
     /** The bank repository. */
     private final BankJpaRepository bankRepository;
@@ -79,6 +86,7 @@ public class CreditCardService {
     public CreditCard createCreditCard(CreateCreditCardRequest request, User user) {
         Bank bank = findBankById(request.bankId());
         CreditCard parentCard = findParentCardIfSpecified(request.parentCardId(), user);
+        User assignedUser = findAssignedUserIfSpecified(request.assignedUserId());
 
         CreditCard creditCard = CreditCard.of(
             request.name(),
@@ -88,14 +96,15 @@ public class CreditCardService {
             bank,
             request.cardType(),
             parentCard,
-            request.cardholderName()
+            request.cardholderName(),
+            assignedUser
         );
 
         return creditCardRepository.save(creditCard);
     }
 
     /**
-     * Gets credit cards for a user.
+     * Gets all credit cards the user can see and manage: those they own and those whose parent they own.
      *
      * @param user the authenticated user. Cannot be null.
      * @param includeInactive whether to include inactive cards.
@@ -103,25 +112,21 @@ public class CreditCardService {
      */
     public List<CreditCard> getUserCreditCards(User user, boolean includeInactive) {
         if (includeInactive) {
-            return creditCardRepository.findByOwner(user);
+            return creditCardRepository.findByOwnerOrParentCardOwner(user);
         }
-        return creditCardRepository.findByOwnerAndActiveTrue(user);
+        return creditCardRepository.findByOwnerOrParentCardOwnerAndActiveTrue(user);
     }
 
     /**
-     * Gets a specific credit card by ID for a user.
+     * Gets a credit card by ID. User must be the owner or the owner of the card's parent.
      *
      * @param creditCardId the credit card ID. Cannot be null.
      * @param user the authenticated user. Cannot be null.
      * @return the credit card. Never null.
-     * @throws IllegalArgumentException if credit card not found or doesn't belong to user.
+     * @throws IllegalArgumentException if credit card not found or access denied.
      */
     public CreditCard getCreditCard(Long creditCardId, User user) {
-        Optional<CreditCard> creditCardOpt = creditCardRepository.findByIdAndOwner(creditCardId, user);
-        if (creditCardOpt.isEmpty()) {
-            throw new IllegalArgumentException("Credit card not found");
-        }
-        return creditCardOpt.get();
+        return getCreditCardWithParentPermission(creditCardId, user);
     }
 
     /**
@@ -194,11 +199,12 @@ public class CreditCardService {
      * @throws IllegalArgumentException if credit card, bank, or parent card not found.
      */
     public CreditCard updateCreditCard(Long creditCardId, CreateCreditCardRequest request, User user) {
-        CreditCard creditCard = getCreditCard(creditCardId, user);
+        CreditCard creditCard = getCreditCardWithParentPermission(creditCardId, user);
         Bank bank = findBankById(request.bankId());
         CreditCard parentCard = findParentCardIfSpecified(request.parentCardId(), user);
+        User assignedUser = findAssignedUserIfSpecified(request.assignedUserId());
 
-        updateCreditCardFields(creditCard, request, bank, parentCard);
+        updateCreditCardFields(creditCard, request, bank, parentCard, assignedUser);
         return creditCardRepository.save(creditCard);
     }
 
@@ -213,7 +219,7 @@ public class CreditCardService {
         if (creditCard == null) {
             throw new IllegalArgumentException("Credit card cannot be null");
         }
-        
+        User assigned = creditCard.getAssignedUser();
         return new CreditCardResponse(
             creditCard.getId(),
             creditCard.getName(),
@@ -225,6 +231,8 @@ public class CreditCardService {
             extractParentCardId(creditCard),
             extractParentCardName(creditCard),
             creditCard.getCardholderName(),
+            assigned != null ? assigned.getId() : null,
+            assigned != null ? assigned.getName() : null,
             creditCard.getCreatedAt(),
             creditCard.getUpdatedAt()
         );
@@ -250,6 +258,9 @@ public class CreditCardService {
         dto.put("parentCardId", creditCard.getParentCard() != null ? creditCard.getParentCard().getId() : null);
         dto.put("parentCardName", creditCard.getParentCard() != null ? creditCard.getParentCard().getName() : null);
         dto.put("cardholderName", creditCard.getCardholderName());
+        User assigned = creditCard.getAssignedUser();
+        dto.put("assignedUserId", assigned != null ? assigned.getId() : null);
+        dto.put("assignedUserName", assigned != null ? assigned.getName() : null);
         dto.put("createdAt", creditCard.getCreatedAt());
         dto.put("updatedAt", creditCard.getUpdatedAt());
         return dto;
@@ -273,44 +284,85 @@ public class CreditCardService {
     }
 
     /**
-     * Groups credit cards by their parent card.
+     * Groups credit cards by their parent card. Parents missing from the list (e.g. inactive)
+     * are loaded from DB in a single batch and included so children are still grouped.
      *
-     * @param creditCards the list of credit cards to group.
-     * @return a list of grouped credit card responses.
+     * @param creditCards the list of credit cards to group. Cannot be null.
+     * @return a list of grouped credit card responses. Never null.
      */
     public List<CreditCardGroupResponse> toGroupedCreditCardResponseList(List<CreditCard> creditCards) {
         if (creditCards == null) {
             throw new IllegalArgumentException("Credit cards list cannot be null");
         }
-
         List<CreditCardResponse> allResponses = toCreditCardResponseList(creditCards);
         Map<Long, CreditCardGroupResponse> groups = new HashMap<>();
         List<CreditCardResponse> standaloneCards = new ArrayList<>();
 
-        // First pass: identify all parent cards
+        buildGroupsFromResponses(allResponses, groups, standaloneCards);
+        if (!standaloneCards.isEmpty()) {
+            addGroupsForMissingParents(standaloneCards, groups);
+        }
+        return new ArrayList<>(groups.values());
+    }
+
+    private void buildGroupsFromResponses(
+            List<CreditCardResponse> allResponses,
+            Map<Long, CreditCardGroupResponse> groups,
+            List<CreditCardResponse> standaloneCards) {
         for (CreditCardResponse card : allResponses) {
             if (card.parentCardId() == null) {
                 groups.put(card.id(), new CreditCardGroupResponse(card, new ArrayList<>()));
             }
         }
-
-        // Second pass: assign children to parents or identify standalone cards
         for (CreditCardResponse card : allResponses) {
             if (card.parentCardId() != null) {
                 CreditCardGroupResponse group = groups.get(card.parentCardId());
                 if (group != null) {
                     group.subCards().add(card);
                 } else {
-                    // Parent not in the list (should not happen with proper data), treat as standalone
                     standaloneCards.add(card);
                 }
-            } else {
-                // Already processed as parent, but we need to keep track of standalone if they have no children
-                // Actually, every card with parentCardId == null is a potential group head
             }
         }
+    }
 
-        return new ArrayList<>(groups.values());
+    private void addGroupsForMissingParents(
+            List<CreditCardResponse> standaloneCards,
+            Map<Long, CreditCardGroupResponse> groups) {
+        Map<Long, List<CreditCardResponse>> byParentId = standaloneCards.stream()
+            .collect(Collectors.groupingBy(CreditCardResponse::parentCardId));
+        Set<Long> parentIds = byParentId.keySet();
+        Map<Long, CreditCard> parentsById = creditCardRepository.findAllById(parentIds).stream()
+            .collect(Collectors.toMap(CreditCard::getId, c -> c));
+
+        for (Map.Entry<Long, List<CreditCardResponse>> e : byParentId.entrySet()) {
+            Long parentId = e.getKey();
+            List<CreditCardResponse> children = e.getValue();
+            CreditCardResponse parentResponse = Optional.ofNullable(parentsById.get(parentId))
+                .map(this::toCreditCardResponse)
+                .orElseGet(() -> buildSyntheticParentResponse(parentId, children.get(0)));
+            groups.put(parentId, new CreditCardGroupResponse(parentResponse, children));
+        }
+    }
+
+    private CreditCardResponse buildSyntheticParentResponse(Long parentId, CreditCardResponse firstChild) {
+        String name = firstChild.parentCardName() != null ? firstChild.parentCardName() : "Cartão " + parentId;
+        return new CreditCardResponse(
+            parentId,
+            name,
+            MASKED_LAST_FOUR_DIGITS,
+            BigDecimal.ZERO,
+            true,
+            firstChild.bankName(),
+            CardType.PHYSICAL,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
     }
 
     /**
@@ -344,7 +396,7 @@ public class CreditCardService {
     }
 
     /**
-     * Finds a parent card if specified.
+     * Finds a parent card if specified. User must be owner or owner of that card's parent.
      *
      * @param parentCardId the parent card ID. Can be null.
      * @param user the authenticated user. Cannot be null.
@@ -355,12 +407,29 @@ public class CreditCardService {
         if (parentCardId == null) {
             return null;
         }
-        
-        Optional<CreditCard> parentCardOpt = creditCardRepository.findByIdAndOwner(parentCardId, user);
-        if (parentCardOpt.isEmpty()) {
-            throw new IllegalArgumentException("Parent card not found");
+        try {
+            return getCreditCardWithParentPermission(parentCardId, user);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Parent card not found", e);
         }
-        return parentCardOpt.get();
+    }
+
+    /**
+     * Finds the assigned user if specified.
+     *
+     * @param assignedUserId the assigned user ID. Can be null.
+     * @return the user, or null if not specified.
+     * @throws IllegalArgumentException if user not found.
+     */
+    private User findAssignedUserIfSpecified(Long assignedUserId) {
+        if (assignedUserId == null) {
+            return null;
+        }
+        Optional<User> userOpt = userRepository.findById(assignedUserId);
+        if (userOpt.isEmpty()) {
+            throw new IllegalArgumentException("Assigned user not found");
+        }
+        return userOpt.get();
     }
 
     /**
@@ -370,15 +439,21 @@ public class CreditCardService {
      * @param request the update request. Cannot be null.
      * @param bank the bank. Cannot be null.
      * @param parentCard the parent card. Can be null.
+     * @param assignedUser the assigned user. Can be null.
      */
     private void updateCreditCardFields(
-            CreditCard creditCard, CreateCreditCardRequest request, Bank bank, CreditCard parentCard) {
+            CreditCard creditCard,
+            CreateCreditCardRequest request,
+            Bank bank,
+            CreditCard parentCard,
+            User assignedUser) {
         creditCard.updateName(request.name());
         creditCard.updateLimit(request.limit());
         creditCard.updateBank(bank);
         creditCard.updateCardType(request.cardType());
         creditCard.updateParentCard(parentCard);
         creditCard.updateCardholderName(request.cardholderName());
+        creditCard.updateAssignedUser(assignedUser);
     }
 
     /**

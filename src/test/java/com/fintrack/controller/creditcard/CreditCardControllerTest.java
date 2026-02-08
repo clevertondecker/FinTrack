@@ -147,18 +147,19 @@ public class CreditCardControllerTest {
         CreditCardResponse creditCardResponse1 = new CreditCardResponse(
             1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
             com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            LocalDateTime.now(), LocalDateTime.now()
+            null, null, LocalDateTime.now(), LocalDateTime.now()
         );
         CreditCardResponse creditCardResponse2 = new CreditCardResponse(
             2L, "Inactive Card", "5678", new BigDecimal("3000.00"), false, "Nubank",
             com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            LocalDateTime.now(), LocalDateTime.now()
+            null, null, LocalDateTime.now(), LocalDateTime.now()
         );
         List<CreditCardResponse> creditCardResponses = List.of(creditCardResponse1, creditCardResponse2);
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(creditCardService.getUserCreditCards(eq(testUser), eq(false))).thenReturn(creditCards);
         when(creditCardService.toCreditCardResponseList(eq(creditCards))).thenReturn(creditCardResponses);
+        when(creditCardService.toGroupedCreditCardResponseList(eq(creditCards))).thenReturn(List.of());
 
         // When & Then
         mockMvc.perform(get("/api/credit-cards")
@@ -189,7 +190,7 @@ public class CreditCardControllerTest {
         CreditCardResponse creditCardResponse = new CreditCardResponse(
             1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
             com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            LocalDateTime.now(), LocalDateTime.now()
+            null, null, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));

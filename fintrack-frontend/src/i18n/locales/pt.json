@@ -119,6 +119,17 @@
     "limitLabel": "Limite",
     "deactivate": "Desativar",
     "activate": "Ativar",
+    "assignedTo": "Usado por",
+    "selectAssignedUser": "Usuário que utiliza o cartão",
+    "noAssignedUser": "Eu mesmo (titular)",
+    "connectUserTitle": "Adicionar ao círculo de confiança",
+    "connectUserPlaceholder": "E-mail do usuário",
+    "connectUserButton": "Conectar",
+    "connectUserSuccess": "Usuário conectado. Ele já pode ser selecionado acima.",
+    "connectUserErrorNotFound": "Usuário não encontrado com este e-mail.",
+    "connectUserErrorSelf": "Você não pode conectar a si mesmo.",
+    "connectUserErrorAlready": "Este usuário já está no seu círculo de confiança.",
+    "connectUserErrorInvalid": "E-mail inválido.",
     "status": {
       "active": "Ativo",
       "inactive": "Inativo"

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -29,6 +30,7 @@ import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
+import com.fintrack.dto.creditcard.CreditCardGroupResponse;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
@@ -124,7 +126,7 @@ class CreditCardServiceTest {
         @DisplayName("Should create credit card successfully")
         void shouldCreateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null);
+                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, null);
 
             when(bankRepository.findById(1L))
               .thenReturn(Optional.of(testBank));
@@ -143,9 +145,43 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 999L, CardType.PHYSICAL, null, null);
+                "Test Card", "1234", new BigDecimal("5000.00"), 999L, CardType.PHYSICAL, null, null, null);
 
             when(bankRepository.findById(999L)).thenReturn(Optional.empty());
+
+            assertThrows(IllegalArgumentException.class, () ->
+                creditCardService.createCreditCard(request, testUser));
+        }
+
+        @Test
+        @DisplayName("Should create credit card with assigned user")
+        void shouldCreateCreditCardWithAssignedUser() {
+            User assignedUser = User.createLocalUser(
+                "Jane Doe", "jane@example.com", "password123", Set.of(Role.USER));
+            ReflectionTestUtils.setField(assignedUser, "id", 2L);
+            CreateCreditCardRequest request = new CreateCreditCardRequest(
+                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 2L);
+
+            when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));
+            when(userRepository.findById(2L)).thenReturn(Optional.of(assignedUser));
+            when(creditCardRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            CreditCard result = creditCardService.createCreditCard(request, testUser);
+
+            assertNotNull(result);
+            assertNotNull(result.getAssignedUser());
+            assertEquals(2L, result.getAssignedUser().getId());
+            assertEquals("Jane Doe", result.getAssignedUser().getName());
+        }
+
+        @Test
+        @DisplayName("Should throw when assigned user not found")
+        void shouldThrowWhenAssignedUserNotFound() {
+            CreateCreditCardRequest request = new CreateCreditCardRequest(
+                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 999L);
+
+            when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));
+            when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThrows(IllegalArgumentException.class, () ->
                 creditCardService.createCreditCard(request, testUser));
@@ -160,7 +196,7 @@ class CreditCardServiceTest {
         @DisplayName("Should return only active credit cards when includeInactive is false")
         void shouldReturnOnlyActiveCardsWhenIncludeInactiveIsFalse() {
             List<CreditCard> expectedCards = List.of(testCreditCard);
-            when(creditCardRepository.findByOwnerAndActiveTrue(testUser)).thenReturn(expectedCards);
+            when(creditCardRepository.findByOwnerOrParentCardOwnerAndActiveTrue(testUser)).thenReturn(expectedCards);
 
             List<CreditCard> result = creditCardService.getUserCreditCards(testUser, false);
 
@@ -174,12 +210,30 @@ class CreditCardServiceTest {
                 "Inactive Card", "5678", new BigDecimal("3000.00"), testUser, testBank);
             inactiveCard.deactivate();
             List<CreditCard> expectedCards = List.of(testCreditCard, inactiveCard);
-            when(creditCardRepository.findByOwner(testUser)).thenReturn(expectedCards);
+            when(creditCardRepository.findByOwnerOrParentCardOwner(testUser)).thenReturn(expectedCards);
 
             List<CreditCard> result = creditCardService.getUserCreditCards(testUser, true);
 
             assertEquals(expectedCards, result);
             assertEquals(2, result.size());
+        }
+
+        @Test
+        @DisplayName("Should return cards where user owns parent")
+        void shouldReturnCardsWhereUserOwnsParent() {
+            CreditCard parentCard = CreditCard.of("Parent", "1111", new BigDecimal("10000.00"), testUser, testBank);
+            ReflectionTestUtils.setField(parentCard, "id", 10L);
+            CreditCard childCard = CreditCard.of("Child", "2222", new BigDecimal("5000.00"),
+                testUser, testBank, CardType.VIRTUAL, parentCard, "Child", null);
+            ReflectionTestUtils.setField(childCard, "id", 20L);
+            List<CreditCard> expectedCards = List.of(parentCard, childCard);
+            when(creditCardRepository.findByOwnerOrParentCardOwner(testUser)).thenReturn(expectedCards);
+
+            List<CreditCard> result = creditCardService.getUserCreditCards(testUser, true);
+
+            assertEquals(2, result.size());
+            assertTrue(result.stream().anyMatch(c -> c.getId() == 10L));
+            assertTrue(result.stream().anyMatch(c -> c.getId() == 20L));
         }
     }
 
@@ -188,8 +242,8 @@ class CreditCardServiceTest {
     class GetCreditCardTests {
 
         @Test
-        @DisplayName("Should return credit card by ID")
-        void shouldReturnCreditCardById() {
+        @DisplayName("Should return credit card by ID when user is owner")
+        void shouldReturnCreditCardByIdWhenUserIsOwner() {
             when(creditCardRepository.findByIdAndOwner(1L, testUser)).thenReturn(Optional.of(testCreditCard));
 
             CreditCard result = creditCardService.getCreditCard(1L, testUser);
@@ -198,9 +252,26 @@ class CreditCardServiceTest {
         }
 
         @Test
+        @DisplayName("Should return credit card when user owns parent card")
+        void shouldReturnCreditCardWhenUserOwnsParent() {
+            CreditCard parentCard = CreditCard.of("Parent", "1111", new BigDecimal("10000.00"), testUser, testBank);
+            ReflectionTestUtils.setField(parentCard, "id", 10L);
+            CreditCard childCard = CreditCard.of("Child", "2222", new BigDecimal("5000.00"),
+                testUser, testBank, CardType.VIRTUAL, parentCard, "Child", null);
+            ReflectionTestUtils.setField(childCard, "id", 20L);
+
+            when(creditCardRepository.findByIdAndOwner(20L, testUser)).thenReturn(Optional.of(childCard));
+
+            CreditCard result = creditCardService.getCreditCard(20L, testUser);
+
+            assertEquals(childCard, result);
+        }
+
+        @Test
         @DisplayName("Should throw exception when credit card not found")
         void shouldThrowExceptionWhenCreditCardNotFound() {
             when(creditCardRepository.findByIdAndOwner(999L, testUser)).thenReturn(Optional.empty());
+            when(creditCardRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThrows(IllegalArgumentException.class, () ->
                 creditCardService.getCreditCard(999L, testUser));
@@ -279,31 +350,27 @@ class CreditCardServiceTest {
         @Test
         @DisplayName("Parent card owner should be able to deactivate child cards")
         void parentCardOwnerShouldDeactivateChildCards() {
-            // Setup: User A owns a physical card, User B has a virtual card linked to it
+            // Setup: User A owns physical card; additional card is owned by A and assigned to User B
             User parentCardOwner = User.createLocalUser(
                 "Parent Owner", "parent@example.com", "password123", Set.of(Role.USER));
-            User childCardOwner = User.createLocalUser(
-                "Child Owner", "child@example.com", "password123", Set.of(Role.USER));
+            User assignedUser = User.createLocalUser(
+                "Assigned User", "child@example.com", "password123", Set.of(Role.USER));
             
             ReflectionTestUtils.setField(parentCardOwner, "id", 1L);
-            ReflectionTestUtils.setField(childCardOwner, "id", 2L);
+            ReflectionTestUtils.setField(assignedUser, "id", 2L);
             
             CreditCard parentCard = CreditCard.of("Physical Card", "1111", new BigDecimal("10000.00"), 
                 parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner");
             ReflectionTestUtils.setField(parentCard, "id", 100L);
             
             CreditCard childCard = CreditCard.of("Virtual Card", "2222", new BigDecimal("5000.00"), 
-                childCardOwner, testBank, CardType.VIRTUAL, parentCard, "Child Owner");
+                parentCardOwner, testBank, CardType.VIRTUAL, parentCard, "Child Owner", assignedUser);
             ReflectionTestUtils.setField(childCard, "id", 200L);
 
-            // Parent owner tries to deactivate child card (not their own card)
             when(creditCardRepository.findByIdAndOwner(200L, parentCardOwner))
-              .thenReturn(Optional.empty()); // Not direct owner
-            when(creditCardRepository.findById(200L))
-              .thenReturn(Optional.of(childCard)); // But card exists
+              .thenReturn(Optional.of(childCard));
             when(creditCardRepository.save(any())).thenReturn(childCard);
 
-            // Should succeed because parentCardOwner owns the parent card
             CreditCard result = creditCardService.deactivateCreditCard(200L, parentCardOwner);
 
             assertNotNull(result);
@@ -311,30 +378,26 @@ class CreditCardServiceTest {
         }
 
         @Test
-        @DisplayName("Child card owner should NOT be able to deactivate parent card")
-        void childCardOwnerShouldNotDeactivateParentCard() {
-            // Setup: User A owns a physical card, User B has a virtual card linked to it
-            User parentCardOwner = User.createLocalUser(
-                "Parent Owner", "parent@example.com", "password123", Set.of(Role.USER));
-            User childCardOwner = User.createLocalUser(
-                "Child Owner", "child@example.com", "password123", Set.of(Role.USER));
+        @DisplayName("Assigned user should NOT be able to deactivate card they are only assigned to")
+        void assignedUserShouldNotDeactivateCard() {
+            User cardOwner = User.createLocalUser(
+                "Card Owner", "owner@example.com", "password123", Set.of(Role.USER));
+            User assignedUser = User.createLocalUser(
+                "Assigned User", "assigned@example.com", "password123", Set.of(Role.USER));
+            ReflectionTestUtils.setField(cardOwner, "id", 1L);
+            ReflectionTestUtils.setField(assignedUser, "id", 2L);
             
-            ReflectionTestUtils.setField(parentCardOwner, "id", 1L);
-            ReflectionTestUtils.setField(childCardOwner, "id", 2L);
-            
-            CreditCard parentCard = CreditCard.of("Physical Card", "1111", new BigDecimal("10000.00"), 
-                parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner");
-            ReflectionTestUtils.setField(parentCard, "id", 100L);
+            CreditCard card = CreditCard.of("Shared Card", "1111", new BigDecimal("5000.00"), 
+                cardOwner, testBank, CardType.ADDITIONAL, null, "Assigned User", assignedUser);
+            ReflectionTestUtils.setField(card, "id", 100L);
 
-            // Child owner tries to deactivate parent card (NOT their card)
-            when(creditCardRepository.findByIdAndOwner(100L, childCardOwner))
-              .thenReturn(Optional.empty()); // Not direct owner
+            when(creditCardRepository.findByIdAndOwner(100L, assignedUser))
+              .thenReturn(Optional.empty());
             when(creditCardRepository.findById(100L))
-              .thenReturn(Optional.of(parentCard)); // Card exists but has no parent
+              .thenReturn(Optional.of(card));
 
-            // Should fail - child card owner cannot deactivate parent card of another user
             assertThrows(IllegalArgumentException.class, () ->
-                creditCardService.deactivateCreditCard(100L, childCardOwner));
+                creditCardService.deactivateCreditCard(100L, assignedUser));
         }
 
         @Test
@@ -371,7 +434,7 @@ class CreditCardServiceTest {
         @DisplayName("Should update credit card successfully")
         void shouldUpdateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -389,7 +452,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when credit card not found")
         void shouldThrowExceptionWhenCreditCardNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(999L, testUser))
               .thenReturn(Optional.empty());
@@ -402,7 +465,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 999L, CardType.PHYSICAL, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 999L, CardType.PHYSICAL, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -418,7 +481,7 @@ class CreditCardServiceTest {
         void shouldUpdateCreditCardWithDifferentBank() {
             Bank newBank = Bank.of("IT", "Itaú");
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 2L, CardType.PHYSICAL, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 2L, CardType.PHYSICAL, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -430,6 +493,27 @@ class CreditCardServiceTest {
 
             assertNotNull(result);
             assertEquals(testCreditCard, result);
+        }
+
+        @Test
+        @DisplayName("Should update credit card assigned user")
+        void shouldUpdateCreditCardAssignedUser() {
+            User assignedUser = User.createLocalUser(
+                "Jane", "jane@example.com", "pass", Set.of(Role.USER));
+            ReflectionTestUtils.setField(assignedUser, "id", 2L);
+            CreateCreditCardRequest request = new CreateCreditCardRequest(
+                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, 2L);
+
+            when(creditCardRepository.findByIdAndOwner(1L, testUser)).thenReturn(Optional.of(testCreditCard));
+            when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));
+            when(userRepository.findById(2L)).thenReturn(Optional.of(assignedUser));
+            when(creditCardRepository.save(any())).thenReturn(testCreditCard);
+
+            CreditCard result = creditCardService.updateCreditCard(1L, request, testUser);
+
+            assertNotNull(result);
+            assertNotNull(result.getAssignedUser());
+            assertEquals(2L, result.getAssignedUser().getId());
         }
     }
 
@@ -460,6 +544,86 @@ class CreditCardServiceTest {
 
             assertNotNull(result);
             assertEquals(1, result.size());
+        }
+
+        @Test
+        @DisplayName("Should include assignedUserId and assignedUserName in DTO when present")
+        void shouldIncludeAssignedUserInDto() {
+            User assigned = User.createLocalUser("Jane", "jane@example.com", "p", Set.of(Role.USER));
+            ReflectionTestUtils.setField(assigned, "id", 2L);
+            CreditCard cardWithAssigned = CreditCard.of("C", "1234", new BigDecimal("1000"),
+                testUser, testBank, CardType.ADDITIONAL, null, "J", assigned);
+            Map<String, Object> result = creditCardService.toCreditCardDto(cardWithAssigned);
+
+            assertEquals(2L, result.get("assignedUserId"));
+            assertEquals("Jane", result.get("assignedUserName"));
+        }
+    }
+
+    @Nested
+    @DisplayName("toGroupedCreditCardResponseList Tests")
+    class GroupedResponseListTests {
+
+        @Test
+        @DisplayName("Should group children under parent when parent is in list")
+        void shouldGroupChildrenUnderParentInList() {
+            CreditCard parent = CreditCard.of("Parent", "1111", new BigDecimal("5000"), testUser, testBank);
+            ReflectionTestUtils.setField(parent, "id", 10L);
+            CreditCard child = CreditCard.of("Child", "2222", new BigDecimal("3000"), testUser, testBank,
+                CardType.VIRTUAL, parent, "Child", null);
+            ReflectionTestUtils.setField(child, "id", 20L);
+            List<CreditCard> cards = List.of(parent, child);
+
+            List<CreditCardGroupResponse> result = creditCardService.toGroupedCreditCardResponseList(cards);
+
+            assertEquals(1, result.size());
+            assertEquals(10L, result.get(0).parentCard().id());
+            assertEquals("1111", result.get(0).parentCard().lastFourDigits());
+            assertEquals(1, result.get(0).subCards().size());
+            assertEquals(20L, result.get(0).subCards().get(0).id());
+        }
+
+        @Test
+        @DisplayName("Should load parent from DB and use real lastFourDigits when parent not in list")
+        void shouldLoadMissingParentFromDbAndUseRealDigits() {
+            CreditCard parentInDb = CreditCard.of("Santander", "9999", new BigDecimal("10000"), testUser, testBank);
+            ReflectionTestUtils.setField(parentInDb, "id", 4L);
+            CreditCard child = CreditCard.of("Virtual", "3222", new BigDecimal("5000"), testUser, testBank,
+                CardType.VIRTUAL, parentInDb, "User", null);
+            ReflectionTestUtils.setField(child, "id", 7L);
+            List<CreditCard> onlyChildren = List.of(child);
+
+            when(creditCardRepository.findAllById(anyCollection())).thenReturn(List.of(parentInDb));
+
+            List<CreditCardGroupResponse> result = creditCardService.toGroupedCreditCardResponseList(onlyChildren);
+
+            assertEquals(1, result.size());
+            assertEquals(4L, result.get(0).parentCard().id());
+            assertEquals("9999", result.get(0).parentCard().lastFourDigits());
+            assertEquals("Santander", result.get(0).parentCard().name());
+            assertEquals(1, result.get(0).subCards().size());
+        }
+
+        @Test
+        @DisplayName("Should use synthetic parent with masked digits when parent not in list and not in DB")
+        void shouldUseSyntheticParentWhenParentNotInDb() {
+            CreditCard parentNotInList = CreditCard.of(
+                "Santander Unifque", "5555", new BigDecimal("8000"), testUser, testBank);
+            ReflectionTestUtils.setField(parentNotInList, "id", 4L);
+            CreditCard child = CreditCard.of("Virtual", "3222", new BigDecimal("5000"), testUser, testBank,
+                CardType.VIRTUAL, parentNotInList, "User", null);
+            ReflectionTestUtils.setField(child, "id", 7L);
+            List<CreditCard> onlyChildren = List.of(child);
+
+            when(creditCardRepository.findAllById(anyCollection())).thenReturn(List.of());
+
+            List<CreditCardGroupResponse> result = creditCardService.toGroupedCreditCardResponseList(onlyChildren);
+
+            assertEquals(1, result.size());
+            assertEquals(4L, result.get(0).parentCard().id());
+            assertEquals("****", result.get(0).parentCard().lastFourDigits());
+            assertEquals("Santander Unifque", result.get(0).parentCard().name());
+            assertEquals(1, result.get(0).subCards().size());
         }
     }
 }

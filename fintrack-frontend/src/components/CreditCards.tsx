@@ -1,47 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import { CreditCard, CreateCreditCardRequest, Bank, CreditCardGroup } from '../types/creditCard';
+import { User } from '../types/user';
 import './CreditCards.css';
+
+const INITIAL_FORM_DATA: CreateCreditCardRequest = {
+  name: '',
+  lastFourDigits: '',
+  limit: 0,
+  bankId: 0,
+  cardType: 'PHYSICAL',
+  parentCardId: undefined,
+  cardholderName: '',
+  assignedUserId: undefined
+};
+
+function parseFormValue(name: string, value: string): string | number | undefined {
+  if (name === 'limit') return parseFloat(value) || 0;
+  if (name === 'assignedUserId') return value === '' ? undefined : Number(value);
+  return value;
+}
+
+type ConnectErrorMessageFn = (key: string) => string;
+
+function getConnectErrorMessage(err: unknown, t: ConnectErrorMessageFn): string {
+  if (!err || typeof err !== 'object' || !('response' in err)) {
+    return t('creditCards.connectUserErrorNotFound');
+  }
+  const res = (err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response;
+  const status = res?.status;
+  const body = res?.data?.error ?? res?.data?.message ?? '';
+  if (status === 404) return t('creditCards.connectUserErrorNotFound');
+  if (status === 400 && body) {
+    if (body.includes('yourself')) return t('creditCards.connectUserErrorSelf');
+    if (body.includes('already connected')) return t('creditCards.connectUserErrorAlready');
+    if (body.includes('Invalid')) return t('creditCards.connectUserErrorInvalid');
+  }
+  return t('creditCards.connectUserErrorNotFound');
+}
 
 const CreditCards: React.FC = () => {
   const { t } = useTranslation();
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [groupedCards, setGroupedCards] = useState<CreditCardGroup[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [formData, setFormData] = useState<CreateCreditCardRequest>(INITIAL_FORM_DATA);
+  const [connectEmail, setConnectEmail] = useState('');
+  const [connectMessage, setConnectMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
 
-  const [formData, setFormData] = useState<CreateCreditCardRequest>({
-    name: '',
-    lastFourDigits: '',
-    limit: 0,
-    bankId: 0,
-    cardType: 'PHYSICAL',
-    parentCardId: undefined,
-    cardholderName: ''
-  });
-
-  useEffect(() => {
-    loadCreditCards();
-    loadBanks();
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError(t('common.noAuthToken'));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, showInactive]);
-
-  const loadCreditCards = async () => {
+  const loadCreditCards = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.getCreditCards(showInactive);
       setCreditCards(response.creditCards);
-      setGroupedCards(response.groupedCards || []);
+      setGroupedCards(response.groupedCards ?? []);
       setError(null);
     } catch (err) {
       setError(t('creditCards.failedToLoad'));
@@ -49,24 +69,58 @@ const CreditCards: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showInactive, t]);
 
-  const loadBanks = async () => {
+  const loadBanks = useCallback(async () => {
     try {
-      const banksData = await apiService.getBanks();
-      setBanks(banksData);
+      const data = await apiService.getBanks();
+      setBanks(data);
     } catch (err) {
       console.error('Error loading banks:', err);
     }
-  };
+  }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await apiService.getUsers();
+      setUsers(response.users ?? []);
+    } catch (err) {
+      console.error('Error loading users:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCreditCards();
+    loadBanks();
+    loadUsers();
+    const token = localStorage.getItem('token');
+    if (!token) setError(t('common.noAuthToken'));
+  }, [loadCreditCards, loadBanks, loadUsers, t]);
+
+  const handleConnectUser = useCallback(async () => {
+    const email = connectEmail.trim();
+    if (!email) {
+      setConnectMessage({ type: 'error', text: t('creditCards.connectUserErrorInvalid') });
+      return;
+    }
+    setConnectLoading(true);
+    setConnectMessage(null);
+    try {
+      await apiService.connectUser(email);
+      setConnectMessage({ type: 'success', text: t('creditCards.connectUserSuccess') });
+      setConnectEmail('');
+      await loadUsers();
+    } catch (err: unknown) {
+      setConnectMessage({ type: 'error', text: getConnectErrorMessage(err, t) });
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [connectEmail, loadUsers, t]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'limit' ? parseFloat(value) || 0 : value
-    }));
-  };
+    setFormData(prev => ({ ...prev, [name]: parseFormValue(name, value) }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +137,7 @@ const CreditCards: React.FC = () => {
         await apiService.createCreditCard(formData);
       }
       
-      setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0, cardType: 'PHYSICAL', parentCardId: undefined, cardholderName: '' });
+      setFormData(INITIAL_FORM_DATA);
       setShowCreateForm(false);
       setEditingCard(null);
       await loadCreditCards();
@@ -103,7 +157,8 @@ const CreditCards: React.FC = () => {
       bankId: banks.find(b => b.name === card.bankName)?.id || 0,
       cardType: card.cardType,
       parentCardId: card.parentCardId,
-      cardholderName: card.cardholderName || ''
+      cardholderName: card.cardholderName || '',
+      assignedUserId: card.assignedUserId ?? undefined
     });
     setShowCreateForm(true);
   };
@@ -134,19 +189,66 @@ const CreditCards: React.FC = () => {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setShowCreateForm(false);
     setEditingCard(null);
-    setFormData({ name: '', lastFourDigits: '', limit: 0, bankId: 0, cardType: 'PHYSICAL', parentCardId: undefined, cardholderName: '' });
+    setFormData(INITIAL_FORM_DATA);
     setError(null);
-  };
+  }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+  }, []);
+
+  const displayGroups = useMemo((): CreditCardGroup[] => {
+    if (groupedCards.length > 0) return groupedCards;
+    if (creditCards.length === 0) return [];
+    const byParent = new Map<number | null, CreditCard[]>();
+    for (const card of creditCards) {
+      const key = card.parentCardId ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(card);
+    }
+    const result: CreditCardGroup[] = [];
+    byParent.forEach((cards, parentId) => {
+      if (parentId === null) {
+        cards.forEach(c => result.push({ parentCard: c, subCards: [] }));
+      } else {
+        const parentCard = creditCards.find(c => c.id === parentId);
+        if (parentCard) {
+          result.push({ parentCard, subCards: cards });
+        } else {
+          const first = cards[0];
+          result.push({
+            parentCard: {
+              id: parentId,
+              name: first.parentCardName || `Cartão ${parentId}`,
+              lastFourDigits: '****',
+              limit: 0,
+              bankName: first.bankName,
+              active: true,
+              cardType: 'PHYSICAL',
+              parentCardId: undefined,
+              parentCardName: undefined,
+              createdAt: '',
+              updatedAt: ''
+            },
+            subCards: cards
+          });
+        }
+      }
+    });
+    return result;
+  }, [groupedCards, creditCards]);
+
+  const parentCardOptions = useMemo((): CreditCard[] => {
+    const byId = new Map<number, CreditCard>();
+    creditCards.filter(c => c.cardType === 'PHYSICAL').forEach(c => byId.set(c.id, c));
+    displayGroups.forEach(g => {
+      if (!byId.has(g.parentCard.id)) byId.set(g.parentCard.id, g.parentCard);
+    });
+    return Array.from(byId.values());
+  }, [creditCards, displayGroups]);
 
   if (loading) {
     return <div className="loading">{t('creditCards.loading')}</div>;
@@ -206,7 +308,6 @@ const CreditCards: React.FC = () => {
                   maxLength={4}
                   pattern="[0-9]{4}"
                   required
-                  disabled={!!editingCard}
                 />
               </div>
 
@@ -268,11 +369,11 @@ const CreditCards: React.FC = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">{t('creditCards.noParentCard')}</option>
-                    {creditCards
-                      .filter(card => card.cardType === 'PHYSICAL' && card.id !== editingCard?.id)
+                    {parentCardOptions
+                      .filter(card => card.id !== editingCard?.id)
                       .map(card => (
                         <option key={card.id} value={card.id}>
-                          {card.name} (**** {card.lastFourDigits})
+                          {card.name} ({card.lastFourDigits})
                         </option>
                       ))}
                   </select>
@@ -291,6 +392,48 @@ const CreditCards: React.FC = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label htmlFor="assignedUserId">{t('creditCards.selectAssignedUser')}</label>
+                <select
+                  id="assignedUserId"
+                  name="assignedUserId"
+                  value={formData.assignedUserId ?? ''}
+                  onChange={handleInputChange}
+                >
+                  <option value="">{t('creditCards.noAssignedUser')}</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group connect-user-section">
+                <label>{t('creditCards.connectUserTitle')}</label>
+                <div className="connect-user-row">
+                  <input
+                    type="email"
+                    value={connectEmail}
+                    onChange={(e) => { setConnectEmail(e.target.value); setConnectMessage(null); }}
+                    placeholder={t('creditCards.connectUserPlaceholder')}
+                    disabled={connectLoading}
+                    className="connect-email-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleConnectUser}
+                    disabled={connectLoading}
+                    className="connect-user-button"
+                  >
+                    {connectLoading ? t('common.loading') : t('creditCards.connectUserButton')}
+                  </button>
+                </div>
+                {connectMessage && (
+                  <p className={`connect-message ${connectMessage.type}`}>{connectMessage.text}</p>
+                )}
+              </div>
+
               <div className="form-actions">
                 <button type="submit" className="submit-button">
                   {editingCard ? t('creditCards.updateCard') : t('creditCards.createCard')}
@@ -305,12 +448,12 @@ const CreditCards: React.FC = () => {
       )}
 
       <div className="credit-cards-groups">
-        {groupedCards.length === 0 ? (
+        {displayGroups.length === 0 ? (
           <div className="empty-state">
             <p>{t('creditCards.emptyState')}</p>
           </div>
         ) : (
-          groupedCards.map(group => (
+          displayGroups.map(group => (
             <div key={group.parentCard.id} className="credit-card-group">
               <div className="group-header">
                 <h2>{group.parentCard.bankName} - {group.parentCard.name}</h2>
@@ -325,7 +468,10 @@ const CreditCards: React.FC = () => {
                       {group.parentCard.name} (Titular)
                       {!group.parentCard.active && <span className="inactive-badge">{t('creditCards.inactive')}</span>}
                     </span>
-                    <span className="sub-card-meta">**** {group.parentCard.lastFourDigits} | {t('creditCards.cardTypePhysical')}</span>
+                    <span className="sub-card-meta">
+                      {group.parentCard.lastFourDigits} | {t('creditCards.cardTypePhysical')}
+                      {group.parentCard.assignedUserName ? ` | ${t('creditCards.assignedTo')}: ${group.parentCard.assignedUserName}` : ''}
+                    </span>
                   </div>
                   <div className="sub-card-actions">
                     <button onClick={() => handleEdit(group.parentCard)} className="mini-button edit">{t('common.edit')}</button>
@@ -346,9 +492,10 @@ const CreditCards: React.FC = () => {
                         {!subCard.active && <span className="inactive-badge">{t('creditCards.inactive')}</span>}
                       </span>
                       <span className="sub-card-meta">
-                        **** {subCard.lastFourDigits} | 
+                        {subCard.lastFourDigits} |
                         {subCard.cardType === 'VIRTUAL' ? t('creditCards.cardTypeVirtual') : t('creditCards.cardTypeAdditional')}
                         {subCard.cardholderName ? ` | ${subCard.cardholderName}` : ''}
+                        {subCard.assignedUserName ? ` | ${t('creditCards.assignedTo')}: ${subCard.assignedUserName}` : ''}
                       </span>
                     </div>
                     <div className="sub-card-actions">

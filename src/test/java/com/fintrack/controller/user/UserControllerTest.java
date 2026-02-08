@@ -3,11 +3,13 @@ package com.fintrack.controller.user;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.Set;
 import java.util.Optional;
 
@@ -30,6 +32,7 @@ import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
+import com.fintrack.dto.user.ConnectUserRequest;
 import com.fintrack.dto.user.RegisterRequest;
 
 @ExtendWith(MockitoExtension.class)
@@ -555,10 +558,133 @@ class UserControllerTest {
                 java.time.LocalDateTime now = java.time.LocalDateTime.now();
                 java.lang.reflect.Field createdAtField = User.class.getDeclaredField("createdAt");
                 java.lang.reflect.Field updatedAtField = User.class.getDeclaredField("updatedAt");
-                
+
                 createdAtField.setAccessible(true);
                 updatedAtField.setAccessible(true);
-                
+
+                createdAtField.set(user, now);
+                updatedAtField.set(user, now);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user timestamps for testing", e);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Circle of Trust Tests")
+    class CircleOfTrustTests {
+
+        private static final String ALICE_EMAIL = "alice@example.com";
+        private static final String BOB_EMAIL = "bob@example.com";
+
+        @Test
+        @DisplayName("GET /api/users returns connected users plus current user")
+        void getConnectedUsersReturnsList() {
+            User alice = User.createLocalUser("Alice", ALICE_EMAIL, "p", Set.of(Role.USER));
+            User bob = User.createLocalUser("Bob", BOB_EMAIL, "p", Set.of(Role.USER));
+            setUserId(alice, 1L);
+            setUserId(bob, 2L);
+            setUserTimestamps(alice);
+            setUserTimestamps(bob);
+
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername(ALICE_EMAIL)
+                .password("p")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of(ALICE_EMAIL))).thenReturn(Optional.of(alice));
+            when(userService.getConnectedUsers(alice)).thenReturn(List.of(bob));
+
+            var response = userController.getConnectedUsers(userDetails);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCodeValue());
+            var body = response.getBody();
+            assertNotNull(body);
+            assertTrue(body.users().size() >= 1);
+            assertTrue(body.users().stream().anyMatch(u -> BOB_EMAIL.equals(u.email())));
+        }
+
+        @Test
+        @DisplayName("POST /api/users/connect succeeds with valid email")
+        void connectUserSuccess() {
+            User alice = User.createLocalUser("Alice", ALICE_EMAIL, "p", Set.of(Role.USER));
+            setUserId(alice, 1L);
+            setUserTimestamps(alice);
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername(ALICE_EMAIL)
+                .password("p")
+                .authorities("USER")
+                .build();
+
+            when(userRepository.findByEmail(Email.of(ALICE_EMAIL))).thenReturn(Optional.of(alice));
+
+            var response = userController.connectUser(userDetails, new ConnectUserRequest(BOB_EMAIL));
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCodeValue());
+            assertNotNull(response.getBody());
+            assertEquals("User connected successfully", response.getBody().message());
+            verify(userService).connectUsers(alice, BOB_EMAIL);
+        }
+
+        @Test
+        @DisplayName("ConnectUserRequest rejects blank email")
+        void connectUserRequestRejectsBlankEmail() {
+            var validator = jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator();
+            var violations = validator.validate(new ConnectUserRequest(""));
+            assertFalse(violations.isEmpty());
+        }
+
+        @Test
+        @DisplayName("ConnectUserRequest rejects invalid email")
+        void connectUserRequestRejectsInvalidEmail() {
+            var validator = jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator();
+            var violations = validator.validate(new ConnectUserRequest("not-an-email"));
+            assertFalse(violations.isEmpty());
+        }
+
+        @Test
+        @DisplayName("GET /api/users/search returns user when found")
+        void searchUserFound() throws Exception {
+            User bob = User.createLocalUser("Bob", BOB_EMAIL, "p", Set.of(Role.USER));
+            setUserId(bob, 2L);
+            setUserTimestamps(bob);
+            when(userRepository.findByEmail(Email.of(BOB_EMAIL))).thenReturn(Optional.of(bob));
+
+            mockMvc.perform(get("/api/users/search").param("email", BOB_EMAIL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(BOB_EMAIL))
+                .andExpect(jsonPath("$.name").value("Bob"));
+        }
+
+        @Test
+        @DisplayName("GET /api/users/search returns 404 when not found")
+        void searchUserNotFound() throws Exception {
+            when(userRepository.findByEmail(Email.of("nobody@example.com"))).thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/users/search").param("email", "nobody@example.com"))
+                .andExpect(status().isNotFound());
+        }
+
+        private void setUserId(User user, Long id) {
+            try {
+                java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(user, id);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user ID for testing", e);
+            }
+        }
+
+        private void setUserTimestamps(User user) {
+            try {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                java.lang.reflect.Field createdAtField = User.class.getDeclaredField("createdAt");
+                java.lang.reflect.Field updatedAtField = User.class.getDeclaredField("updatedAt");
+                createdAtField.setAccessible(true);
+                updatedAtField.setAccessible(true);
                 createdAtField.set(user, now);
                 updatedAtField.set(user, now);
             } catch (Exception e) {

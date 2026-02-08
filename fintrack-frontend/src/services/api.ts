@@ -107,6 +107,21 @@ class ApiService {
     return response.data;
   }
 
+  async searchUserByEmail(email: string): Promise<User | null> {
+    try {
+      const response = await this.api.get<User>('/users/search', { params: { email: email.trim() } });
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+      throw err;
+    }
+  }
+
+  async connectUser(email: string): Promise<RegisterResponse> {
+    const response = await this.api.post<RegisterResponse>('/users/connect', { email: email.trim() });
+    return response.data;
+  }
+
   // Credit Card endpoints
   async getCreditCards(includeInactive: boolean = false): Promise<{
     message: string;
