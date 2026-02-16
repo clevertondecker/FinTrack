@@ -7,6 +7,7 @@ import Invoices from './Invoices';
 import MyShares from './MyShares';
 import InvoiceImport from './InvoiceImport';
 import ExpenseReport from './ExpenseReport';
+import People from './People';
 import Layout from './layout/Layout';
 import './Dashboard.css';
 
@@ -14,7 +15,7 @@ const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
-  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'importInvoices' | 'myShares' | 'expenseReport'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'creditCards' | 'invoices' | 'importInvoices' | 'people' | 'myShares' | 'expenseReport'>('main');
 
   // Atualizar view baseado no estado da navegação
   useEffect(() => {
@@ -22,6 +23,7 @@ const Dashboard: React.FC = () => {
     if (path.includes('/credit-cards')) setActiveView('creditCards');
     else if (path.includes('/invoices')) setActiveView('invoices');
     else if (path.includes('/import-invoices')) setActiveView('importInvoices');
+    else if (path.includes('/people')) setActiveView('people');
     else if (path.includes('/my-shares')) setActiveView('myShares');
     else if (path.includes('/expense-report')) setActiveView('expenseReport');
     else setActiveView('main');
@@ -31,6 +33,7 @@ const Dashboard: React.FC = () => {
   if (activeView === 'creditCards') title = t('creditCards.title');
   if (activeView === 'invoices') title = t('invoices.title');
   if (activeView === 'importInvoices') title = t('invoiceImport.title');
+  if (activeView === 'people') title = t('people.title');
   if (activeView === 'myShares') title = t('shares.title');
   if (activeView === 'expenseReport') title = t('expenseReport.title');
 
@@ -78,6 +81,7 @@ const Dashboard: React.FC = () => {
       {activeView === 'creditCards' && <CreditCards />}
       {activeView === 'invoices' && <Invoices />}
       {activeView === 'importInvoices' && <InvoiceImport />}
+      {activeView === 'people' && <People />}
       {activeView === 'myShares' && <MyShares />}
       {activeView === 'expenseReport' && <ExpenseReport />}
     </Layout>

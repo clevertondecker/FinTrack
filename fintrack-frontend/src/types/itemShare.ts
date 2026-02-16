@@ -1,5 +1,6 @@
 export interface UserShare {
-  userId: number;
+  userId?: number;
+  contactId?: number;
   percentage: number;
   responsible: boolean;
 }
@@ -10,9 +11,12 @@ export interface CreateItemShareRequest {
 
 export interface ItemShareResponse {
   id: number;
-  userId: number;
+  userId: number | null;
   userName: string;
   userEmail: string;
+  contactId: number | null;
+  contactName: string | null;
+  contactEmail: string | null;
   percentage: number;
   amount: number;
   responsible: boolean;

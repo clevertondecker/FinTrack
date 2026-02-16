@@ -1,5 +1,6 @@
 package com.fintrack.application.creditcard;
 
+import com.fintrack.application.contact.TrustedContactService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
@@ -17,9 +18,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.ActiveProfiles;
+
+import com.fintrack.domain.creditcard.ItemShareRepository;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,12 +36,33 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @DataJpaTest
-@Import(ExpenseSharingServiceImpl.class)
+@AutoConfigurationPackage(basePackageClasses = ItemShareRepository.class)
+@EntityScan(basePackages = {
+    "com.fintrack.domain.creditcard",
+    "com.fintrack.domain.user",
+    "com.fintrack.domain.contact"
+})
+@EnableJpaRepositories(basePackages = {
+    "com.fintrack.domain.creditcard",
+    "com.fintrack.infrastructure.persistence.creditcard",
+    "com.fintrack.infrastructure.persistence.user",
+    "com.fintrack.infrastructure.persistence.contact"
+})
+@Import({ ExpenseSharingServiceImpl.class, ExpenseSharingServiceImplTest.TestConfig.class })
 @ActiveProfiles("test")
 @DisplayName("ExpenseSharingServiceImpl Integration Test")
 class ExpenseSharingServiceImplTest {
+
+    @org.springframework.context.annotation.Configuration
+    static class TestConfig {
+        @Bean
+        TrustedContactService trustedContactService() {
+            return mock(TrustedContactService.class);
+        }
+    }
 
     @Autowired
     private ExpenseSharingServiceImpl expenseSharingService;
@@ -73,8 +102,8 @@ class ExpenseSharingServiceImplTest {
     void shouldPersistAndReturnSharesCorrectly() {
         // Arrange
         var shares = List.of(
-                new CreateItemShareRequest.UserShare(user1.getId(), new BigDecimal("0.7"), true),
-                new CreateItemShareRequest.UserShare(user2.getId(), new BigDecimal("0.3"), false)
+                new CreateItemShareRequest.UserShare(user1.getId(), null, new BigDecimal("0.7"), true),
+                new CreateItemShareRequest.UserShare(user2.getId(), null, new BigDecimal("0.3"), false)
         );
         // Act
         expenseSharingService.createSharesFromUserIds(invoiceItem, shares);

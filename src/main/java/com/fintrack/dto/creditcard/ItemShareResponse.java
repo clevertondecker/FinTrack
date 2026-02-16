@@ -4,13 +4,17 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO for item share data.
+ * Response DTO for item share data. For user shares, userId/userName/userEmail are set;
+ * for contact shares, contactId/contactName/contactEmail are set.
  */
 public record ItemShareResponse(
     Long id,
     Long userId,
     String userName,
     String userEmail,
+    Long contactId,
+    String contactName,
+    String contactEmail,
     BigDecimal percentage,
     BigDecimal amount,
     Boolean responsible,

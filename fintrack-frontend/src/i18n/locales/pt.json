@@ -36,8 +36,30 @@
     "creditCards": "Cartões",
     "invoices": "Faturas",
     "importInvoices": "Importar Faturas",
+    "people": "Pessoas",
     "shares": "Dívidas",
     "reports": "Relatórios"
+  },
+  "people": {
+    "title": "Pessoas",
+    "trustedCircle": "Círculo de confiança",
+    "addPerson": "Adicionar pessoa",
+    "searchPlaceholder": "Buscar por nome ou e-mail",
+    "name": "Nome",
+    "email": "E-mail",
+    "tags": "Tags (opcional)",
+    "note": "Observação (opcional)",
+    "actions": "Ações",
+    "edit": "Editar",
+    "remove": "Remover",
+    "confirmRemove": "Remover este contato do seu círculo de confiança?",
+    "createTitle": "Adicionar pessoa",
+    "editTitle": "Editar contato",
+    "successCreate": "Contato adicionado.",
+    "successUpdate": "Contato atualizado.",
+    "successDelete": "Contato removido.",
+    "errorDuplicateEmail": "Já existe um contato com este e-mail.",
+    "managePeopleLink": "Gerenciar pessoas"
   },
   "auth": {
     "login": "Entrar",
@@ -332,6 +354,7 @@
     "totalShared": "Total dividido",
     "remaining": "Restante",
     "shareItem": "Dividir item",
+    "addMe": "Adicionar eu",
     "totalExceedsAmount": "O valor total dividido não pode exceder o valor do item"
   },
   "language": {

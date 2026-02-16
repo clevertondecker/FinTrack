@@ -1,6 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '../types/auth';
 import { User } from '../types/user';
+import {
+  TrustedContact,
+  CreateTrustedContactRequest,
+  UpdateTrustedContactRequest
+} from '../types/trustedContact';
 import { 
   CreateCreditCardRequest, 
   CreateCreditCardResponse,
@@ -120,6 +125,37 @@ class ApiService {
   async connectUser(email: string): Promise<RegisterResponse> {
     const response = await this.api.post<RegisterResponse>('/users/connect', { email: email.trim() });
     return response.data;
+  }
+
+  // Trusted contacts (Circle of Trust - Model A)
+  async getTrustedContacts(search?: string): Promise<TrustedContact[]> {
+    const params = search ? { search: search.trim() } : {};
+    const response = await this.api.get<TrustedContact[]>('/trusted-contacts', { params });
+    return response.data;
+  }
+
+  async createTrustedContact(data: CreateTrustedContactRequest): Promise<TrustedContact> {
+    const response = await this.api.post<TrustedContact>('/trusted-contacts', {
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      tags: data.tags?.trim() || undefined,
+      note: data.note?.trim() || undefined
+    });
+    return response.data;
+  }
+
+  async updateTrustedContact(id: number, data: UpdateTrustedContactRequest): Promise<TrustedContact> {
+    const response = await this.api.put<TrustedContact>(`/trusted-contacts/${id}`, {
+      name: data.name?.trim(),
+      email: data.email?.trim().toLowerCase(),
+      tags: data.tags?.trim(),
+      note: data.note?.trim()
+    });
+    return response.data;
+  }
+
+  async deleteTrustedContact(id: number): Promise<void> {
+    await this.api.delete(`/trusted-contacts/${id}`);
   }
 
   // Credit Card endpoints

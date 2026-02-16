@@ -51,6 +51,14 @@ function App() {
               } 
             />
             <Route 
+              path="/dashboard/people" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/dashboard/my-shares" 
               element={
                 <ProtectedRoute>

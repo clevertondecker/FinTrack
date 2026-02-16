@@ -70,9 +70,9 @@ public class ItemShareController {
         // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
 
-        // Create shares
+        // Create shares (supports both userId and contactId per participant)
         List<ItemShare> shares =
-          expenseSharingService.createSharesFromUserIds(item, request.userShares());
+          expenseSharingService.createSharesFromRequest(item, request.userShares(), user);
 
         // Convert to response DTOs
         List<ItemShareResponse> shareResponses = shares.stream()
@@ -303,12 +303,19 @@ public class ItemShareController {
      * @return the ItemShareResponse DTO.
      */
     private ItemShareResponse toItemShareResponse(ItemShare share) {
-
+      Long userId = share.getUser() != null ? share.getUser().getId() : null;
+      String userName = share.getUser() != null ? share.getUser().getName() : share.getContactDisplayName();
+      String userEmail = share.getUser() != null
+          ? share.getUser().getEmail().getEmail() : share.getContactDisplayEmail();
+      Long contactId = share.getTrustedContact() != null ? share.getTrustedContact().getId() : null;
       return new ItemShareResponse(
           share.getId(),
-          share.getUser().getId(),
-          share.getUser().getName(),
-          share.getUser().getEmail().getEmail(),
+          userId,
+          userName,
+          userEmail,
+          contactId,
+          share.getContactDisplayName(),
+          share.getContactDisplayEmail(),
           share.getPercentage(),
           share.getAmount(),
           share.isResponsible(),

@@ -122,6 +122,17 @@
   margin-top: 8px;
 }
 
+.manage-people-link {
+  display: inline-block;
+  color: #667eea;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.manage-people-link:hover {
+  text-decoration: underline;
+}
+
 .connect-email-input {
   flex: 1;
   min-width: 0;

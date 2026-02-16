@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, FileText, Users, BarChart2, Home, Upload, X } from 'lucide-react';
+import { CreditCard, FileText, Users, BarChart2, Home, Upload, X, UserCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,6 +17,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { icon: <CreditCard size={22} />, label: t('sidebar.creditCards'), view: 'creditCards' },
     { icon: <FileText size={22} />, label: t('sidebar.invoices'), view: 'invoices' },
     { icon: <Upload size={22} />, label: t('sidebar.importInvoices'), view: 'importInvoices' },
+    { icon: <UserCircle size={22} />, label: t('sidebar.people'), view: 'people' },
     { icon: <Users size={22} />, label: t('sidebar.shares'), view: 'myShares' },
     { icon: <BarChart2 size={22} />, label: t('sidebar.reports'), view: 'expenseReport', disabled: false },
   ];
@@ -38,6 +39,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         break;
       case 'importInvoices':
         navigate('/dashboard/import-invoices');
+        break;
+      case 'people':
+        navigate('/dashboard/people');
         break;
       case 'myShares':
         navigate('/dashboard/my-shares');

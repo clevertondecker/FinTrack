@@ -82,9 +82,9 @@ class ItemShareControllerTest {
     void shouldSaveAndReturnSharesCorrectly() throws Exception {
         // Arrange
         CreateItemShareRequest.UserShare share1 =
-            new CreateItemShareRequest.UserShare(user1.getId(), new BigDecimal("0.6"), true);
+            new CreateItemShareRequest.UserShare(user1.getId(), null, new BigDecimal("0.6"), true);
         CreateItemShareRequest.UserShare share2 =
-            new CreateItemShareRequest.UserShare(user2.getId(), new BigDecimal("0.4"), false);
+            new CreateItemShareRequest.UserShare(user2.getId(), null, new BigDecimal("0.4"), false);
         CreateItemShareRequest request = new CreateItemShareRequest(List.of(share1, share2));
 
         // Mock user and item
@@ -96,7 +96,7 @@ class ItemShareControllerTest {
             ItemShare.of(user1, invoiceItem, new BigDecimal("0.6"), new BigDecimal("60.00"), true);
         ItemShare itemShare2 =
             ItemShare.of(user2, invoiceItem, new BigDecimal("0.4"), new BigDecimal("40.00"), false);
-        when(expenseSharingService.createSharesFromUserIds(eq(invoiceItem), anyList()))
+        when(expenseSharingService.createSharesFromRequest(eq(invoiceItem), anyList(), eq(user1)))
                 .thenReturn(List.of(itemShare1, itemShare2));
         when(expenseSharingService.getSharesForItem(invoiceItem))
                 .thenReturn(List.of(itemShare1, itemShare2));

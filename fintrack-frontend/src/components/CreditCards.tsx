@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import { CreditCard, CreateCreditCardRequest, Bank, CreditCardGroup } from '../types/creditCard';
@@ -22,24 +23,6 @@ function parseFormValue(name: string, value: string): string | number | undefine
   return value;
 }
 
-type ConnectErrorMessageFn = (key: string) => string;
-
-function getConnectErrorMessage(err: unknown, t: ConnectErrorMessageFn): string {
-  if (!err || typeof err !== 'object' || !('response' in err)) {
-    return t('creditCards.connectUserErrorNotFound');
-  }
-  const res = (err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response;
-  const status = res?.status;
-  const body = res?.data?.error ?? res?.data?.message ?? '';
-  if (status === 404) return t('creditCards.connectUserErrorNotFound');
-  if (status === 400 && body) {
-    if (body.includes('yourself')) return t('creditCards.connectUserErrorSelf');
-    if (body.includes('already connected')) return t('creditCards.connectUserErrorAlready');
-    if (body.includes('Invalid')) return t('creditCards.connectUserErrorInvalid');
-  }
-  return t('creditCards.connectUserErrorNotFound');
-}
-
 const CreditCards: React.FC = () => {
   const { t } = useTranslation();
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
@@ -52,9 +35,6 @@ const CreditCards: React.FC = () => {
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState<CreateCreditCardRequest>(INITIAL_FORM_DATA);
-  const [connectEmail, setConnectEmail] = useState('');
-  const [connectMessage, setConnectMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [connectLoading, setConnectLoading] = useState(false);
 
   const loadCreditCards = useCallback(async () => {
     try {
@@ -96,26 +76,6 @@ const CreditCards: React.FC = () => {
     const token = localStorage.getItem('token');
     if (!token) setError(t('common.noAuthToken'));
   }, [loadCreditCards, loadBanks, loadUsers, t]);
-
-  const handleConnectUser = useCallback(async () => {
-    const email = connectEmail.trim();
-    if (!email) {
-      setConnectMessage({ type: 'error', text: t('creditCards.connectUserErrorInvalid') });
-      return;
-    }
-    setConnectLoading(true);
-    setConnectMessage(null);
-    try {
-      await apiService.connectUser(email);
-      setConnectMessage({ type: 'success', text: t('creditCards.connectUserSuccess') });
-      setConnectEmail('');
-      await loadUsers();
-    } catch (err: unknown) {
-      setConnectMessage({ type: 'error', text: getConnectErrorMessage(err, t) });
-    } finally {
-      setConnectLoading(false);
-    }
-  }, [connectEmail, loadUsers, t]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -409,29 +369,8 @@ const CreditCards: React.FC = () => {
                 </select>
               </div>
 
-              <div className="form-group connect-user-section">
-                <label>{t('creditCards.connectUserTitle')}</label>
-                <div className="connect-user-row">
-                  <input
-                    type="email"
-                    value={connectEmail}
-                    onChange={(e) => { setConnectEmail(e.target.value); setConnectMessage(null); }}
-                    placeholder={t('creditCards.connectUserPlaceholder')}
-                    disabled={connectLoading}
-                    className="connect-email-input"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleConnectUser}
-                    disabled={connectLoading}
-                    className="connect-user-button"
-                  >
-                    {connectLoading ? t('common.loading') : t('creditCards.connectUserButton')}
-                  </button>
-                </div>
-                {connectMessage && (
-                  <p className={`connect-message ${connectMessage.type}`}>{connectMessage.text}</p>
-                )}
+              <div className="form-group">
+                <Link to="/dashboard/people" className="manage-people-link">{t('people.managePeopleLink')}</Link>
               </div>
 
               <div className="form-actions">

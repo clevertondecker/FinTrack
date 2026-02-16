@@ -23,7 +23,8 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @return a list of shares for the item. Never null, may be empty.
      */
     @Query("SELECT is FROM ItemShare is "
-        + "JOIN FETCH is.user "
+        + "LEFT JOIN FETCH is.user "
+        + "LEFT JOIN FETCH is.trustedContact "
         + "JOIN FETCH is.invoiceItem ii "
         + "JOIN FETCH ii.invoice i "
         + "WHERE is.invoiceItem = :invoiceItem")

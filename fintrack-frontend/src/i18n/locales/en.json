@@ -36,8 +36,30 @@
     "creditCards": "Credit Cards",
     "invoices": "Invoices",
     "importInvoices": "Import Invoices",
+    "people": "People",
     "shares": "Shares",
     "reports": "Reports"
+  },
+  "people": {
+    "title": "People",
+    "trustedCircle": "Circle of Trust",
+    "addPerson": "Add person",
+    "searchPlaceholder": "Search by name or email",
+    "name": "Name",
+    "email": "Email",
+    "tags": "Tags (optional)",
+    "note": "Note (optional)",
+    "actions": "Actions",
+    "edit": "Edit",
+    "remove": "Remove",
+    "confirmRemove": "Remove this contact from your Circle of Trust?",
+    "createTitle": "Add person",
+    "editTitle": "Edit contact",
+    "successCreate": "Contact added.",
+    "successUpdate": "Contact updated.",
+    "successDelete": "Contact removed.",
+    "errorDuplicateEmail": "A contact with this email already exists.",
+    "managePeopleLink": "Manage people"
   },
   "auth": {
     "login": "Login",
@@ -324,6 +346,7 @@
     "totalShared": "Total shared",
     "remaining": "Remaining",
     "shareItem": "Share item",
+    "addMe": "Add me",
     "status": {
       "open": "Open",
       "paid": "Paid",

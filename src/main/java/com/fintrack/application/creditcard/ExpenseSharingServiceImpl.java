@@ -1,5 +1,7 @@
 package com.fintrack.application.creditcard;
 
+import com.fintrack.application.contact.TrustedContactService;
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.ExpenseSharingService;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.ItemShare;
@@ -28,21 +30,16 @@ import java.util.stream.Collectors;
 @Transactional
 public class ExpenseSharingServiceImpl implements ExpenseSharingService {
 
-    /** The item share repository. */
     private final ItemShareRepository itemShareRepository;
-    /** The user repository. */
     private final UserRepository userRepository;
+    private final TrustedContactService trustedContactService;
 
-    /**
-     * Constructs a new ExpenseSharingServiceImpl.
-     *
-     * @param itemShareRepository the item share repository. Must not be null.
-     * @param userRepository the user repository. Must not be null.
-     */
     public ExpenseSharingServiceImpl(final ItemShareRepository itemShareRepository,
-                                     final UserRepository userRepository) {
+                                     final UserRepository userRepository,
+                                     final TrustedContactService trustedContactService) {
         this.itemShareRepository = itemShareRepository;
         this.userRepository = userRepository;
+        this.trustedContactService = trustedContactService;
     }
 
     @Override
@@ -158,35 +155,87 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     /**
-     * Creates shares for an item based on user IDs and percentages.
-     *
-     * @param item the invoice item to share. Must not be null.
-     * @param userShares a list of user share information. Must not be null.
-     * @return a list of created item shares. Never null.
+     * Creates shares from request (user and/or contact participants).
+     * Owner is the current user (for resolving contacts).
+     */
+    public List<ItemShare> createSharesFromRequest(final InvoiceItem item,
+            final List<CreateItemShareRequest.UserShare> userShares,
+            final User owner) {
+        if (userShares == null || userShares.isEmpty()) {
+            throw new IllegalArgumentException("Shares cannot be null or empty");
+        }
+        BigDecimal totalPercentage = BigDecimal.ZERO;
+        for (CreateItemShareRequest.UserShare us : userShares) {
+            if (us.userId() == null && us.contactId() == null) {
+                throw new IllegalArgumentException("Each share must have userId or contactId");
+            }
+            if (us.userId() != null && us.contactId() != null) {
+                throw new IllegalArgumentException("Each share must have only userId or contactId");
+            }
+            totalPercentage = totalPercentage.add(us.percentage());
+        }
+        if (totalPercentage.abs().subtract(BigDecimal.ONE).compareTo(new BigDecimal("0.01")) > 0) {
+            throw new IllegalArgumentException(
+                "Sum of share percentages must equal 1.0 (100%). Current sum: " + totalPercentage);
+        }
+
+        removeShares(item);
+
+        BigDecimal totalAmount = item.getAmount();
+        BigDecimal accumulated = BigDecimal.ZERO;
+        List<ItemShare> shareList = new ArrayList<>();
+        for (int i = 0; i < userShares.size(); i++) {
+            CreateItemShareRequest.UserShare us = userShares.get(i);
+            boolean isLast = (i == userShares.size() - 1);
+            BigDecimal amount = isLast
+                ? totalAmount.subtract(accumulated).setScale(2, RoundingMode.HALF_UP)
+                : totalAmount.multiply(us.percentage())
+                    .setScale(2, RoundingMode.HALF_UP);
+            accumulated = accumulated.add(amount);
+
+            ItemShare share;
+            if (us.userId() != null) {
+                User user = userRepository.findById(us.userId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + us.userId()));
+                share = ItemShare.of(user, item, us.percentage(), amount, Boolean.TRUE.equals(us.responsible()));
+            } else {
+                TrustedContact contact = trustedContactService.findByIdAndOwner(us.contactId(), owner);
+                share = ItemShare.forContact(contact, item, us.percentage(), amount,
+                    Boolean.TRUE.equals(us.responsible()));
+            }
+            shareList.add(share);
+        }
+
+        List<ItemShare> created = new ArrayList<>();
+        for (ItemShare share : shareList) {
+            item.addShare(share);
+            created.add(itemShareRepository.save(share));
+        }
+        return created;
+    }
+
+    /**
+     * Creates shares for an item based on user IDs and percentages (backward compatible).
      */
     public List<ItemShare> createSharesFromUserIds(final InvoiceItem item,
                                                    final List<CreateItemShareRequest.UserShare> userShares) {
         if (userShares == null || userShares.isEmpty()) {
             throw new IllegalArgumentException("User shares cannot be null or empty");
         }
-        
-        // Convert to Map<User, BigDecimal> for validation and build responsibleMap at the same time
         Map<User, BigDecimal> shares = new HashMap<>();
         Map<User, Boolean> responsibleMap = new HashMap<>();
         for (CreateItemShareRequest.UserShare userShare : userShares) {
+            if (userShare.userId() == null) {
+                throw new IllegalArgumentException("User ID is required for this request");
+            }
             User user = userRepository.findById(userShare.userId())
                 .orElseThrow(() ->
                     new IllegalArgumentException("User not found with ID: " + userShare.userId()));
             shares.put(user, userShare.percentage());
             responsibleMap.put(user, userShare.responsible());
         }
-        
         validateShares(shares);
-        
-        // Remove existing shares
         removeShares(item);
-            
-        // Create shares with rounding adjustment to ensure a sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, responsibleMap);
         List<ItemShare> createdShares = new ArrayList<>();
         for (ItemShare share : shareList) {
@@ -194,7 +243,6 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             ItemShare savedShare = itemShareRepository.save(share);
             createdShares.add(savedShare);
         }
-        
         return createdShares;
     }
 
@@ -203,11 +251,12 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                                      final LocalDateTime paidAt, final User user) {
         ItemShare share = itemShareRepository.findById(shareId)
             .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
-        
+        if (share.getUser() == null) {
+            throw new IllegalArgumentException("Cannot mark as paid: share is assigned to a contact");
+        }
         if (!share.getUser().equals(user)) {
             throw new IllegalArgumentException("Share does not belong to the specified user");
         }
-        
         share.markAsPaid(paymentMethod, paidAt);
         return itemShareRepository.save(share);
     }
@@ -216,11 +265,12 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     public ItemShare markShareAsUnpaid(final Long shareId, final User user) {
         ItemShare share = itemShareRepository.findById(shareId)
             .orElseThrow(() -> new IllegalArgumentException("Share not found with ID: " + shareId));
-        
+        if (share.getUser() == null) {
+            throw new IllegalArgumentException("Cannot mark as unpaid: share is assigned to a contact");
+        }
         if (!share.getUser().equals(user)) {
             throw new IllegalArgumentException("Share does not belong to the specified user");
         }
-        
         share.markAsUnpaid();
         return itemShareRepository.save(share);
     }
@@ -234,8 +284,10 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             return updated;
         }
         for (ItemShare share : itemShareRepository.findAllById(shareIds)) {
+            if (share.getUser() == null) {
+                continue; // Skip contact shares (cannot mark as paid)
+            }
             if (!share.getUser().equals(user)) {
-                // Skip shares that don't belong to the user
                 continue;
             }
             if (share.isPaid()) {
