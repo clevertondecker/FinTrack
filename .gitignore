@@ -54,3 +54,5 @@ mysql_data/
 *.log
 .DS_Store
 uploads/
+
+.cursor/*

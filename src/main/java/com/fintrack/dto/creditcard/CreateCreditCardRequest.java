@@ -39,5 +39,8 @@ public record CreateCreditCardRequest(
     String cardholderName,
     
     /** ID of the user this card is assigned to (who uses it). Null means the card is for the owner. */
-    Long assignedUserId
+    Long assignedUserId,
+
+    /** ID of the trusted contact this card is assigned to. Mutually exclusive with assignedUserId. */
+    Long assignedContactId
 ) {} 

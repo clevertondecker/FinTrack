@@ -59,11 +59,13 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
     @Override
     public Map<User, BigDecimal> calculateSharesForItem(InvoiceItem item) {
         Map<User, BigDecimal> shares = new HashMap<>();
-        
+
         for (ItemShare share : item.getShares()) {
-            shares.put(share.getUser(), share.getAmount());
+            if (share.getUser() != null) {
+                shares.put(share.getUser(), share.getAmount());
+            }
         }
-        
+
         return shares;
     }
 
@@ -100,9 +102,8 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
      * @return the amount the user is responsible for. Never null.
      */
     private BigDecimal calculateUserShareForItem(InvoiceItem item, User user) {
-        // Check if the user has a share for this item
         for (ItemShare share : item.getShares()) {
-            if (share.getUser().equals(user)) {
+            if (user.equals(share.getUser())) {
                 return share.getAmount();
             }
         }

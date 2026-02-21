@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import { CreditCard, CreateCreditCardRequest, Bank, CreditCardGroup } from '../types/creditCard';
+import { TrustedContact } from '../types/trustedContact';
 import { User } from '../types/user';
 import './CreditCards.css';
 
@@ -14,13 +15,17 @@ const INITIAL_FORM_DATA: CreateCreditCardRequest = {
   cardType: 'PHYSICAL',
   parentCardId: undefined,
   cardholderName: '',
-  assignedUserId: undefined
+  assignedUserId: undefined,
+  assignedContactId: undefined
 };
 
-function parseFormValue(name: string, value: string): string | number | undefined {
+function parseFormValue(name: string, value: string): string | number {
   if (name === 'limit') return parseFloat(value) || 0;
-  if (name === 'assignedUserId') return value === '' ? undefined : Number(value);
   return value;
+}
+
+function getAssignedDisplayName(card: CreditCard): string | undefined {
+  return card.assignedUserName || card.assignedContactName || undefined;
 }
 
 const CreditCards: React.FC = () => {
@@ -29,6 +34,7 @@ const CreditCards: React.FC = () => {
   const [groupedCards, setGroupedCards] = useState<CreditCardGroup[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [contacts, setContacts] = useState<TrustedContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -69,16 +75,36 @@ const CreditCards: React.FC = () => {
     }
   }, []);
 
+  const loadContacts = useCallback(async () => {
+    try {
+      const list = await apiService.getTrustedContacts();
+      setContacts(list);
+    } catch (err) {
+      console.error('Error loading contacts:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadCreditCards();
     loadBanks();
     loadUsers();
+    loadContacts();
     const token = localStorage.getItem('token');
     if (!token) setError(t('common.noAuthToken'));
-  }, [loadCreditCards, loadBanks, loadUsers, t]);
+  }, [loadCreditCards, loadBanks, loadUsers, loadContacts, t]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'assignedPerson') {
+      if (value === '') {
+        setFormData(prev => ({ ...prev, assignedUserId: undefined, assignedContactId: undefined }));
+      } else if (value.startsWith('user:')) {
+        setFormData(prev => ({ ...prev, assignedUserId: Number(value.slice(5)), assignedContactId: undefined }));
+      } else if (value.startsWith('contact:')) {
+        setFormData(prev => ({ ...prev, assignedContactId: Number(value.slice(8)), assignedUserId: undefined }));
+      }
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: parseFormValue(name, value) }));
   }, []);
 
@@ -118,7 +144,8 @@ const CreditCards: React.FC = () => {
       cardType: card.cardType,
       parentCardId: card.parentCardId,
       cardholderName: card.cardholderName || '',
-      assignedUserId: card.assignedUserId ?? undefined
+      assignedUserId: card.assignedUserId ?? undefined,
+      assignedContactId: card.assignedContactId ?? undefined
     });
     setShowCreateForm(true);
   };
@@ -200,6 +227,11 @@ const CreditCards: React.FC = () => {
     });
     return result;
   }, [groupedCards, creditCards]);
+
+  const availableContacts = useMemo(() => {
+    const registeredEmails = new Set(users.map(u => u.email));
+    return contacts.filter(c => !registeredEmails.has(c.email));
+  }, [contacts, users]);
 
   const parentCardOptions = useMemo((): CreditCard[] => {
     const byId = new Map<number, CreditCard>();
@@ -353,17 +385,26 @@ const CreditCards: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="assignedUserId">{t('creditCards.selectAssignedUser')}</label>
+                <label htmlFor="assignedPerson">{t('creditCards.selectAssignedUser')}</label>
                 <select
-                  id="assignedUserId"
-                  name="assignedUserId"
-                  value={formData.assignedUserId ?? ''}
+                  id="assignedPerson"
+                  name="assignedPerson"
+                  value={
+                    formData.assignedUserId ? `user:${formData.assignedUserId}`
+                    : formData.assignedContactId ? `contact:${formData.assignedContactId}`
+                    : ''
+                  }
                   onChange={handleInputChange}
                 >
                   <option value="">{t('creditCards.noAssignedUser')}</option>
                   {users.map(user => (
-                    <option key={user.id} value={user.id}>
+                    <option key={`user:${user.id}`} value={`user:${user.id}`}>
                       {user.name} ({user.email})
+                    </option>
+                  ))}
+                  {availableContacts.map(contact => (
+                    <option key={`contact:${contact.id}`} value={`contact:${contact.id}`}>
+                      {contact.name} ({contact.email})
                     </option>
                   ))}
                 </select>
@@ -409,7 +450,7 @@ const CreditCards: React.FC = () => {
                     </span>
                     <span className="sub-card-meta">
                       {group.parentCard.lastFourDigits} | {t('creditCards.cardTypePhysical')}
-                      {group.parentCard.assignedUserName ? ` | ${t('creditCards.assignedTo')}: ${group.parentCard.assignedUserName}` : ''}
+                      {getAssignedDisplayName(group.parentCard) && ` | ${t('creditCards.assignedTo')}: ${getAssignedDisplayName(group.parentCard)}`}
                     </span>
                   </div>
                   <div className="sub-card-actions">
@@ -434,7 +475,7 @@ const CreditCards: React.FC = () => {
                         {subCard.lastFourDigits} |
                         {subCard.cardType === 'VIRTUAL' ? t('creditCards.cardTypeVirtual') : t('creditCards.cardTypeAdditional')}
                         {subCard.cardholderName ? ` | ${subCard.cardholderName}` : ''}
-                        {subCard.assignedUserName ? ` | ${t('creditCards.assignedTo')}: ${subCard.assignedUserName}` : ''}
+                        {getAssignedDisplayName(subCard) && ` | ${t('creditCards.assignedTo')}: ${getAssignedDisplayName(subCard)}`}
                       </span>
                     </div>
                     <div className="sub-card-actions">

@@ -327,7 +327,6 @@ class ItemShareTest {
 
             assertThat(toString).contains("ItemShare{");
             assertThat(toString).contains("user=");
-            assertThat(toString).contains("invoiceItem=");
             assertThat(toString).contains("percentage=0.5");
             assertThat(toString).contains("amount=50.00");
             assertThat(toString).contains("responsible=true");

@@ -87,9 +87,8 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
      * @return the amount the user is responsible for. Never null.
      */
     private BigDecimal calculateUserShareForItem(final InvoiceItem item, final User user) {
-        // Check if the user has a share for this item
         for (ItemShare share : item.getShares()) {
-            if (share.getUser().equals(user)) {
+            if (user.equals(share.getUser())) {
                 return share.getAmount();
             }
         }
@@ -277,7 +276,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
      */
     private Long findShareIdForUser(final InvoiceItem item, final User user) {
         for (ItemShare share : item.getShares()) {
-            if (share.getUser().equals(user)) {
+            if (user.equals(share.getUser())) {
                 return share.getId();
             }
         }

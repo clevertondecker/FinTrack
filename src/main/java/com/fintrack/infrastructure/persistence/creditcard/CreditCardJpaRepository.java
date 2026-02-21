@@ -1,5 +1,6 @@
 package com.fintrack.infrastructure.persistence.creditcard;
 
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -95,4 +96,14 @@ public interface CreditCardJpaRepository extends JpaRepository<CreditCard, Long>
      * @return the number of credit cards owned by the user.
      */
     long countByOwner(User user);
+
+    /**
+     * Finds all credit cards assigned to a specific trusted contact.
+     * Used during user registration to migrate contact assignments to user assignments.
+     *
+     * @param contact the trusted contact. Cannot be null.
+     * @return list of credit cards assigned to the contact. Never null.
+     */
+    @Query("SELECT cc FROM CreditCard cc WHERE cc.assignedContact = :contact")
+    List<CreditCard> findByAssignedContact(@Param("contact") TrustedContact contact);
 } 

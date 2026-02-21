@@ -17,6 +17,8 @@ public record CreditCardResponse(
     String cardholderName,
     Long assignedUserId,
     String assignedUserName,
+    Long assignedContactId,
+    String assignedContactName,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {} 

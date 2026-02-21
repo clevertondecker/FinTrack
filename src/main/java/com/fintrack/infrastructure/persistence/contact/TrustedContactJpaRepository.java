@@ -26,4 +26,13 @@ public interface TrustedContactJpaRepository extends JpaRepository<TrustedContac
     Optional<TrustedContact> findByOwnerAndEmail(User owner, String email);
 
     boolean existsByOwnerAndEmail(User owner, String email);
+
+    /**
+     * Finds all trusted contacts with the given email across all owners.
+     * Used during user registration to migrate contact-based card assignments.
+     *
+     * @param email the email to search for. Cannot be null.
+     * @return list of matching contacts. Never null, may be empty.
+     */
+    List<TrustedContact> findByEmail(String email);
 }

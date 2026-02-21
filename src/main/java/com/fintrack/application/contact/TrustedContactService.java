@@ -1,26 +1,49 @@
 package com.fintrack.application.contact;
 
 import com.fintrack.domain.contact.TrustedContact;
+import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.User;
+import com.fintrack.domain.user.UserConnection;
+import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
+import com.fintrack.infrastructure.persistence.user.UserConnectionJpaRepository;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Service for CRUD of trusted contacts (Circle of Trust - Model A).
  * All operations are scoped to the owner (logged-in user).
+ * Automatically creates a {@link UserConnection} when the contact's email
+ * matches a registered user.
  */
 @Service
 public class TrustedContactService {
 
-    private final TrustedContactJpaRepository repository;
+    private static final Logger logger = LoggerFactory.getLogger(TrustedContactService.class);
+    private static final String MSG_CONTACT_NOT_FOUND = "Contact not found";
 
-    public TrustedContactService(TrustedContactJpaRepository repository) {
-        this.repository = repository;
+    private final TrustedContactJpaRepository repository;
+    private final UserRepository userRepository;
+    private final UserConnectionJpaRepository userConnectionRepository;
+
+    public TrustedContactService(final TrustedContactJpaRepository theRepository,
+                                 final UserRepository theUserRepository,
+                                 final UserConnectionJpaRepository theUserConnectionRepository) {
+        Validate.notNull(theRepository, "The repository cannot be null.");
+        Validate.notNull(theUserRepository, "The userRepository cannot be null.");
+        Validate.notNull(theUserConnectionRepository, "The userConnectionRepository cannot be null.");
+
+        repository = theRepository;
+        userRepository = theUserRepository;
+        userConnectionRepository = theUserConnectionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -38,13 +61,15 @@ public class TrustedContactService {
             throw new IllegalArgumentException("A contact with this email already exists in your circle.");
         }
         TrustedContact contact = TrustedContact.create(owner, name, email, tags, note);
-        return repository.save(contact);
+        TrustedContact saved = repository.save(contact);
+        autoConnectIfRegistered(owner, emailNorm);
+        return saved;
     }
 
     @Transactional
     public TrustedContact update(User owner, Long id, String name, String email, String tags, String note) {
         TrustedContact contact = repository.findByIdAndOwner(id, owner)
-            .orElseThrow(() -> new IllegalArgumentException("Contact not found"));
+            .orElseThrow(() -> new IllegalArgumentException(MSG_CONTACT_NOT_FOUND));
         if (email != null && !email.isBlank()) {
             String emailNorm = email.trim().toLowerCase();
             if (!emailNorm.equals(contact.getEmail())
@@ -53,19 +78,46 @@ public class TrustedContactService {
             }
         }
         contact.update(name, email, tags, note);
-        return repository.save(contact);
+        TrustedContact saved = repository.save(contact);
+        if (email != null && !email.isBlank()) {
+            autoConnectIfRegistered(owner, email.trim().toLowerCase());
+        }
+        return saved;
     }
 
     @Transactional
     public void delete(User owner, Long id) {
         TrustedContact contact = repository.findByIdAndOwner(id, owner)
-            .orElseThrow(() -> new IllegalArgumentException("Contact not found"));
+            .orElseThrow(() -> new IllegalArgumentException(MSG_CONTACT_NOT_FOUND));
         repository.delete(contact);
     }
 
     @Transactional(readOnly = true)
     public TrustedContact findByIdAndOwner(Long id, User owner) {
         return repository.findByIdAndOwner(id, owner)
-            .orElseThrow(() -> new IllegalArgumentException("Contact not found"));
+            .orElseThrow(() -> new IllegalArgumentException(MSG_CONTACT_NOT_FOUND));
+    }
+
+    /**
+     * If the given email belongs to a registered user (other than the owner),
+     * creates a bidirectional {@link UserConnection} so that the user shows up
+     * in dropdowns that depend on connected users (e.g. credit card assignment).
+     */
+    private void autoConnectIfRegistered(User owner, String email) {
+        Optional<User> targetOpt = userRepository.findByEmail(Email.of(email));
+        if (targetOpt.isEmpty()) {
+            return;
+        }
+        User target = targetOpt.get();
+        if (target.getId().equals(owner.getId())) {
+            return;
+        }
+        if (userConnectionRepository.findByUserAndConnectedUser(owner, target).isPresent()) {
+            logger.debug("UserConnection already exists between {} and {}", owner.getId(), target.getId());
+            return;
+        }
+        userConnectionRepository.save(new UserConnection(owner, target));
+        userConnectionRepository.save(new UserConnection(target, owner));
+        logger.info("Auto-connected user {} with registered contact {}", owner.getId(), target.getId());
     }
 }

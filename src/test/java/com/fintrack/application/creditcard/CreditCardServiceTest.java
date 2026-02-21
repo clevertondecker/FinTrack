@@ -32,6 +32,7 @@ import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.creditcard.CreditCardGroupResponse;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
+import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 
@@ -48,6 +49,9 @@ class CreditCardServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TrustedContactJpaRepository trustedContactRepository;
+
     private CreditCardService creditCardService;
 
     private User testUser;
@@ -57,7 +61,7 @@ class CreditCardServiceTest {
     @BeforeEach
     void setUp() {
         creditCardService = new CreditCardService(
-            creditCardRepository, bankRepository, userRepository);
+            creditCardRepository, bankRepository, userRepository, trustedContactRepository);
 
         testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
         testBank = Bank.of("NU", "Nubank");
@@ -126,7 +130,7 @@ class CreditCardServiceTest {
         @DisplayName("Should create credit card successfully")
         void shouldCreateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, null);
+                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, null, null);
 
             when(bankRepository.findById(1L))
               .thenReturn(Optional.of(testBank));
@@ -145,7 +149,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 999L, CardType.PHYSICAL, null, null, null);
+                "Test Card", "1234", new BigDecimal("5000.00"), 999L, CardType.PHYSICAL, null, null, null, null);
 
             when(bankRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -160,7 +164,7 @@ class CreditCardServiceTest {
                 "Jane Doe", "jane@example.com", "password123", Set.of(Role.USER));
             ReflectionTestUtils.setField(assignedUser, "id", 2L);
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 2L);
+                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 2L, null);
 
             when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));
             when(userRepository.findById(2L)).thenReturn(Optional.of(assignedUser));
@@ -178,7 +182,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw when assigned user not found")
         void shouldThrowWhenAssignedUserNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 999L);
+                "Spouse Card", "5678", new BigDecimal("3000.00"), 1L, CardType.ADDITIONAL, null, "Jane", 999L, null);
 
             when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));
             when(userRepository.findById(999L)).thenReturn(Optional.empty());
@@ -360,7 +364,7 @@ class CreditCardServiceTest {
             ReflectionTestUtils.setField(assignedUser, "id", 2L);
             
             CreditCard parentCard = CreditCard.of("Physical Card", "1111", new BigDecimal("10000.00"), 
-                parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner");
+                parentCardOwner, testBank, CardType.PHYSICAL, null, "Parent Owner", (User) null);
             ReflectionTestUtils.setField(parentCard, "id", 100L);
             
             CreditCard childCard = CreditCard.of("Virtual Card", "2222", new BigDecimal("5000.00"), 
@@ -411,7 +415,7 @@ class CreditCardServiceTest {
             ReflectionTestUtils.setField(userB, "id", 2L);
             
             CreditCard userBCard = CreditCard.of("User B Card", "3333", new BigDecimal("5000.00"), 
-                userB, testBank, CardType.PHYSICAL, null, "User B");
+                userB, testBank, CardType.PHYSICAL, null, "User B", (User) null);
             ReflectionTestUtils.setField(userBCard, "id", 300L);
 
             // User A tries to deactivate User B's card
@@ -434,7 +438,7 @@ class CreditCardServiceTest {
         @DisplayName("Should update credit card successfully")
         void shouldUpdateCreditCardSuccessfully() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -452,7 +456,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when credit card not found")
         void shouldThrowExceptionWhenCreditCardNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 1L, CardType.PHYSICAL, null, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(999L, testUser))
               .thenReturn(Optional.empty());
@@ -465,7 +469,7 @@ class CreditCardServiceTest {
         @DisplayName("Should throw exception when bank not found")
         void shouldThrowExceptionWhenBankNotFound() {
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 999L, CardType.PHYSICAL, null, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 999L, CardType.PHYSICAL, null, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -481,7 +485,7 @@ class CreditCardServiceTest {
         void shouldUpdateCreditCardWithDifferentBank() {
             Bank newBank = Bank.of("IT", "Itaú");
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Updated Card", "5678", new BigDecimal("10000.00"), 2L, CardType.PHYSICAL, null, null, null);
+                "Updated Card", "5678", new BigDecimal("10000.00"), 2L, CardType.PHYSICAL, null, null, null, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser))
               .thenReturn(Optional.of(testCreditCard));
@@ -502,7 +506,7 @@ class CreditCardServiceTest {
                 "Jane", "jane@example.com", "pass", Set.of(Role.USER));
             ReflectionTestUtils.setField(assignedUser, "id", 2L);
             CreateCreditCardRequest request = new CreateCreditCardRequest(
-                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, 2L);
+                "Test Card", "1234", new BigDecimal("5000.00"), 1L, CardType.PHYSICAL, null, null, 2L, null);
 
             when(creditCardRepository.findByIdAndOwner(1L, testUser)).thenReturn(Optional.of(testCreditCard));
             when(bankRepository.findById(1L)).thenReturn(Optional.of(testBank));

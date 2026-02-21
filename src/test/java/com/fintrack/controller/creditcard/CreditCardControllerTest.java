@@ -33,6 +33,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 import com.fintrack.application.creditcard.CreditCardService;
 import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.CardType;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
@@ -146,13 +147,13 @@ public class CreditCardControllerTest {
 
         CreditCardResponse creditCardResponse1 = new CreditCardResponse(
             1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
-            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            null, null, LocalDateTime.now(), LocalDateTime.now()
+            CardType.PHYSICAL, null, null, "John Doe",
+            null, null, null, null, LocalDateTime.now(), LocalDateTime.now()
         );
         CreditCardResponse creditCardResponse2 = new CreditCardResponse(
             2L, "Inactive Card", "5678", new BigDecimal("3000.00"), false, "Nubank",
-            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            null, null, LocalDateTime.now(), LocalDateTime.now()
+            CardType.PHYSICAL, null, null, "John Doe",
+            null, null, null, null, LocalDateTime.now(), LocalDateTime.now()
         );
         List<CreditCardResponse> creditCardResponses = List.of(creditCardResponse1, creditCardResponse2);
 
@@ -189,8 +190,8 @@ public class CreditCardControllerTest {
         Long creditCardId = 1L;
         CreditCardResponse creditCardResponse = new CreditCardResponse(
             1L, "Test Card", "1234", new BigDecimal("5000.00"), true, "Nubank",
-            com.fintrack.domain.creditcard.CardType.PHYSICAL, null, null, "John Doe",
-            null, null, LocalDateTime.now(), LocalDateTime.now()
+            CardType.PHYSICAL, null, null, "John Doe",
+            null, null, null, null, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));

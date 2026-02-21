@@ -1,5 +1,6 @@
 package com.fintrack.application.creditcard;
 
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
@@ -8,6 +9,7 @@ import com.fintrack.domain.user.Email;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
 import com.fintrack.dto.creditcard.CreditCardGroupResponse;
 import com.fintrack.dto.creditcard.CreditCardResponse;
+import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import org.springframework.stereotype.Service;
@@ -36,24 +38,18 @@ public class CreditCardService {
     private static final String MASKED_LAST_FOUR_DIGITS = "****";
 
     private final CreditCardJpaRepository creditCardRepository;
-    /** The bank repository. */
     private final BankJpaRepository bankRepository;
-    /** The user repository. */
     private final UserRepository userRepository;
+    private final TrustedContactJpaRepository trustedContactRepository;
 
-    /**
-     * Constructs a new CreditCardService.
-     *
-     * @param theCreditCardRepository the credit card repository. Must not be null.
-     * @param theBankRepository the bank repository. Must not be null.
-     * @param theUserRepository the user repository. Must not be null.
-     */
     public CreditCardService(final CreditCardJpaRepository theCreditCardRepository,
                             final BankJpaRepository theBankRepository,
-                            final UserRepository theUserRepository) {
+                            final UserRepository theUserRepository,
+                            final TrustedContactJpaRepository theTrustedContactRepository) {
         creditCardRepository = theCreditCardRepository;
         bankRepository = theBankRepository;
         userRepository = theUserRepository;
+        trustedContactRepository = theTrustedContactRepository;
     }
 
     /**
@@ -87,6 +83,7 @@ public class CreditCardService {
         Bank bank = findBankById(request.bankId());
         CreditCard parentCard = findParentCardIfSpecified(request.parentCardId(), user);
         User assignedUser = findAssignedUserIfSpecified(request.assignedUserId());
+        TrustedContact assignedContact = findAssignedContactIfSpecified(request.assignedContactId(), user);
 
         CreditCard creditCard = CreditCard.of(
             request.name(),
@@ -97,7 +94,8 @@ public class CreditCardService {
             request.cardType(),
             parentCard,
             request.cardholderName(),
-            assignedUser
+            assignedUser,
+            assignedContact
         );
 
         return creditCardRepository.save(creditCard);
@@ -203,8 +201,9 @@ public class CreditCardService {
         Bank bank = findBankById(request.bankId());
         CreditCard parentCard = findParentCardIfSpecified(request.parentCardId(), user);
         User assignedUser = findAssignedUserIfSpecified(request.assignedUserId());
+        TrustedContact assignedContact = findAssignedContactIfSpecified(request.assignedContactId(), user);
 
-        updateCreditCardFields(creditCard, request, bank, parentCard, assignedUser);
+        updateCreditCardFields(creditCard, request, bank, parentCard, assignedUser, assignedContact);
         return creditCardRepository.save(creditCard);
     }
 
@@ -220,6 +219,7 @@ public class CreditCardService {
             throw new IllegalArgumentException("Credit card cannot be null");
         }
         User assigned = creditCard.getAssignedUser();
+        TrustedContact contact = creditCard.getAssignedContact();
         return new CreditCardResponse(
             creditCard.getId(),
             creditCard.getName(),
@@ -233,6 +233,8 @@ public class CreditCardService {
             creditCard.getCardholderName(),
             assigned != null ? assigned.getId() : null,
             assigned != null ? assigned.getName() : null,
+            contact != null ? contact.getId() : null,
+            contact != null ? contact.getName() : null,
             creditCard.getCreatedAt(),
             creditCard.getUpdatedAt()
         );
@@ -261,6 +263,9 @@ public class CreditCardService {
         User assigned = creditCard.getAssignedUser();
         dto.put("assignedUserId", assigned != null ? assigned.getId() : null);
         dto.put("assignedUserName", assigned != null ? assigned.getName() : null);
+        TrustedContact contact = creditCard.getAssignedContact();
+        dto.put("assignedContactId", contact != null ? contact.getId() : null);
+        dto.put("assignedContactName", contact != null ? contact.getName() : null);
         dto.put("createdAt", creditCard.getCreatedAt());
         dto.put("updatedAt", creditCard.getUpdatedAt());
         return dto;
@@ -355,13 +360,10 @@ public class CreditCardService {
             true,
             firstChild.bankName(),
             CardType.PHYSICAL,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+            null, null, null,
+            null, null,
+            null, null,
+            null, null
         );
     }
 
@@ -433,27 +435,53 @@ public class CreditCardService {
     }
 
     /**
-     * Updates credit card fields with new values.
+     * Finds the assigned contact if specified, scoped to the owner.
      *
-     * @param creditCard the credit card to update. Cannot be null.
-     * @param request the update request. Cannot be null.
-     * @param bank the bank. Cannot be null.
-     * @param parentCard the parent card. Can be null.
-     * @param assignedUser the assigned user. Can be null.
+     * @param assignedContactId the contact ID. Can be null.
+     * @param owner the card owner. Cannot be null.
+     * @return the contact, or null if not specified.
+     * @throws IllegalArgumentException if contact not found or doesn't belong to owner.
+     */
+    private TrustedContact findAssignedContactIfSpecified(Long assignedContactId, User owner) {
+        if (assignedContactId == null) {
+            return null;
+        }
+        return trustedContactRepository.findByIdAndOwner(assignedContactId, owner)
+            .orElseThrow(() -> new IllegalArgumentException("Assigned contact not found"));
+    }
+
+    /**
+     * Updates all mutable fields of a credit card.
+     * Assignment is mutually exclusive: setting a contact clears the user, and vice versa.
+     * When both are null, any previous assignment is cleared.
      */
     private void updateCreditCardFields(
             CreditCard creditCard,
             CreateCreditCardRequest request,
             Bank bank,
             CreditCard parentCard,
-            User assignedUser) {
+            User assignedUser,
+            TrustedContact assignedContact) {
         creditCard.updateName(request.name());
         creditCard.updateLimit(request.limit());
         creditCard.updateBank(bank);
         creditCard.updateCardType(request.cardType());
         creditCard.updateParentCard(parentCard);
         creditCard.updateCardholderName(request.cardholderName());
-        creditCard.updateAssignedUser(assignedUser);
+        updateCardAssignment(creditCard, assignedUser, assignedContact);
+    }
+
+    /**
+     * Sets the card assignment to either a user or a contact (mutually exclusive).
+     * Clears any previous assignment when switching types or when both are null.
+     */
+    private void updateCardAssignment(CreditCard creditCard, User assignedUser, TrustedContact assignedContact) {
+        if (assignedContact != null) {
+            creditCard.updateAssignedContact(assignedContact);
+        } else {
+            creditCard.updateAssignedUser(assignedUser);
+            creditCard.updateAssignedContact(null);
+        }
     }
 
     /**

@@ -14,6 +14,8 @@ import java.util.Set;
 
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.UserConnection;
+import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import com.fintrack.infrastructure.persistence.user.UserConnectionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +50,12 @@ public class UserServiceTest {
     @Mock
     private UserConnectionJpaRepository userConnectionRepository;
 
+    @Mock
+    private TrustedContactJpaRepository trustedContactRepository;
+
+    @Mock
+    private CreditCardJpaRepository creditCardRepository;
+
     private UserService userService;
 
     private static final String VALID_NAME = "John Doe";
@@ -58,7 +66,8 @@ public class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordService, userConnectionRepository);
+        userService = new UserService(userRepository, passwordService, userConnectionRepository,
+            trustedContactRepository, creditCardRepository);
     }
 
     @Nested
@@ -69,7 +78,8 @@ public class UserServiceTest {
         @DisplayName("Should create service with valid dependencies")
         void shouldCreateServiceWithValidDependencies() {
             UserService service = new UserService(
-                userRepository, passwordService, userConnectionRepository);
+                userRepository, passwordService, userConnectionRepository,
+                trustedContactRepository, creditCardRepository);
 
             assertThat(service).isNotNull();
         }
@@ -78,7 +88,8 @@ public class UserServiceTest {
         @DisplayName("Should throw exception when userRepository is null")
         void shouldThrowExceptionWhenUserRepositoryIsNull() {
             assertThatThrownBy(() ->
-              new UserService(null, passwordService, userConnectionRepository))
+              new UserService(null, passwordService, userConnectionRepository,
+                  trustedContactRepository, creditCardRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The userRepository cannot be null");
         }
@@ -87,7 +98,8 @@ public class UserServiceTest {
         @DisplayName("Should throw exception when passwordService is null")
         void shouldThrowExceptionWhenPasswordServiceIsNull() {
             assertThatThrownBy(() ->
-              new UserService(userRepository, null, userConnectionRepository))
+              new UserService(userRepository, null, userConnectionRepository,
+                  trustedContactRepository, creditCardRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The passwordService cannot be null");
         }
@@ -96,7 +108,8 @@ public class UserServiceTest {
         @DisplayName("Should throw exception when userConnectionRepository is null")
         void shouldThrowExceptionWhenUserConnectionRepositoryIsNull() {
             assertThatThrownBy(() ->
-              new UserService(userRepository, passwordService, null))
+              new UserService(userRepository, passwordService, null,
+                  trustedContactRepository, creditCardRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The userConnectionRepository cannot be null");
         }

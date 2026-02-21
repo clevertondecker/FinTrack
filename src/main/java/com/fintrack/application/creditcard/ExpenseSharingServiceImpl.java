@@ -446,19 +446,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                 
                 // Update amount if different
                 if (share.getAmount().compareTo(newAmount) != 0) {
-                    // Create a new share with updated amount (preserving payment info)
-                    ItemShare updatedShare = ItemShare.of(
-                        share.getUser(),
-                        item,
-                        share.getPercentage(),
-                        newAmount,
-                        share.isResponsible()
-                    );
-                    // Preserve payment information
-                    if (share.isPaid()) {
-                        updatedShare.markAsPaid(share.getPaymentMethod(), share.getPaidAt());
-                    }
-                    // Update in database
+                    ItemShare updatedShare = recreateShareWithAmount(share, item, newAmount);
                     item.removeShare(share);
                     itemShareRepository.delete(share);
                     item.addShare(updatedShare);
@@ -467,26 +455,13 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
                 }
             }
 
-            // Adjust the last share to ensure total equals item amount
             if (!sharesList.isEmpty()) {
                 ItemShare lastShare = sharesList.get(sharesList.size() - 1);
                 BigDecimal lastAmount = item.getAmount().subtract(totalCalculated)
                         .setScale(2, RoundingMode.HALF_UP);
-                
-                // Update last share if amount changed
+
                 if (lastShare.getAmount().compareTo(lastAmount) != 0) {
-                    ItemShare updatedLastShare = ItemShare.of(
-                        lastShare.getUser(),
-                        item,
-                        lastShare.getPercentage(),
-                        lastAmount,
-                        lastShare.isResponsible()
-                    );
-                    // Preserve payment information
-                    if (lastShare.isPaid()) {
-                        updatedLastShare.markAsPaid(lastShare.getPaymentMethod(), lastShare.getPaidAt());
-                    }
-                    // Update in database
+                    ItemShare updatedLastShare = recreateShareWithAmount(lastShare, item, lastAmount);
                     item.removeShare(lastShare);
                     itemShareRepository.delete(lastShare);
                     item.addShare(updatedLastShare);
@@ -498,5 +473,26 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
         }
 
         return recalculated;
+    }
+
+    /**
+     * Recreates an {@link ItemShare} with a new amount, preserving the participant type
+     * (user or contact) and payment information from the original share.
+     */
+    private ItemShare recreateShareWithAmount(ItemShare original, InvoiceItem item, BigDecimal newAmount) {
+        ItemShare updated;
+        if (original.isContactShare()) {
+            updated = ItemShare.forContact(
+                    original.getTrustedContact(), item,
+                    original.getPercentage(), newAmount, original.isResponsible());
+        } else {
+            updated = ItemShare.of(
+                    original.getUser(), item,
+                    original.getPercentage(), newAmount, original.isResponsible());
+        }
+        if (original.isPaid()) {
+            updated.markAsPaid(original.getPaymentMethod(), original.getPaidAt());
+        }
+        return updated;
     }
 }

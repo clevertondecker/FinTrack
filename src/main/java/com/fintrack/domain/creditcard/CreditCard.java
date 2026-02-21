@@ -1,5 +1,6 @@
 package com.fintrack.domain.creditcard;
 
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -82,10 +83,21 @@ public class CreditCard {
     /**
      * The user this card is assigned to (who uses it).
      * When null, the card is for the owner. Used for additional/virtual cards used by other people.
+     * Mutually exclusive with {@link #assignedContact}.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_user_id")
     private User assignedUser;
+
+    /**
+     * The trusted contact this card is assigned to (who uses it, but has no system account yet).
+     * When the contact later registers as a {@link User}, this field is cleared and
+     * {@link #assignedUser} is set instead.
+     * Mutually exclusive with {@link #assignedUser}.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_contact_id")
+    private TrustedContact assignedContact;
 
     /**
      * Protected constructor for JPA only.
@@ -108,7 +120,7 @@ public class CreditCard {
     private CreditCard(final String theName, final String theLastFourDigits,
                       final BigDecimal theLimit, final User theOwner, final Bank theBank,
                       final CardType theCardType, final CreditCard theParentCard, final String theCardholderName,
-                      final User theAssignedUser) {
+                      final User theAssignedUser, final TrustedContact theAssignedContact) {
         Validate.notBlank(theName, "Credit card name must not be null or blank.");
         Validate.notBlank(theLastFourDigits, "Last four digits must not be null or blank.");
         Validate.isTrue(theLastFourDigits.length() == 4, "Last four digits must be exactly 4 characters.");
@@ -118,6 +130,8 @@ public class CreditCard {
         Validate.notNull(theOwner, "Credit card owner must not be null.");
         Validate.notNull(theBank, "Bank must not be null.");
         Validate.notNull(theCardType, "Card type must not be null.");
+        Validate.isTrue(theAssignedUser == null || theAssignedContact == null,
+            "Cannot assign both a user and a contact to the same card.");
 
         name = theName;
         lastFourDigits = theLastFourDigits;
@@ -128,6 +142,7 @@ public class CreditCard {
         parentCard = theParentCard;
         cardholderName = theCardholderName;
         assignedUser = theAssignedUser;
+        assignedContact = theAssignedContact;
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
@@ -144,7 +159,7 @@ public class CreditCard {
      */
     public static CreditCard of(final String name, final String lastFourDigits,
                                final BigDecimal limit, final User owner, final Bank bank) {
-        return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null, null);
+        return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null, null, null);
     }
 
     /**
@@ -166,11 +181,11 @@ public class CreditCard {
                                final CardType cardType, final CreditCard parentCard, final String cardholderName,
                                final User assignedUser) {
         return new CreditCard(
-            name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName, assignedUser);
+            name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName, assignedUser, null);
     }
 
     /**
-     * Static factory for credit card with type, parent and cardholder (no assigned user).
+     * Static factory method to create a new CreditCard with assigned user or contact.
      *
      * @param name the credit card's name. Cannot be null or blank.
      * @param lastFourDigits the last four digits of the card. Must be exactly 4 digits.
@@ -180,12 +195,17 @@ public class CreditCard {
      * @param cardType the type of the card. Cannot be null.
      * @param parentCard the parent card for additional cards. Can be null.
      * @param cardholderName the name on the card. Can be null.
+     * @param assignedUser the user this card is assigned to. Can be null. Mutually exclusive with assignedContact.
+     * @param assignedContact the contact this card is assigned to. Can be null. Mutually exclusive with assignedUser.
      * @return a validated CreditCard entity. Never null.
      */
     public static CreditCard of(final String name, final String lastFourDigits,
                                final BigDecimal limit, final User owner, final Bank bank,
-                               final CardType cardType, final CreditCard parentCard, final String cardholderName) {
-        return of(name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName, null);
+                               final CardType cardType, final CreditCard parentCard, final String cardholderName,
+                               final User assignedUser, final TrustedContact assignedContact) {
+        return new CreditCard(
+            name, lastFourDigits, limit, owner, bank, cardType, parentCard, cardholderName,
+            assignedUser, assignedContact);
     }
 
     /**
@@ -271,12 +291,28 @@ public class CreditCard {
     }
 
     /**
-     * Updates the user this card is assigned to.
+     * Updates the user this card is assigned to, clearing any assigned contact.
      *
      * @param newAssignedUser the assigned user. Can be null.
      */
     public void updateAssignedUser(final User newAssignedUser) {
         assignedUser = newAssignedUser;
+        if (newAssignedUser != null) {
+            assignedContact = null;
+        }
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the trusted contact this card is assigned to, clearing any assigned user.
+     *
+     * @param newAssignedContact the assigned contact. Can be null.
+     */
+    public void updateAssignedContact(final TrustedContact newAssignedContact) {
+        assignedContact = newAssignedContact;
+        if (newAssignedContact != null) {
+            assignedUser = null;
+        }
         updatedAt = LocalDateTime.now();
     }
 
@@ -397,6 +433,15 @@ public class CreditCard {
         return assignedUser;
     }
 
+    /**
+     * Gets the trusted contact this card is assigned to.
+     *
+     * @return the assigned contact. May be null.
+     */
+    public TrustedContact getAssignedContact() {
+        return assignedContact;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -426,6 +471,7 @@ public class CreditCard {
             + ", parentCard=" + (parentCard != null ? parentCard.getId() : "null")
             + ", cardholderName='" + cardholderName + '\''
             + ", assignedUser=" + (assignedUser != null ? assignedUser.getId() : "null")
+            + ", assignedContact=" + (assignedContact != null ? assignedContact.getId() : "null")
             + ", createdAt=" + createdAt
             + ", updatedAt=" + updatedAt
             + ", active=" + active
