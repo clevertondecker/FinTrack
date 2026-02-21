@@ -14,12 +14,16 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.fintrack.domain.contact.TrustedContact;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.ItemShare;
+import com.fintrack.domain.creditcard.ItemShareRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserConnection;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import com.fintrack.infrastructure.persistence.user.UserConnectionJpaRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +50,12 @@ class TrustedContactServiceTest {
     @Mock
     private UserConnectionJpaRepository userConnectionRepository;
 
+    @Mock
+    private CreditCardJpaRepository creditCardRepository;
+
+    @Mock
+    private ItemShareRepository itemShareRepository;
+
     @Captor
     private ArgumentCaptor<UserConnection> connectionCaptor;
 
@@ -59,7 +69,8 @@ class TrustedContactServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TrustedContactService(repository, userRepository, userConnectionRepository);
+        service = new TrustedContactService(repository, userRepository, userConnectionRepository,
+                creditCardRepository, itemShareRepository);
 
         owner = User.createLocalUser("Cleverton", "cleverton@example.com", "pwd", ROLES);
         ReflectionTestUtils.setField(owner, "id", 1L);
@@ -343,17 +354,59 @@ class TrustedContactServiceTest {
     class DeleteTests {
 
         @Test
-        @DisplayName("Should delete contact without affecting UserConnection")
-        void shouldDeleteContactWithoutAffectingConnection() {
+        @DisplayName("Should delete contact and clear card assignments")
+        void shouldClearCardAssignmentsOnDelete() {
+            TrustedContact contact = TrustedContact.create(owner, "Sabrina", "sabrina@example.com", null, null);
+            ReflectionTestUtils.setField(contact, "id", 10L);
+
+            CreditCard card = CreditCard.of("Card", "1234", new java.math.BigDecimal("5000"), owner,
+                    com.fintrack.domain.creditcard.Bank.of("NU", "Nubank"));
+            card.updateAssignedContact(contact);
+
+            when(repository.findByIdAndOwner(10L, owner)).thenReturn(Optional.of(contact));
+            when(creditCardRepository.findByAssignedContact(contact)).thenReturn(List.of(card));
+            when(itemShareRepository.findByTrustedContact(contact)).thenReturn(List.of());
+
+            service.delete(owner, 10L);
+
+            assertThat(card.getAssignedContact()).isNull();
+            verify(creditCardRepository).saveAll(List.of(card));
+            verify(repository).delete(contact);
+        }
+
+        @Test
+        @DisplayName("Should delete contact and remove associated shares")
+        void shouldRemoveSharesOnDelete() {
+            TrustedContact contact = TrustedContact.create(owner, "Sabrina", "sabrina@example.com", null, null);
+            ReflectionTestUtils.setField(contact, "id", 10L);
+
+            ItemShare share = org.mockito.Mockito.mock(ItemShare.class);
+
+            when(repository.findByIdAndOwner(10L, owner)).thenReturn(Optional.of(contact));
+            when(creditCardRepository.findByAssignedContact(contact)).thenReturn(List.of());
+            when(itemShareRepository.findByTrustedContact(contact)).thenReturn(List.of(share));
+
+            service.delete(owner, 10L);
+
+            verify(itemShareRepository).deleteAll(List.of(share));
+            verify(repository).delete(contact);
+        }
+
+        @Test
+        @DisplayName("Should delete contact with no card or share references")
+        void shouldDeleteContactWithNoReferences() {
             TrustedContact contact = TrustedContact.create(owner, "Sabrina", "sabrina@example.com", null, null);
             ReflectionTestUtils.setField(contact, "id", 10L);
 
             when(repository.findByIdAndOwner(10L, owner)).thenReturn(Optional.of(contact));
+            when(creditCardRepository.findByAssignedContact(contact)).thenReturn(List.of());
+            when(itemShareRepository.findByTrustedContact(contact)).thenReturn(List.of());
 
             service.delete(owner, 10L);
 
+            verify(creditCardRepository, never()).saveAll(any());
+            verify(itemShareRepository, never()).deleteAll(any());
             verify(repository).delete(contact);
-            verify(userConnectionRepository, never()).save(any(UserConnection.class));
         }
 
         @Test

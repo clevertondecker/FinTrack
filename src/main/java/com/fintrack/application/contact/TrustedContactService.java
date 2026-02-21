@@ -1,11 +1,15 @@
 package com.fintrack.application.contact;
 
 import com.fintrack.domain.contact.TrustedContact;
+import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.ItemShare;
+import com.fintrack.domain.creditcard.ItemShareRepository;
 import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserConnection;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
+import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
 import com.fintrack.infrastructure.persistence.user.UserConnectionJpaRepository;
 
 import org.apache.commons.lang3.StringUtils;
@@ -33,17 +37,25 @@ public class TrustedContactService {
     private final TrustedContactJpaRepository repository;
     private final UserRepository userRepository;
     private final UserConnectionJpaRepository userConnectionRepository;
+    private final CreditCardJpaRepository creditCardRepository;
+    private final ItemShareRepository itemShareRepository;
 
     public TrustedContactService(final TrustedContactJpaRepository theRepository,
                                  final UserRepository theUserRepository,
-                                 final UserConnectionJpaRepository theUserConnectionRepository) {
+                                 final UserConnectionJpaRepository theUserConnectionRepository,
+                                 final CreditCardJpaRepository theCreditCardRepository,
+                                 final ItemShareRepository theItemShareRepository) {
         Validate.notNull(theRepository, "The repository cannot be null.");
         Validate.notNull(theUserRepository, "The userRepository cannot be null.");
         Validate.notNull(theUserConnectionRepository, "The userConnectionRepository cannot be null.");
+        Validate.notNull(theCreditCardRepository, "The creditCardRepository cannot be null.");
+        Validate.notNull(theItemShareRepository, "The itemShareRepository cannot be null.");
 
         repository = theRepository;
         userRepository = theUserRepository;
         userConnectionRepository = theUserConnectionRepository;
+        creditCardRepository = theCreditCardRepository;
+        itemShareRepository = theItemShareRepository;
     }
 
     @Transactional(readOnly = true)
@@ -89,7 +101,31 @@ public class TrustedContactService {
     public void delete(User owner, Long id) {
         TrustedContact contact = repository.findByIdAndOwner(id, owner)
             .orElseThrow(() -> new IllegalArgumentException(MSG_CONTACT_NOT_FOUND));
+        clearContactReferences(contact);
         repository.delete(contact);
+    }
+
+    /**
+     * Removes all references to a trusted contact before deletion:
+     * clears credit card assignments and removes item shares.
+     */
+    private void clearContactReferences(TrustedContact contact) {
+        List<CreditCard> cards = creditCardRepository.findByAssignedContact(contact);
+        for (CreditCard card : cards) {
+            card.updateAssignedContact(null);
+        }
+        if (!cards.isEmpty()) {
+            creditCardRepository.saveAll(cards);
+            logger.info("Cleared card assignment for {} card(s) linked to contact {}",
+                    cards.size(), contact.getId());
+        }
+
+        List<ItemShare> shares = itemShareRepository.findByTrustedContact(contact);
+        if (!shares.isEmpty()) {
+            itemShareRepository.deleteAll(shares);
+            logger.info("Removed {} share(s) linked to contact {}",
+                    shares.size(), contact.getId());
+        }
     }
 
     @Transactional(readOnly = true)

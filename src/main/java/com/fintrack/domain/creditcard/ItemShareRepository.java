@@ -1,5 +1,6 @@
 package com.fintrack.domain.creditcard;
 
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -84,4 +85,12 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
         + "AND i.month = :month")
     List<ItemShare> findByUserAndMonthWithYearMonth(@Param("user") User user,
                                                     @Param("month") YearMonth month);
+
+    /**
+     * Finds all shares assigned to a specific trusted contact.
+     *
+     * @param contact the trusted contact. Must not be null.
+     * @return list of shares for the contact. Never null, may be empty.
+     */
+    List<ItemShare> findByTrustedContact(TrustedContact contact);
 } 
