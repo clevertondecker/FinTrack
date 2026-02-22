@@ -1,19 +1,23 @@
-# FinTranck - Sistema de Controle Financeiro
+# FinTrack — Controle de Gastos com Cartão de Crédito
 
-Sistema completo de controle financeiro com backend Spring Boot e frontend React.
+Sistema de gestão de faturas, divisão de despesas (Círculo de Confiança) e categorização automática. Backend em Spring Boot e frontend em React.
+
+**Principais funcionalidades:** cartões (físico, virtual, adicional), faturas por mês, rateio de itens entre usuários e contatos, importação de PDF, regras de categorização por estabelecimento, login com email/senha ou Google (OAuth2).
 
 ## 🏗️ Estrutura do Projeto
 
 ```
-FinTranck/
-├── src/                    # Backend Spring Boot
-├── fintrack-frontend/      # Frontend React
+FinTrack/
+├── src/                    # Backend Spring Boot (Maven)
+├── fintrack-frontend/      # Frontend React (TypeScript)
+├── .cursor/docs/           # Contexto e requisitos (.cursor/docs/fintrack-context)
 ├── start-backend.sh        # Script para iniciar backend
 ├── start-frontend.sh       # Script para iniciar frontend
-├── start-all.sh           # Script para iniciar ambos
-├── build-all.sh           # Script para build completo
-├── docker-compose.yml     # Deploy com Docker
-└── pom.xml               # Dependências Maven
+├── start-all.sh            # Script para iniciar ambos
+├── build-all.sh            # Script para build completo
+├── docker-compose.yml      # Deploy com Docker
+├── .env                    # Variáveis de ambiente (MySQL, JWT, OAuth2)
+└── pom.xml                 # Dependências Maven
 ```
 
 ## 🚀 Início Rápido
@@ -40,17 +44,22 @@ FinTranck/
 ## 📋 Pré-requisitos
 
 - **Java 17+**
-- **Maven** (ou use o Maven Wrapper incluído)
-- **Node.js 18+**
-- **npm** ou **yarn**
-- **MySQL** (para produção)
+- **Maven** (ou Maven Wrapper incluído)
+- **Node.js 18+** e **npm** ou **yarn**
+- **MySQL** (backend usa MySQL; testes usam H2)
+- Arquivo **`.env`** na raiz com variáveis de banco, JWT e OAuth2 (ver Configuração)
 
 ## 🔧 Configuração
+
+### Variáveis de ambiente (`.env`)
+- `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` — conexão com MySQL
+- `JWT_SECRET` — chave para tokens JWT
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — login com Google (OAuth2)
+- `SPRING_PROFILES_ACTIVE` — ex.: `dev`
 
 ### Backend (Spring Boot)
 - **Porta**: 8080
 - **API**: http://localhost:8080/api
-- **Health Check**: http://localhost:8080/actuator/health
 
 ### Frontend (React)
 - **Porta**: 3000
@@ -68,8 +77,8 @@ docker-compose down
 
 ## 📚 Documentação
 
-- [Guia de Integração](INTEGRATION_GUIDE.md)
-- [API Documentation](http://localhost:8080/swagger-ui.html)
+- [Contexto e requisitos funcionais](.cursor/docs/fintrack-context) — visão do produto, regras de negócio e arquitetura
+- API REST documentada nos controllers; base path `/api`
 
 ## 🛠️ Desenvolvimento
 
@@ -77,6 +86,9 @@ docker-compose down
 ```bash
 # Executar testes
 mvn test
+
+# Checkstyle
+mvn checkstyle:check
 
 # Build
 mvn clean package
@@ -111,7 +123,7 @@ Quando usando os scripts:
 
 1. **Porta 8080 ocupada**: Pare outros serviços Java
 2. **Porta 3000 ocupada**: Pare outros serviços Node.js
-3. **MySQL não conecta**: Verifique variáveis de ambiente
+3. **MySQL não conecta**: Verifique o arquivo `.env` (MYSQL_*)
 4. **Frontend não carrega**: Verifique se backend está rodando
 
 ## 📞 Suporte
