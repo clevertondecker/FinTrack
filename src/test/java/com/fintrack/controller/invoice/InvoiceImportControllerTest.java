@@ -5,9 +5,8 @@ import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.domain.invoice.ImportSource;
 import com.fintrack.domain.invoice.ImportStatus;
 import com.fintrack.domain.user.Role;
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
-import com.fintrack.domain.user.Email;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
@@ -28,7 +27,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +43,7 @@ class InvoiceImportControllerTest {
     private InvoiceImportService invoiceImportService;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -83,9 +81,7 @@ class InvoiceImportControllerTest {
         lenient().when(objectMapper.readValue(anyString(), eq(ImportInvoiceRequest.class)))
             .thenReturn(testRequest);
         
-        // Mock UserRepository behavior
-        lenient().when(userRepository.findByEmail(Email.of("test@example.com")))
-            .thenReturn(Optional.of(testUser));
+        lenient().when(userService.getCurrentUser("test@example.com")).thenReturn(testUser);
     }
 
     @Test

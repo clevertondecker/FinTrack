@@ -1,7 +1,7 @@
 package com.fintrack.controller.creditcard;
 
+import com.fintrack.application.creditcard.CategoryService;
 import com.fintrack.domain.creditcard.Category;
-import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
 import com.fintrack.dto.creditcard.CategoryListResponse;
 import com.fintrack.dto.creditcard.CategoryCreateRequest;
 import com.fintrack.dto.creditcard.CategoryCreateResponse;
@@ -20,11 +20,11 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/categories")
 public class CategoryController {
 
-    /** The category repository. */
-    private final CategoryJpaRepository categoryRepository;
+    /** The category service. */
+    private final CategoryService categoryService;
 
-    public CategoryController(CategoryJpaRepository categoryRepository) {
-        this.categoryRepository = categoryRepository;
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
     }
 
     /**
@@ -34,7 +34,7 @@ public class CategoryController {
      */
     @GetMapping
     public ResponseEntity<CategoryListResponse> getAllCategories() {
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryService.findAll();
         return ResponseEntity.ok(CategoryListResponse.from(categories));
     }
 
@@ -46,8 +46,7 @@ public class CategoryController {
      */
     @PostMapping
     public ResponseEntity<CategoryCreateResponse> createCategory(@Valid @RequestBody CategoryCreateRequest request) {
-        Category category = Category.of(request.name().trim(), request.color());
-        Category savedCategory = categoryRepository.save(category);
+        Category savedCategory = categoryService.create(request.name().trim(), request.color());
         return ResponseEntity.ok(new CategoryCreateResponse(
             "Category created successfully",
             savedCategory.getId(),

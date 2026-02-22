@@ -3,7 +3,6 @@ package com.fintrack.controller.user;
 import java.util.List;
 import java.util.Set;
 
-import com.fintrack.domain.user.UserRepository;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.ConnectUserRequest;
 import com.fintrack.dto.user.RegisterRequest;
 import com.fintrack.dto.user.RegisterResponse;
@@ -44,18 +42,12 @@ public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    private static final String MSG_USER_NOT_FOUND = "User not found";
-
     /** The user service. */
     private final UserService userService;
-    /** The user repository. */
-    private final UserRepository userRepository;
 
-    public UserController(final UserService theUserService, final UserRepository theUserRepository) {
+    public UserController(final UserService theUserService) {
         Validate.notNull(theUserService, "the userService cannot be null.");
-        Validate.notNull(theUserRepository, "the userRepository cannot be null.");
         userService = theUserService;
-        userRepository = theUserRepository;
     }
 
     /**
@@ -90,7 +82,7 @@ public class UserController {
     @GetMapping("/current-user")
     public ResponseEntity<CurrentUserResponse> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Optional<User> userOpt = userRepository.findByEmail(Email.of(userDetails.getUsername()));
+            Optional<User> userOpt = userService.findUserByEmail(userDetails.getUsername());
             if (userOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
@@ -151,14 +143,13 @@ public class UserController {
      */
     @GetMapping("/search")
     public ResponseEntity<UserResponse> searchUserByEmail(@RequestParam("email") String email) {
-        return userRepository.findByEmail(Email.of(email))
+        return userService.findUserByEmail(email)
             .map(user -> ResponseEntity.ok(toUserResponse(user)))
             .orElse(ResponseEntity.notFound().build());
     }
 
     private User requireCurrentUser(UserDetails userDetails) {
-        return userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new IllegalArgumentException(MSG_USER_NOT_FOUND));
+        return userService.getCurrentUser(userDetails.getUsername());
     }
 
     private UserResponse toUserResponse(User user) {

@@ -1,7 +1,7 @@
 package com.fintrack.controller.creditcard;
 
+import com.fintrack.application.creditcard.BankService;
 import com.fintrack.domain.creditcard.Bank;
-import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 import com.fintrack.dto.creditcard.BankCreateRequest;
 import com.fintrack.dto.creditcard.BankCreateResponse;
 import com.fintrack.dto.creditcard.BankListResponse;
@@ -22,11 +22,11 @@ import java.util.List;
 @RequestMapping("/api/banks")
 public class BankController {
 
-    /** The bank repository. */
-    private final BankJpaRepository bankRepository;
+    /** The bank service. */
+    private final BankService bankService;
 
-    public BankController(BankJpaRepository bankRepository) {
-        this.bankRepository = bankRepository;
+    public BankController(BankService bankService) {
+        this.bankService = bankService;
     }
 
     /**
@@ -37,13 +37,7 @@ public class BankController {
      */
     @PostMapping
     public ResponseEntity<BankCreateResponse> createBank(@Valid @RequestBody BankCreateRequest request) {
-        // Check if bank already exists
-        if (bankRepository.existsByCode(request.code())) {
-            throw new IllegalArgumentException("Bank with this code already exists");
-        }
-
-        Bank bank = Bank.of(request.code(), request.name());
-        Bank savedBank = bankRepository.save(bank);
+        Bank savedBank = bankService.create(request.code(), request.name());
 
         BankCreateResponse response = new BankCreateResponse(
             "Bank created successfully",
@@ -62,7 +56,7 @@ public class BankController {
      */
     @GetMapping
     public ResponseEntity<BankListResponse> getAllBanks() {
-        List<Bank> banks = bankRepository.findAll();
+        List<Bank> banks = bankService.findAll();
 
         List<BankResponse> bankResponses = banks.stream()
             .map(bank -> new BankResponse(bank.getId(), bank.getCode(), bank.getName()))
@@ -85,7 +79,7 @@ public class BankController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<BankDetailResponse> getBank(@PathVariable Long id) {
-        return bankRepository.findById(id)
+        return bankService.findById(id)
             .map(bank -> {
                 BankResponse bankResponse = new BankResponse(bank.getId(), bank.getCode(), bank.getName());
                 BankDetailResponse response = new BankDetailResponse("Bank retrieved successfully", bankResponse);

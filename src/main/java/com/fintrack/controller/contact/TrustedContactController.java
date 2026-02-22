@@ -1,10 +1,9 @@
 package com.fintrack.controller.contact;
 
 import com.fintrack.application.contact.TrustedContactService;
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.contact.TrustedContact;
-import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.contact.CreateTrustedContactRequest;
 import com.fintrack.dto.contact.TrustedContactResponse;
 import com.fintrack.dto.contact.UpdateTrustedContactRequest;
@@ -34,19 +33,18 @@ import java.util.List;
 public class TrustedContactController {
 
     private final TrustedContactService trustedContactService;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
-    public TrustedContactController(TrustedContactService trustedContactService, UserRepository userRepository) {
+    public TrustedContactController(TrustedContactService trustedContactService, UserService userService) {
         this.trustedContactService = trustedContactService;
-        this.userRepository = userRepository;
+        this.userService = userService;
     }
 
     @GetMapping
     public ResponseEntity<List<TrustedContactResponse>> list(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(value = "search", required = false) String search) {
-        User owner = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User owner = userService.getCurrentUser(userDetails.getUsername());
         List<TrustedContactResponse> list = trustedContactService.findByOwner(owner, search)
             .stream()
             .map(this::toResponse)
@@ -58,8 +56,7 @@ public class TrustedContactController {
     public ResponseEntity<TrustedContactResponse> create(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateTrustedContactRequest request) {
-        User owner = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User owner = userService.getCurrentUser(userDetails.getUsername());
         var contact = trustedContactService.create(
             owner,
             request.name(),
@@ -75,8 +72,7 @@ public class TrustedContactController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTrustedContactRequest request) {
-        User owner = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User owner = userService.getCurrentUser(userDetails.getUsername());
         var contact = trustedContactService.update(
             owner,
             id,
@@ -92,8 +88,7 @@ public class TrustedContactController {
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
-        User owner = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User owner = userService.getCurrentUser(userDetails.getUsername());
         trustedContactService.delete(owner, id);
         return ResponseEntity.noContent().build();
     }

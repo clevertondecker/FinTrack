@@ -71,7 +71,6 @@ public class InvoiceImportService {
     private static final double MANUAL_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
     
     /** Hexadecimal mask for byte-to-hex conversion in SHA-256 computation. */
-    /** Hex mask constant. */
     private static final int HEX_MASK = 0xff;
 
     /** Initial capacity for collections. */

@@ -23,8 +23,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.creditcard.CategoryService;
 import com.fintrack.domain.creditcard.Category;
-import com.fintrack.infrastructure.persistence.creditcard.CategoryJpaRepository;
 import com.fintrack.dto.creditcard.CategoryCreateRequest;
 
 @WebMvcTest(CategoryController.class)
@@ -37,7 +37,7 @@ public class CategoryControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private CategoryJpaRepository categoryRepository;
+    private CategoryService categoryService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -57,7 +57,7 @@ public class CategoryControllerTest {
         @DisplayName("Should return all categories successfully")
         void shouldReturnAllCategoriesSuccessfully() throws Exception {
             List<Category> categories = List.of(testCategory);
-            when(categoryRepository.findAll()).thenReturn(categories);
+            when(categoryService.findAll()).thenReturn(categories);
 
             mockMvc.perform(get("/api/categories"))
                 .andExpect(status().isOk())
@@ -72,7 +72,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return empty list when no categories exist")
         void shouldReturnEmptyListWhenNoCategoriesExist() throws Exception {
-            when(categoryRepository.findAll()).thenReturn(List.of());
+            when(categoryService.findAll()).thenReturn(List.of());
 
             mockMvc.perform(get("/api/categories"))
                 .andExpect(status().isOk())
@@ -90,7 +90,7 @@ public class CategoryControllerTest {
             Category category3 = Category.of("Entertainment", "#0000FF");
 
             List<Category> categories = List.of(category1, category2, category3);
-            when(categoryRepository.findAll()).thenReturn(categories);
+            when(categoryService.findAll()).thenReturn(categories);
 
             mockMvc.perform(get("/api/categories"))
                 .andExpect(status().isOk())
@@ -112,7 +112,7 @@ public class CategoryControllerTest {
         @DisplayName("Should create category successfully")
         void shouldCreateCategorySuccessfully() throws Exception {
             CategoryCreateRequest request = new CategoryCreateRequest("Food", "#FF0000");
-            when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
+            when(categoryService.create(any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -128,7 +128,7 @@ public class CategoryControllerTest {
         @DisplayName("Should create category without color")
         void shouldCreateCategoryWithoutColor() throws Exception {
             CategoryCreateRequest request = new CategoryCreateRequest("Food", null);
-            when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
+            when(categoryService.create(any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -192,7 +192,7 @@ public class CategoryControllerTest {
         @DisplayName("Should trim whitespace from name")
         void shouldTrimWhitespaceFromName() throws Exception {
             CategoryCreateRequest request = new CategoryCreateRequest("  Food  ", "#FF0000");
-            when(categoryRepository.save(any(Category.class))).thenReturn(testCategory);
+            when(categoryService.create(any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -207,7 +207,7 @@ public class CategoryControllerTest {
         void shouldHandleSpecialCharactersInName() throws Exception {
             CategoryCreateRequest request = new CategoryCreateRequest("Food & Drinks", "#FF0000");
             Category specialCategory = Category.of("Food & Drinks", "#FF0000");
-            when(categoryRepository.save(any(Category.class))).thenReturn(specialCategory);
+            when(categoryService.create(any(), any())).thenReturn(specialCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -224,7 +224,7 @@ public class CategoryControllerTest {
           maxLengthName = "A".repeat(50);
           CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000");
             Category longCategory = Category.of(maxLengthName, "#FF0000");
-            when(categoryRepository.save(any(Category.class))).thenReturn(longCategory);
+            when(categoryService.create(any(), any())).thenReturn(longCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -239,7 +239,7 @@ public class CategoryControllerTest {
         void shouldHandleMinimumAllowedCategoryNameLength() throws Exception {
             CategoryCreateRequest request = new CategoryCreateRequest("AB", "#FF0000");
             Category minCategory = Category.of("AB", "#FF0000");
-            when(categoryRepository.save(any(Category.class))).thenReturn(minCategory);
+            when(categoryService.create(any(), any())).thenReturn(minCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -257,7 +257,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should create CategoryController with valid dependencies")
         void shouldCreateCategoryControllerWithValidDependencies() {
-            CategoryController controller = new CategoryController(categoryRepository);
+            CategoryController controller = new CategoryController(categoryService);
             assertNotNull(controller);
         }
     }

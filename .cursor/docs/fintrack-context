@@ -1,0 +1,381 @@
+# FinTrack — Contexto Funcional e Regras do Projeto
+
+---
+
+## 1. Resumo do Projeto / Visão Geral
+
+FinTrack é um **tracker de gastos com cartão de crédito** que permite ao usuário centralizar faturas, visualizar itens por categoria, dividir despesas com outras pessoas (Círculo de Confiança) e acompanhar quem deve o quê. O app suporta cartões físicos, virtuais e adicionais; permite importar faturas via PDF; e oferece categorização automática de estabelecimentos com base em regras aprendidas. O foco é quem usa um ou mais cartões e precisa organizar gastos, parcelas e rateios — sozinho ou em grupo (família, parceiros, amigos).
+
+---
+
+## 2. Problema(s) que o Produto Resolve
+
+- **Dificuldade de rastrear gastos em múltiplos cartões**: várias faturas e itens espalhados, sem visão única por mês ou por categoria.
+- **Divisão de despesas em grupo**: falta de ferramenta para registrar quem ficou com qual parte do item da fatura e acompanhar pagamentos entre as pessoas.
+- **Inclusão de quem não tem conta no app**: necessidade de dividir com pessoas que ainda não são usuárias (ex.: titular de cartão adicional), mantendo histórico por nome/email.
+- **Categorização manual repetitiva**: gastos do mesmo estabelecimento exigem escolher categoria toda vez; falta aprendizado a partir de confirmações do usuário.
+- **Entrada manual tediosa de faturas**: digitar cada item consome tempo; importar PDF da fatura reduz esforço e erro.
+- **Visão fragmentada do que cada um deve**: quem é dono do cartão não sabe de forma clara quanto cada participante deve pagar; quem participa não vê só “o seu share” de forma consolidada.
+
+---
+
+## 3. Requisitos Funcionais (Resumidos)
+
+| # | Área | Requisito |
+|---|------|-----------|
+| RF01 | Cartões | Cadastrar e editar cartões de crédito (físico, virtual, adicional), vinculados a um banco e a um dono. |
+| RF02 | Cartões | Atribuir titular do cartão a um usuário conectado ou a um contato de confiança (sem conta no sistema). |
+| RF03 | Cartões | Listar cartões do usuário (próprios e cujo cartão principal ele é dono), com opção de incluir inativos. |
+| RF04 | Cartões | Soft-delete: desativar cartão (nunca excluir fisicamente). |
+| RF05 | Círculo de Confiança | Manter lista de contatos de confiança (nome, email, tags, observações) por usuário. |
+| RF06 | Círculo de Confiança | Conectar usuários entre si (Círculo de Confiança) para divisão de despesas e atribuição de cartão. |
+| RF07 | Círculo de Confiança | Ao adicionar/editar contato com email de usuário registrado, criar vínculo de conexão automaticamente. |
+| RF08 | Círculo de Confiança | Ao registrar novo usuário com email de contato existente, migrar atribuições de cartão do contato para o usuário. |
+| RF09 | Círculo de Confiança | Ao remover contato do círculo, desvincular cartões e remover shares associados antes de excluir o contato. |
+| RF10 | Faturas | Criar e listar faturas por cartão e mês, com totais e status (aberta, paga, parcial, vencida, encerrada). |
+| RF11 | Faturas | Registrar pagamento (total ou parcial) e recalcular status da fatura. |
+| RF12 | Itens | Cadastrar itens na fatura (descrição, valor, data, categoria, parcelas). |
+| RF13 | Itens | Atribuir ou alterar categoria do item (manual ou por regra de estabelecimento). |
+| RF14 | Divisão de despesas | Dividir item da fatura entre usuários e/ou contatos (percentuais, soma 100%). |
+| RF15 | Divisão de despesas | Marcar como pago apenas shares de usuários registrados; contatos servem para controle de “quem deve”. |
+| RF16 | Divisão de despesas | Visualizar “meus shares” e relatórios por categoria (meu valor ou total do cartão). |
+| RF17 | Categorização | Aplicar regras de estabelecimento → categoria; aprender com confirmação/override e ativar auto-aplicação. |
+| RF18 | Importação | Enviar PDF da fatura; processar em background e criar fatura + itens com categorização quando possível. |
+| RF19 | Autenticação | Login por email/senha ou Google (OAuth2); sessão via JWT. |
+| RF20 | Usuários | Registrar novo usuário; buscar e conectar usuário por email para o Círculo de Confiança. |
+
+---
+
+## 4. Autenticação e Usuários
+
+### Provedores de autenticação
+- **LOCAL**: cadastro com email/senha. Senha codificada com BCrypt.
+- **GOOGLE**: login via OAuth2. Usuário é criado automaticamente no primeiro login.
+- JWT stateless com expiração configurável (padrão 24h).
+- Token enviado no header `Authorization: Bearer {token}`.
+
+### Entidade User
+- Campos: `name`, `email` (Value Object, sempre lowercase/trimmed), `password`, `provider`, `roles`.
+- Roles: `USER`, `ADMIN`.
+- Email é unique e serve como identificador de login.
+- Usuários OAuth2 não possuem senha real (campo vazio).
+
+### Registro de novo usuário
+Ao registrar, o sistema executa **auto-unificação**:
+1. Busca todos `TrustedContact` cujo email corresponda ao novo usuário.
+2. Migra cartões (`CreditCard.assignedContact` → `assignedUser`) automaticamente.
+3. Cria `UserConnection` bidirecional entre o novo usuário e cada dono de contato encontrado.
+
+---
+
+## 5. Círculo de Confiança (Circle of Trust)
+
+O Círculo de Confiança define as pessoas com quem o usuário interage no sistema
+(divisão de despesas, atribuição de cartões).
+
+### Duas formas de representar pessoas
+
+| Conceito | Classe | Quando usar |
+|---|---|---|
+| Usuário registrado | `UserConnection` | Pessoa tem conta no sistema |
+| Contato externo | `TrustedContact` | Pessoa não tem conta no sistema |
+
+### UserConnection
+- Liga dois `User` de forma bidirecional (duas linhas no banco: A→B e B→A).
+- Unique constraint: `(user_id, connected_user_id)`.
+- Não permite auto-conexão.
+- Aparece no dropdown de atribuição de cartão e divisão de despesas.
+
+### TrustedContact
+- Pertence a um `owner` (User). Campos: `name`, `email`, `tags`, `note`.
+- Unique constraint: `(owner_user_id, email)`.
+- Email é armazenado lowercase/trimmed.
+- Pode ser atribuído como titular de cartão ou participar de divisões de fatura.
+- Snapshots de `name`/`email` são salvos nos shares para manter histórico.
+
+### Auto-connect
+Ao criar ou atualizar um `TrustedContact`, se o email corresponde a um `User` registrado:
+- O sistema cria `UserConnection` bidirecional automaticamente.
+- É idempotente (não duplica conexões existentes).
+- Nunca conecta o usuário a si mesmo.
+
+### Remoção de TrustedContact
+Ao deletar um contato, o sistema:
+1. Limpa `assignedContact` de todos os cartões vinculados (volta para null).
+2. Remove todos os `ItemShare` associados ao contato.
+3. Só então deleta o contato do banco.
+A `UserConnection` (se existir) **não** é removida — o vínculo entre usuários é independente.
+
+---
+
+## 6. Cartões de Crédito
+
+### Tipos (CardType)
+- `PHYSICAL`: cartão principal físico.
+- `VIRTUAL`: cartão virtual vinculado ao principal.
+- `ADDITIONAL`: cartão adicional emitido para outra pessoa.
+- Cartões `ADDITIONAL` e `VIRTUAL` possuem `parentCard` (referência ao cartão principal).
+
+### Atribuição de titular
+Um cartão pode ser atribuído a:
+- Um `User` (`assignedUser`) — pessoa com conta no sistema, OU
+- Um `TrustedContact` (`assignedContact`) — pessoa sem conta no sistema.
+- **Mutuamente exclusivos**: ao definir um, o outro é limpo automaticamente.
+- Quando ambos são null, o cartão pertence ao próprio dono.
+
+### Regras de negócio
+- `lastFourDigits`: exatamente 4 dígitos numéricos.
+- `creditLimit`: `BigDecimal` positivo.
+- Soft-delete: cartões são desativados (`active = false`), nunca removidos.
+- O dono vê seus cartões e cartões cujo `parentCard` ele é dono.
+- Cada cartão pertence a um `Bank` e um `owner` (User).
+
+### Frontend — dropdown de titular
+- Mostra usuários conectados (`UserConnection`) como opção "Usuário".
+- Mostra `TrustedContact` que **não** são usuários registrados (filtra por email).
+- Evita duplicatas: se o contato já tem conta, aparece só na lista de usuários.
+
+---
+
+## 7. Bancos (Bank)
+
+- Entidade simples: `code` (unique), `name`.
+- Dados iniciais pré-carregados: NU, ITAU, SAN, BB, BRADESCO, CAIXA, INTER, C6, PICPAY, MERCADOPAGO.
+- Controller injeta repositório JPA diretamente (sem service layer).
+
+---
+
+## 8. Faturas (Invoice)
+
+### Estrutura
+- Vinculada a um `CreditCard` e um mês (`YearMonth`).
+- Campos: `dueDate`, `totalAmount` (soma dos itens), `paidAmount`, `status`.
+
+### Status (InvoiceStatus)
+- `OPEN`: fatura aberta, sem pagamento.
+- `PARTIAL`: pagamento parcial registrado.
+- `PAID`: pagamento total registrado.
+- `OVERDUE`: fatura aberta com vencimento ultrapassado.
+- `CLOSED`: fatura encerrada manualmente.
+- Status é recalculado automaticamente com base nos pagamentos e data de vencimento.
+
+### Pagamento
+- `recordPayment(amount)` soma ao `paidAmount` e recalcula o status.
+- `getRemainingAmount()` retorna `totalAmount - paidAmount`.
+
+---
+
+## 9. Itens de Fatura (InvoiceItem)
+
+### Estrutura
+- Pertence a uma `Invoice`.
+- Campos: `description`, `amount` (≥ 0), `purchaseDate`, `category`, `installments`/`totalInstallments`.
+- `merchantKey`: chave normalizada do nome do estabelecimento.
+- `categorizationSource`: rastreia se a categoria foi `MANUAL`, `AUTO_RULE` ou `SUGGESTED`.
+- `appliedRule`: referência à regra de categorização que foi aplicada.
+
+### Categorias (Category)
+- Entidade simples: `name` (unique), `color` (hex).
+- Dados iniciais: Alimentação, Transporte, Saúde, Educação, Lazer, Vestuário, Moradia,
+  Tecnologia, Serviços, Viagem, Supermercado, Restaurante, Combustível, Farmácia, Shopping, Outros.
+
+### Parcelas
+- `installments`: número da parcela atual (ex: 3 de 6).
+- `totalInstallments`: total de parcelas.
+
+---
+
+## 10. Divisão de Despesas (ItemShare)
+
+### Estrutura
+Cada `InvoiceItem` pode ser dividido entre múltiplos participantes:
+- **User-based share**: participante é um `User` registrado.
+- **Contact-based share**: participante é um `TrustedContact`.
+- `user` e `trustedContact` são mutuamente exclusivos.
+- Contact shares armazenam snapshots: `contactDisplayName`, `contactDisplayEmail`.
+
+### Regras de negócio
+- A soma das `percentage` de todos os shares de um item deve ser = 1.0 (100%).
+- `percentage` é um valor entre 0.0 e 1.0 (BigDecimal, precision=5, scale=4).
+- `amount` é o valor monetário da porção (BigDecimal, positivo).
+- `responsible`: indica se o participante é responsável pelo pagamento.
+
+### Pagamento de shares
+- Apenas shares de **usuários registrados** podem ser marcados como pagos.
+- Shares de **contatos** são apenas para rastreamento de quem deve o quê.
+- `markAsPaid(paymentMethod, paidAt)`: registra método e data de pagamento.
+- `markAsUnpaid()`: reverte o status de pagamento.
+- Suporta bulk: marcar múltiplos shares como pagos em uma operação.
+
+### Cálculo de participação do usuário
+- Itens sem shares: o dono do cartão arca com 100% do valor.
+- Itens com shares: cada participante arca com sua porção.
+- Valor não compartilhado (`unsharedAmount`) vai para o dono do cartão.
+- Null-safe: ao iterar shares, `user.equals(share.getUser())` é usado porque
+  `getUser()` retorna null para contact shares.
+
+### Recálculo de shares
+O sistema pode recalcular todos os shares para corrigir arredondamentos:
+- Todos os shares exceto o último são calculados normalmente.
+- O último share recebe o restante (evita centavos perdidos).
+- O recálculo preserva tipo de participante (user/contact) e informações de pagamento.
+
+---
+
+## 11. Categorização Automática (Merchant Categorization)
+
+### MerchantCategoryRule
+- Mapeia `merchantKey` normalizado para uma `Category`, por usuário.
+- Unique constraint: `(user_id, merchant_key)`.
+- Rastreia uso: `timesApplied`, `timesConfirmed`, `timesOverridden`.
+- `autoApply`: ativado após pelo menos 1 confirmação.
+
+### Fluxo de categorização
+1. Ao adicionar um item, o sistema normaliza a descrição em um `merchantKey`.
+2. Busca uma `MerchantCategoryRule` para o usuário + merchantKey.
+3. Se a regra existe e `autoApply = true`, aplica automaticamente (`categorizationSource = AUTO_RULE`).
+4. Categorização manual cria/atualiza a regra e registra confirmação ou override.
+
+### MerchantNormalizationService
+- Normaliza descrições de estabelecimentos removendo números, datas, caracteres especiais.
+- Garante matching consistente entre faturas diferentes.
+
+---
+
+## 12. Importação de Faturas (Invoice Import)
+
+### Fluxo
+1. Usuário faz upload de PDF da fatura.
+2. Sistema salva o arquivo e cria um `InvoiceImport` com status `PENDING`.
+3. Processamento assíncrono (`@Async`): parsing PDF → criação de fatura → categorização.
+4. O usuário pode consultar o progresso.
+
+### ParsedInvoiceData
+Extraído do PDF via `PdfInvoiceParser` (Apache PDFBox):
+- Nome do cartão, últimos 4 dígitos, data de vencimento, valor total, nome do banco.
+- Lista de itens com descrição, valor, data de compra.
+- Reconhece padrões: Santander, transações internacionais, parcelas, IOF.
+- Filtra linhas irrelevantes (tarifas, juros, saldos, pagamentos, créditos).
+
+### Status (ImportStatus)
+- `PENDING` → `PROCESSING` → `COMPLETED` | `FAILED` | `MANUAL_REVIEW`.
+
+---
+
+## 13. Relatórios de Despesas (Expense Report)
+
+### Dois modos de visualização
+- **Meu share**: mostra apenas o que o usuário deve pagar (sua porção dos itens).
+- **Total do cartão**: mostra o valor total dos itens do cartão (visão do dono).
+
+### Agrupamento por categoria
+- Itens são agrupados por `Category`.
+- Itens sem categoria aparecem como "Sem categoria".
+- Para cada categoria: total, lista de itens com detalhes.
+
+### Endpoints
+- `GET /api/expenses/by-category?month=&showTotal=` — despesas agrupadas.
+- `GET /api/expenses/summary?month=` — resumo do mês.
+
+---
+
+## 14. API REST
+
+### Endpoints principais
+
+| Recurso | Base Path | Operações |
+|---|---|---|
+| Auth | `/api/auth` | Login (POST) |
+| Users | `/api/users` | Register, current-user, connected users, connect, search |
+| Credit Cards | `/api/credit-cards` | CRUD, activate, deactivate, grouped listing |
+| Banks | `/api/banks` | List, create, get by ID |
+| Categories | `/api/categories` | List, create |
+| Invoices | `/api/invoices` | CRUD, pay, filter by card |
+| Invoice Items | `/api/invoices/{id}/items` | CRUD, update category |
+| Item Shares | `/api/invoices/{id}/items/{itemId}/shares` | CRUD, my-shares, mark paid |
+| Trusted Contacts | `/api/trusted-contacts` | CRUD with search |
+| Invoice Imports | `/api/invoice-imports` | Upload, progress, list, failed, manual review |
+| Expense Reports | `/api/expenses` | By category, summary |
+
+### Segurança
+- Endpoints públicos: `/api/users/register`, `/api/auth/login`, `/api/banks`, `/oauth2/**`.
+- Demais endpoints exigem JWT válido.
+
+---
+
+## 15. Frontend (React + TypeScript)
+
+### Páginas principais
+- **Dashboard**: visão geral com ações rápidas.
+- **Cartões**: gestão de cartões (CRUD, agrupamento por principal, ativação/desativação).
+- **Faturas**: listagem, filtros, pagamento, itens, categorização.
+- **Importação**: upload de PDF, acompanhamento de progresso.
+- **Pessoas**: gestão do Círculo de Confiança (contatos).
+- **Meus Shares**: visualização dos compartilhamentos do usuário.
+- **Relatório de Despesas**: relatórios por categoria com filtro de mês.
+
+### Autenticação no frontend
+- Token JWT armazenado em `localStorage`.
+- Interceptor Axios adiciona header automaticamente.
+- Respostas 401 redirecionam para login.
+- Suporta redirect após OAuth2 (Google).
+
+### Internacionalização
+- Suporte via `react-i18next`.
+- Seletor de idioma disponível.
+
+---
+
+## 16. Infraestrutura e Deploy
+
+### Banco de dados
+- MySQL com `hibernate.ddl-auto=update` (sem migrations Flyway/Liquibase).
+- Dados iniciais carregados via `data-dev.sql` (bancos e categorias).
+
+### Processamento assíncrono
+- Thread pool dedicado: core=2, max=4, queue=100.
+- Usado para importação e processamento de PDFs de faturas.
+
+### Configuração
+- Variáveis de ambiente: `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`,
+  `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- CORS configurado para `localhost:3000` (dev).
+- Upload máximo: 10MB.
+
+### Exception handling
+- `GlobalExceptionHandler` com `@RestControllerAdvice`.
+- Mapeia exceções para HTTP status codes apropriados.
+- `IllegalArgumentException` → 400, `BadCredentialsException` → 401,
+  `DataIntegrityViolationException` → 400.
+
+---
+
+## 17. Arquitetura (Layered DDD)
+
+```
+com.fintrack/
+├── domain/         # Entidades, Value Objects, interfaces de Repository
+├── application/    # Serviços, orquestração de casos de uso
+├── controller/     # REST endpoints
+├── dto/            # Request/Response (records Java)
+├── config/         # Beans de configuração Spring
+├── exceptions/     # Exception handling global
+└── infrastructure/ # Repositórios JPA, segurança, parsing
+    ├── persistence/
+    ├── security/
+    └── parsing/
+```
+
+### Regras de dependência
+- `domain` → nenhuma dependência de outras camadas do projeto.
+- `application` → depende de `domain` e `dto`.
+- `controller` → depende de `application` e `dto`.
+- `infrastructure` → implementa interfaces de `domain`.
+
+### Convenções
+- Injeção por construtor (nunca `@Autowired` em campos).
+- Valores monetários: `BigDecimal` (nunca `double`/`float`).
+- Timestamps: `LocalDateTime`. Meses: `YearMonth`.
+- IDs: `Long` com `GenerationType.IDENTITY`.
+- DTOs são Java records.
+- Factory methods (`of()`, `create()`, `forContact()`) em vez de construtores públicos.

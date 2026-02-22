@@ -1,0 +1,60 @@
+---
+description: FinTrack business rules - expense sharing, categorization, invoices, credit cards
+alwaysApply: true
+---
+
+# FinTrack Business Rules
+
+## Credit Cards
+
+- Types: `PHYSICAL`, `VIRTUAL`, `ADDITIONAL` — additional cards have a `parentCard`
+- Cards are soft-deleted (deactivated), never hard-deleted
+- Owner sees their cards + cards whose parent they own
+- `lastFourDigits` must be exactly 4 numeric digits
+- `creditLimit` must be positive `BigDecimal`
+- A card can be assigned to a `User` (`assignedUser`) OR a `TrustedContact` (`assignedContact`), but not both
+- When a `TrustedContact` is assigned, they appear in the card listing even without a system account
+- **Auto-unification on registration**: when a new user registers with an email matching a `TrustedContact`, all cards with `assignedContact` pointing to that contact are automatically migrated to `assignedUser`
+
+## Invoices
+
+- Linked to a `CreditCard` and a `YearMonth` month
+- Status: `OPEN`, `PAID`, `OVERDUE`, `PARTIAL`, `CLOSED`
+- Status is calculated from payments and due date
+- `totalAmount` is the sum of all `InvoiceItem` amounts
+
+## Invoice Items
+
+- Each item belongs to one `Invoice`
+- Items have a `Category` (auto-assigned via `MerchantCategoryRule` or manual)
+- `categorizationSource` tracks if category was auto-applied or manual
+- Items track installments (`installments` / `totalInstallments`)
+
+## Expense Sharing (ItemShare)
+
+- Each `InvoiceItem` can be split among users and/or `TrustedContact`s
+- Share percentages for an item must sum to 100%
+- Only user-linked shares (not contact-linked) can be marked as paid
+- Shares snapshot `contactDisplayName`/`contactDisplayEmail` for history
+
+## Merchant Categorization
+
+- `MerchantCategoryRule` maps normalized merchant keys to categories per user
+- Rules track `timesApplied`, `timesConfirmed`, `timesOverridden`
+- `autoApply` becomes true after at least 1 confirmation
+- Merchant names are normalized for consistent matching
+
+## Trusted Contacts
+
+- Belong to a user (owner); used for expense sharing AND credit card assignment
+- Have name, email, tags, and notes
+- Displayed in shares by snapshot values, not live data
+- Can be assigned as card holders for additional/virtual cards even without a system account
+
+- **Auto-connect**: when a `TrustedContact` is created or updated, if the email matches a registered `User`, a bidirectional `UserConnection` is created automatically so that the user appears in connected-user dropdowns (e.g. credit card assignment)
+- Auto-connect is idempotent (skips if connection already exists) and never self-connects
+
+## Users & Auth
+- Support `LOCAL` (email/password with BCrypt) and `GOOGLE` (OAuth2) providers
+- Email is a Value Object, always stored lowercase and trimmed
+- JWT tokens are stateless with configurable expiration

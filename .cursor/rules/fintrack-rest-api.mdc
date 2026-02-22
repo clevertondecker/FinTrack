@@ -1,0 +1,59 @@
+---
+description: REST API conventions - controller patterns, endpoints, authentication handling
+globs: "**/controller/**/*.java"
+alwaysApply: false
+---
+
+# REST API Conventions
+
+## Controller Structure
+
+```java
+@RestController
+@RequestMapping("/api/resource-name")
+public class ResourceController {
+    private final ResourceService resourceService;
+
+    public ResourceController(ResourceService resourceService) {
+        this.resourceService = resourceService;
+    }
+}
+```
+
+## Authentication Pattern
+
+Controllers extract the authenticated user via `Authentication` parameter and delegate to service:
+
+```java
+@GetMapping("/{id}")
+public ResponseEntity<DetailResponse> getResource(@PathVariable Long id, Authentication authentication) {
+    Optional<User> userOpt = service.findUserByUsername(authentication.getName());
+    if (userOpt.isEmpty()) {
+        throw new IllegalArgumentException("User not found");
+    }
+    User user = userOpt.get();
+    // ... business logic via service
+}
+```
+
+## Response Conventions
+
+- Always return `ResponseEntity<SpecificResponseDTO>` (never raw entities or `Map`)
+- Response DTOs include a `message` field for user-facing feedback
+- Use typed response records: `CreateResponse`, `ListResponse`, `DetailResponse`, `ActionResponse`
+- Validate requests with `@Valid @RequestBody`
+
+## HTTP Methods
+
+| Operation | Method | Path | Response |
+|-----------|--------|------|----------|
+| Create | `POST` | `/api/resources` | `CreateResponse` |
+| List | `GET` | `/api/resources` | `ListResponse` |
+| Get one | `GET` | `/api/resources/{id}` | `DetailResponse` |
+| Update | `PUT` | `/api/resources/{id}` | `CreateResponse` |
+| Delete/Deactivate | `DELETE` | `/api/resources/{id}` | `ActionResponse` |
+| Action | `PATCH` | `/api/resources/{id}/action` | `ActionResponse` |
+
+## Base Path
+
+All endpoints are under `/api/`. Public endpoints (register, login, banks, OAuth2) are configured in `SecurityConfig`.

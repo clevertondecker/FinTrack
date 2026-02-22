@@ -1,0 +1,50 @@
+---
+description: FinTrack architecture - DDD layered structure, package conventions, dependency rules
+alwaysApply: true
+---
+
+# FinTrack Architecture
+
+## Layered DDD Structure
+
+```
+com.fintrack/
+├── domain/          # Entities, Value Objects, domain Repository interfaces
+├── application/     # Use cases, service orchestration
+├── controller/      # REST endpoints (presentation layer)
+├── dto/             # Request/Response DTOs (shared across layers)
+├── config/          # Spring configuration beans
+├── exceptions/      # Global exception handling
+└── infrastructure/  # JPA repositories, security, external integrations
+    ├── persistence/
+    ├── security/
+    └── parsing/
+```
+
+## Dependency Rules
+
+- `domain` has NO dependencies on other project layers (only Jakarta Persistence, Commons Lang/Validator)
+- `application` depends on `domain` and `dto`, never on `controller`
+- `controller` depends on `application` and `dto`, never directly on `infrastructure`
+- `infrastructure` implements `domain` interfaces (Repository pattern)
+- `dto` is a shared boundary layer, depends only on `domain` enums/types
+
+## Package Organization
+
+Each business module (creditcard, user, invoice, contact) has its own sub-package within each layer. New features must follow this per-module structure:
+
+```
+domain/newfeature/       → Entity, enums, repository interface
+application/newfeature/  → Service class
+controller/newfeature/   → REST controller
+dto/newfeature/          → Request/Response records
+infrastructure/persistence/newfeature/ → JPA repository
+```
+
+## Key Conventions
+
+- Constructor injection only (no `@Autowired` on fields)
+- Services annotated with `@Service` and `@Transactional`
+- All monetary values use `BigDecimal` (never `double`/`float`)
+- Timestamps use `LocalDateTime`; months use `YearMonth`
+- IDs are `Long` with `GenerationType.IDENTITY`

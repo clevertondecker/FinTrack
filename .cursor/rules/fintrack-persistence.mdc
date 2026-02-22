@@ -1,0 +1,55 @@
+---
+description: Repository and persistence patterns - domain interfaces, JPA implementations, queries
+globs: "**/infrastructure/persistence/**/*.java,**/domain/**/Repository.java,**/domain/**/*Repository.java"
+alwaysApply: false
+---
+
+# Persistence Patterns
+
+## Repository Pattern
+
+Domain layer defines the repository interface. Infrastructure implements it:
+
+```java
+// domain/creditcard/InvoiceRepository.java
+public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
+    Optional<Invoice> findByIdAndCreditCard(Long id, CreditCard creditCard);
+    List<Invoice> findByCreditCardOwner(User user);
+}
+
+// infrastructure/persistence/creditcard/InvoiceJpaRepository.java
+@Repository
+public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, InvoiceRepository {
+    @Query("SELECT i FROM Invoice i WHERE i.creditCard.owner = :user")
+    List<Invoice> findByCreditCardOwner(@Param("user") User user);
+}
+```
+
+## JPA Entity Conventions
+
+- `@Entity` + `@Table(name = "table_name")` with snake_case table names
+- `FetchType.LAZY` on all `@ManyToOne` and `@OneToMany` relationships
+- `@Column(nullable = false)` for required fields
+- `precision = 15, scale = 2` for monetary `BigDecimal` columns
+- `@Enumerated(EnumType.STRING)` for all enums
+- Use `@JoinColumn(name = "fk_id")` with explicit column names
+
+## Custom Queries
+
+- Use `@Query` with JPQL for complex queries
+- Use `JOIN FETCH` for eager loading when needed to avoid N+1
+- Use `@Modifying` for update/delete queries
+- Implement default methods on JPA interfaces for composite queries
+
+## Type Converters
+
+Use `@Converter(autoApply = true)` for custom types like `YearMonth`:
+
+```java
+@Converter(autoApply = true)
+public class YearMonthConverter implements AttributeConverter<YearMonth, String> { ... }
+```
+
+## Ownership Checks
+
+Always filter by owner/user in repository queries to enforce data isolation between users.

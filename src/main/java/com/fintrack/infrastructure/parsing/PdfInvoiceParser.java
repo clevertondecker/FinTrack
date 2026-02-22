@@ -31,8 +31,6 @@ public class PdfInvoiceParser {
     private static final Logger logger = LoggerFactory.getLogger(PdfInvoiceParser.class);
 
     // Regex patterns for extracting data
-    private static final Pattern AMOUNT_PATTERN = Pattern.compile("R\\$\\s*([0-9.,]+)");
-    private static final Pattern DATE_PATTERN = Pattern.compile("(\\d{2})/(\\d{2})/(\\d{4})");
     private static final Pattern CARD_NUMBER_PATTERN = Pattern.compile("\\*{4}\\s*(\\d{4})");
     private static final Pattern DUE_DATE_PATTERN = Pattern.compile(
         "(?:vencimento|due date|vence em)\\s*:?\\s*(\\d{2})/(\\d{2})/(\\d{4})",
@@ -78,10 +76,6 @@ public class PdfInvoiceParser {
         "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas",
         "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar",
         "central", "atendimento", "seguro", "prestamista", "valor parcelado"
-    );
-
-    private static final List<String> IGNORE_NEGATIVE_KEYWORDS = List.of(
-        "pagamento de fatura", "pagamento", "crédito", "demais créditos", "estorno de pagamento"
     );
 
     /**

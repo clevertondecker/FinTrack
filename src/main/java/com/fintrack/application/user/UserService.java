@@ -1,6 +1,7 @@
 package com.fintrack.application.user;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import com.fintrack.domain.contact.TrustedContact;
@@ -31,6 +32,7 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private static final String MSG_USER_NOT_FOUND = "User not found with email: ";
+    private static final String MSG_CURRENT_USER_NOT_FOUND = "User not found";
     private static final String MSG_CANNOT_CONNECT_SELF = "You cannot connect to yourself";
     private static final String MSG_ALREADY_CONNECTED = "Users are already connected";
 
@@ -56,6 +58,29 @@ public class UserService {
         userConnectionRepository = theUserConnectionRepository;
         trustedContactRepository = theTrustedContactRepository;
         creditCardRepository = theCreditCardRepository;
+    }
+
+    /**
+     * Resolves the current user by email (e.g. from authentication).
+     * Use in controllers to obtain the authenticated user from {@code UserDetails.getUsername()}.
+     *
+     * @param email the user's email (must match a registered user).
+     * @return the user. Never null.
+     * @throws IllegalArgumentException if no user is found with the given email.
+     */
+    public User getCurrentUser(String email) {
+        return userRepository.findByEmail(Email.of(email))
+                .orElseThrow(() -> new IllegalArgumentException(MSG_CURRENT_USER_NOT_FOUND));
+    }
+
+    /**
+     * Finds a user by email, if present.
+     *
+     * @param email the user's email.
+     * @return the user if found, empty otherwise.
+     */
+    public Optional<User> findUserByEmail(String email) {
+        return userRepository.findByEmail(Email.of(email));
     }
 
     /**

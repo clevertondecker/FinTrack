@@ -1,0 +1,48 @@
+---
+description: Error handling patterns - GlobalExceptionHandler, response format, logging
+globs: "**/exceptions/**/*.java"
+alwaysApply: false
+---
+
+# Error Handling
+
+## Global Exception Handler
+
+All exceptions are handled by `GlobalExceptionHandler` (`@RestControllerAdvice`). Never catch and swallow exceptions in controllers.
+
+## Standard Error Response
+
+All errors return `Map<String, String>` with a single `"error"` key:
+
+```json
+{"error": "Credit card not found"}
+```
+
+## Exception Mapping
+
+| Exception | HTTP Status | Use Case |
+|-----------|------------|----------|
+| `IllegalArgumentException` | 400 | Business rule violations, not found |
+| `MethodArgumentNotValidException` | 400 | Bean Validation failures |
+| `ConstraintViolationException` | 400 | JPA constraint violations |
+| `HttpMessageNotReadableException` | 400 | Malformed JSON |
+| `DataIntegrityViolationException` | 400 | Duplicate entries, FK violations |
+| `BadCredentialsException` | 401 | Invalid login |
+| `ResponseStatusException` | Varies | Explicit HTTP status control |
+| `Exception` | 500 | Unexpected errors |
+
+## Logging
+
+- `logger.warn()` for client errors (4xx)
+- `logger.error()` for server errors (5xx), include full stack trace
+- Use SLF4J with `LoggerFactory.getLogger(ClassName.class)`
+
+## Business Validation
+
+Throw `IllegalArgumentException` with descriptive messages from services:
+
+```java
+throw new IllegalArgumentException("Credit card not found or access denied");
+```
+
+The GlobalExceptionHandler will map it to 400 with the message.

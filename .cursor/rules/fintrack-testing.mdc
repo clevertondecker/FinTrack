@@ -1,0 +1,64 @@
+---
+description: Testing conventions - JUnit 5, MockMvc, test structure, naming patterns
+globs: "**/test/**/*.java"
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Test Class Setup
+
+```java
+@WebMvcTest(ResourceController.class)
+@AutoConfigureMockMvc
+@Import(TestSecurityConfig.class)
+@ActiveProfiles("test")
+@DisplayName("ResourceController Tests")
+public class ResourceControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @MockBean private ResourceService resourceService;
+}
+```
+
+## Test Naming
+
+- Use `@DisplayName` with descriptive sentences: `"Should activate credit card successfully"`
+- Method names: `shouldDoSomethingWhenCondition()`
+
+## Test Structure (Given-When-Then)
+
+```java
+@Test
+@WithMockUser(username = "john@example.com")
+@DisplayName("Should return 404 when credit card not found")
+void shouldReturn404WhenCreditCardNotFound() throws Exception {
+    // Given
+    when(service.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+    when(service.getCreditCard(eq(999L), eq(testUser)))
+        .thenThrow(new IllegalArgumentException("Credit card not found"));
+
+    // When & Then
+    mockMvc.perform(get("/api/credit-cards/{id}", 999L)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Credit card not found"));
+}
+```
+
+## Key Rules
+
+- Use `@WithMockUser` for authenticated endpoints
+- Use `@BeforeEach` for shared test setup (entities, mocks)
+- Use reflection helpers to set entity IDs when needed for testing
+- Test both success and error paths (not found, unauthorized, invalid input)
+- Use JSON text blocks for request bodies
+- Test profile uses H2 in-memory database (`application-test.properties`)
+
+## Test Types
+
+| Type | Annotation | Purpose |
+|------|-----------|---------|
+| Controller | `@WebMvcTest` | REST endpoint behavior |
+| Service | `@ExtendWith(MockitoExtension.class)` | Business logic |
+| Integration | `@SpringBootTest` | Full stack |
+| Repository | `@DataJpaTest` | Query correctness |

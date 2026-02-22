@@ -2,13 +2,12 @@ package com.fintrack.controller.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.invoice.ImportStatus;
-import com.fintrack.domain.user.User;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
 import com.fintrack.application.invoice.InvoiceImportService;
-import com.fintrack.domain.user.UserRepository;
-import com.fintrack.domain.user.Email;
+import com.fintrack.application.user.UserService;
+import com.fintrack.domain.user.User;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,16 +34,15 @@ public class InvoiceImportController {
     private static final Logger logger = LoggerFactory.getLogger(InvoiceImportController.class);
 
     private final InvoiceImportService invoiceImportService;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ObjectMapper objectMapper;
 
-    public InvoiceImportController(InvoiceImportService invoiceImportService, 
-                                 UserRepository userRepository,
-                                 ObjectMapper objectMapper) {
+    public InvoiceImportController(InvoiceImportService invoiceImportService,
+                                  UserService userService,
+                                  ObjectMapper objectMapper) {
         this.invoiceImportService = invoiceImportService;
-        this.userRepository = userRepository;
+        this.userService = userService;
         this.objectMapper = objectMapper;
-        logger.info("InvoiceImportController initialized with service: {}", invoiceImportService != null);
     }
 
     /**
@@ -80,10 +78,7 @@ public class InvoiceImportController {
             ImportInvoiceRequest request =
                 objectMapper.readValue(requestJson, ImportInvoiceRequest.class);
             
-            User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-                .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-            
+            User user = userService.getCurrentUser(userDetails.getUsername());
             ImportInvoiceResponse response = invoiceImportService.importInvoice(file, request, user);
             return ResponseEntity.accepted().body(response);
 
@@ -127,10 +122,7 @@ public class InvoiceImportController {
         }
         
         try {
-            User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-                .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-
+            User user = userService.getCurrentUser(userDetails.getUsername());
             ImportProgressResponse progress =
                 invoiceImportService.getImportProgress(importId, user);
             return ResponseEntity.ok(progress);
@@ -150,10 +142,7 @@ public class InvoiceImportController {
     public ResponseEntity<List<ImportInvoiceResponse>> getUserImports(
             @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
-
-        User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+        User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImports(user);
         return ResponseEntity.ok(imports);
     }
@@ -170,10 +159,7 @@ public class InvoiceImportController {
             @RequestParam ImportStatus status,
             @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
-
-        User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
+        User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImportsByStatus(user, status);
         return ResponseEntity.ok(imports);
     }
@@ -194,11 +180,7 @@ public class InvoiceImportController {
     public ResponseEntity<List<ImportInvoiceResponse>> getFailedImports(
             @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
-
-        User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-
+        User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> failedImports =
             invoiceImportService.getUserImportsByStatus(user, ImportStatus.FAILED);
         return ResponseEntity.ok(failedImports);
@@ -214,11 +196,7 @@ public class InvoiceImportController {
     public ResponseEntity<List<ImportInvoiceResponse>> getManualReviewImports(
             @AuthenticationPrincipal UserDetails userDetails) {
         getUserDetail(userDetails);
-
-        User user = userRepository.findByEmail(Email.of(userDetails.getUsername()))
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "Usuário não encontrado"));
-
+        User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports =
             invoiceImportService.getUserImportsByStatus(user, ImportStatus.MANUAL_REVIEW);
         return ResponseEntity.ok(imports);

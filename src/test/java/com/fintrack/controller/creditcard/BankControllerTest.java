@@ -2,7 +2,7 @@ package com.fintrack.controller.creditcard;
 
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,11 +27,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.creditcard.BankService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.Role;
-import com.fintrack.infrastructure.persistence.creditcard.BankJpaRepository;
 
 @WebMvcTest(BankController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -42,11 +41,8 @@ class BankControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockBean
-    private BankJpaRepository bankRepository;
+    private BankService bankService;
 
     private Bank nubank;
     private Bank itau;
@@ -69,8 +65,7 @@ class BankControllerTest {
         void shouldCreateBankSuccessfully() throws Exception {
             // Given
             Bank savedBank = Bank.of("NU", "Nubank");
-            when(bankRepository.existsByCode("NU")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
+            when(bankService.create(eq("NU"), eq("Nubank"))).thenReturn(savedBank);
 
             String requestBody = "{\"code\": \"NU\", \"name\": \"Nubank\"}";
 
@@ -112,7 +107,8 @@ class BankControllerTest {
         @DisplayName("Should return bad request when bank code already exists")
         void shouldReturnBadRequestWhenBankCodeAlreadyExists() throws Exception {
             // Given
-            when(bankRepository.existsByCode("NU")).thenReturn(true);
+            when(bankService.create(eq("NU"), eq("Nubank")))
+                    .thenThrow(new IllegalArgumentException("Bank with this code already exists"));
 
             String requestBody = "{\"code\": \"NU\", \"name\": \"Nubank\"}";
 
@@ -173,7 +169,7 @@ class BankControllerTest {
         void shouldReturnAllBanksSuccessfully() throws Exception {
             // Given
             List<Bank> banks = Arrays.asList(nubank, itau, santander);
-            when(bankRepository.findAll()).thenReturn(banks);
+            when(bankService.findAll()).thenReturn(banks);
 
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
@@ -192,7 +188,7 @@ class BankControllerTest {
         @DisplayName("Should return empty list when no banks exist")
         void shouldReturnEmptyListWhenNoBanksExist() throws Exception {
             // Given
-            when(bankRepository.findAll()).thenReturn(List.of());
+            when(bankService.findAll()).thenReturn(List.of());
 
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
@@ -207,7 +203,7 @@ class BankControllerTest {
         void shouldHandleSingleBank() throws Exception {
             // Given
             List<Bank> banks = Collections.singletonList(nubank);
-            when(bankRepository.findAll()).thenReturn(banks);
+            when(bankService.findAll()).thenReturn(banks);
 
             mockMvc.perform(get("/api/banks"))
                     .andExpect(status().isOk())
@@ -228,7 +224,7 @@ class BankControllerTest {
         void shouldReturnBankByIdSuccessfully() throws Exception {
             // Given
             Long bankId = 1L;
-            when(bankRepository.findById(bankId)).thenReturn(Optional.of(nubank));
+            when(bankService.findById(bankId)).thenReturn(Optional.of(nubank));
 
             mockMvc.perform(get("/api/banks/{id}", bankId))
                     .andExpect(status().isOk())
@@ -242,7 +238,7 @@ class BankControllerTest {
         void shouldReturn404WhenBankNotFound() throws Exception {
             // Given
             Long bankId = 999L;
-            when(bankRepository.findById(bankId)).thenReturn(Optional.empty());
+            when(bankService.findById(bankId)).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/banks/{id}", bankId))
                     .andExpect(status().isNotFound());
@@ -290,8 +286,7 @@ class BankControllerTest {
         @DisplayName("Should handle repository exception")
         void shouldHandleRepositoryException() throws Exception {
             // Given
-            when(bankRepository.existsByCode("NU")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenThrow(new RuntimeException("Database error"));
+            when(bankService.create(eq("NU"), eq("Nubank"))).thenThrow(new RuntimeException("Database error"));
 
             String requestBody = """
                 {
@@ -317,8 +312,7 @@ class BankControllerTest {
             // Given
             String longName = "A".repeat(255);
             Bank savedBank = Bank.of("LONG", longName);
-            when(bankRepository.existsByCode("LONG")).thenReturn(false);
-            when(bankRepository.save(any(Bank.class))).thenReturn(savedBank);
+            when(bankService.create(eq("LONG"), eq(longName))).thenReturn(savedBank);
 
             String requestBody = "{\"code\": \"LONG\", \"name\": \"" + longName + "\"}";
 

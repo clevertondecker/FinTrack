@@ -30,8 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
-import com.fintrack.domain.user.Email;
 import com.fintrack.dto.user.ConnectUserRequest;
 import com.fintrack.dto.user.RegisterRequest;
 
@@ -41,9 +39,6 @@ class UserControllerTest {
 
     @Mock
     private UserService userService;
-
-    @Mock
-    private UserRepository userRepository;
 
     @InjectMocks
     private UserController userController;
@@ -217,7 +212,7 @@ class UserControllerTest {
         @Test
         @DisplayName("Should create UserController with valid dependencies")
         void shouldCreateUserControllerWithValidDependencies() {
-            UserController controller = new UserController(userService, userRepository);
+            UserController controller = new UserController(userService);
 
             assert controller != null;
         }
@@ -226,21 +221,10 @@ class UserControllerTest {
         @DisplayName("Should throw exception when UserService is null")
         void shouldThrowExceptionWhenUserServiceIsNull() {
             try {
-                new UserController(null, userRepository);
+                new UserController(null);
                 assert false : "Should have thrown exception";
             } catch (NullPointerException e) {
                 assert e.getMessage().contains("userService cannot be null");
-            }
-        }
-
-        @Test
-        @DisplayName("Should throw exception when UserRepository is null")
-        void shouldThrowExceptionWhenUserRepositoryIsNull() {
-            try {
-                new UserController(userService, null);
-                assert false : "Should have thrown exception";
-            } catch (NullPointerException e) {
-                assert e.getMessage().contains("userRepository cannot be null");
             }
         }
     }
@@ -425,7 +409,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of("john@example.com"))).thenReturn(Optional.of(testUser));
+            when(userService.findUserByEmail("john@example.com")).thenReturn(Optional.of(testUser));
 
             // When
             var response = userController.getCurrentUser(userDetails);
@@ -453,7 +437,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of("nonexistent@example.com"))).thenReturn(Optional.empty());
+            when(userService.findUserByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
 
             // When
             var response = userController.getCurrentUser(userDetails);
@@ -473,7 +457,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of("john@example.com")))
+            when(userService.findUserByEmail("john@example.com"))
                 .thenThrow(new RuntimeException("Database error"));
 
             // When & Then
@@ -495,7 +479,7 @@ class UserControllerTest {
                 .authorities("USER", "ADMIN")
                 .build();
 
-            when(userRepository.findByEmail(Email.of("admin@example.com"))).thenReturn(Optional.of(testUser));
+            when(userService.findUserByEmail("admin@example.com")).thenReturn(Optional.of(testUser));
 
             // When
             var response = userController.getCurrentUser(userDetails);
@@ -528,7 +512,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of("joao@example.com"))).thenReturn(Optional.of(testUser));
+            when(userService.findUserByEmail("joao@example.com")).thenReturn(Optional.of(testUser));
 
             // When
             var response = userController.getCurrentUser(userDetails);
@@ -593,7 +577,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of(ALICE_EMAIL))).thenReturn(Optional.of(alice));
+            when(userService.getCurrentUser(ALICE_EMAIL)).thenReturn(alice);
             when(userService.getConnectedUsers(alice)).thenReturn(List.of(bob));
 
             var response = userController.getConnectedUsers(userDetails);
@@ -618,7 +602,7 @@ class UserControllerTest {
                 .authorities("USER")
                 .build();
 
-            when(userRepository.findByEmail(Email.of(ALICE_EMAIL))).thenReturn(Optional.of(alice));
+            when(userService.getCurrentUser(ALICE_EMAIL)).thenReturn(alice);
 
             var response = userController.connectUser(userDetails, new ConnectUserRequest(BOB_EMAIL));
 
@@ -651,7 +635,7 @@ class UserControllerTest {
             User bob = User.createLocalUser("Bob", BOB_EMAIL, "p", Set.of(Role.USER));
             setUserId(bob, 2L);
             setUserTimestamps(bob);
-            when(userRepository.findByEmail(Email.of(BOB_EMAIL))).thenReturn(Optional.of(bob));
+            when(userService.findUserByEmail(BOB_EMAIL)).thenReturn(Optional.of(bob));
 
             mockMvc.perform(get("/api/users/search").param("email", BOB_EMAIL))
                 .andExpect(status().isOk())
@@ -662,7 +646,7 @@ class UserControllerTest {
         @Test
         @DisplayName("GET /api/users/search returns 404 when not found")
         void searchUserNotFound() throws Exception {
-            when(userRepository.findByEmail(Email.of("nobody@example.com"))).thenReturn(Optional.empty());
+            when(userService.findUserByEmail("nobody@example.com")).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/users/search").param("email", "nobody@example.com"))
                 .andExpect(status().isNotFound());

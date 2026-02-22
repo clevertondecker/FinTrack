@@ -1,0 +1,62 @@
+---
+description: Domain entity patterns - factory methods, validation, value objects, entity design
+globs: "**/domain/**/*.java"
+alwaysApply: false
+---
+
+# Domain Entity Patterns
+
+## Entity Creation
+
+Use **private constructors** + **static factory methods** (`of()`). Never expose public constructors:
+
+```java
+// GOOD
+public static CreditCard of(final String name, final String lastFourDigits,
+                             final BigDecimal limit, final User owner, final Bank bank) {
+    return new CreditCard(name, lastFourDigits, limit, owner, bank, CardType.PHYSICAL, null, null, null);
+}
+
+// BAD - public constructor
+public CreditCard(String name, ...) { ... }
+```
+
+Always include a `protected` no-arg constructor for JPA.
+
+## Validation
+
+Validate invariants in the **private constructor** using Apache Commons `Validate`:
+
+```java
+Validate.notBlank(theName, "Credit card name must not be null or blank.");
+Validate.notNull(theLimit, "Credit card limit must not be null.");
+Validate.isTrue(theLimit.compareTo(BigDecimal.ZERO) > 0, "Credit card limit must be positive.");
+```
+
+## Value Objects
+
+Encapsulate domain concepts as `@Embeddable` value objects (e.g., `Email`):
+- Private constructor with validation, static `of()` factory
+- Implement `equals`/`hashCode` on value (not identity)
+- Normalize values (e.g., lowercase email)
+
+## Update Methods
+
+Expose granular `updateX()` methods that validate and update `updatedAt`:
+
+```java
+public void updateLimit(final BigDecimal newLimit) {
+    Validate.notNull(newLimit, "New limit must not be null.");
+    Validate.isTrue(newLimit.compareTo(BigDecimal.ZERO) > 0, "New limit must be positive.");
+    creditLimit = newLimit;
+    updatedAt = LocalDateTime.now();
+}
+```
+
+## Equals/HashCode
+
+Entity equality is based on `id` only. Value Object equality is based on all fields.
+
+## JavaDoc
+
+All public methods must have JavaDoc with `@param`, `@return`, and `@throws` tags.
