@@ -8,10 +8,12 @@ import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.InvoiceItemRepository;
 import com.fintrack.domain.creditcard.InvoiceRepository;
 import com.fintrack.domain.creditcard.InvoiceStatus;
+import com.fintrack.domain.creditcard.ParticipantShare;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.Email;
 
+import com.fintrack.dto.creditcard.ContactShareSummary;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceResponse;
@@ -367,7 +369,7 @@ public class InvoiceService {
     public InvoiceResponse toInvoiceResponse(Invoice invoice) {
         // Use dynamic calculation for real-time consistency
         InvoiceStatus currentStatus = invoice.calculateCurrentStatus();
-        
+
         return new InvoiceResponse(
             invoice.getId(),
             invoice.getCreditCard().getId(),
@@ -378,20 +380,42 @@ public class InvoiceService {
             currentStatus.name(),
             invoice.getCreatedAt(),
             invoice.getUpdatedAt(),
-            invoice.getTotalAmount() // Default to total amount when no user is specified
+            invoice.getTotalAmount(), // Default to total amount when no user is specified
+            List.of()
         );
     }
 
     /**
-     * Converts an Invoice to a InvoiceResponse DTO with user-specific calculations.
+     * Converts an Invoice to an InvoiceResponse DTO with user-specific calculations.
+     *
+     * <p>Includes the user's share and a per-person breakdown of other participants.
+     * If the owner has multiple User accounts (same name, different email), their
+     * shares are merged into {@code userShare} so the total adds up correctly.</p>
+     *
+     * @param invoice the invoice to convert. Must not be null.
+     * @param user the authenticated user (card owner). Must not be null.
+     * @return the invoice response with user share and participant breakdown. Never null.
      */
     public InvoiceResponse toInvoiceResponse(Invoice invoice, User user) {
-        // Use dynamic calculation for real-time consistency
         InvoiceStatus currentStatus = invoice.calculateCurrentStatus();
-        
-        // Calculate the amount the user is responsible for
         BigDecimal userShare = invoiceCalculationService.calculateUserShare(invoice, user);
-        
+
+        List<ParticipantShare> allParticipants =
+            invoiceCalculationService.calculateOtherParticipantShares(invoice, user);
+
+        // The owner may have multiple User accounts (e.g. work + personal email).
+        // Absorb duplicate owner accounts into userShare so the total adds up.
+        String ownerName = user.getName();
+        List<ContactShareSummary> contactShares = new ArrayList<>();
+        for (ParticipantShare participant : allParticipants) {
+            if (ownerName.equals(participant.name())) {
+                userShare = userShare.add(participant.totalAmount());
+            } else {
+                contactShares.add(new ContactShareSummary(
+                    participant.name(), participant.email(), participant.totalAmount()));
+            }
+        }
+
         return new InvoiceResponse(
             invoice.getId(),
             invoice.getCreditCard().getId(),
@@ -402,7 +426,8 @@ public class InvoiceService {
             currentStatus.name(),
             invoice.getCreatedAt(),
             invoice.getUpdatedAt(),
-            userShare
+            userShare,
+            contactShares
         );
     }
 

@@ -106,6 +106,12 @@ const MyShares: React.FC = () => {
     return filterShares(shares.shares).reduce((sum, share) => sum + share.myAmount, 0);
   };
 
+  /** Total de todas as divisões (sem filtro), para deixar claro quando o valor exibido é só do filtro. */
+  const getTotalAmountAll = () => {
+    if (!shares) return 0;
+    return shares.shares.reduce((sum, share) => sum + share.myAmount, 0);
+  };
+
   const getStatusStats = () => {
     if (!shares) return { total: 0, paid: 0, unpaid: 0 };
     
@@ -252,8 +258,15 @@ const MyShares: React.FC = () => {
             {getFilteredShareCount()} {pluralizeDivisao(getFilteredShareCount())}
           </span>
           <span className="total-amount">
-            Total: {formatCurrency(getFilteredTotalAmount())}
+            {statusFilter === 'all'
+              ? `Total: ${formatCurrency(getFilteredTotalAmount())}`
+              : `Total (filtrado): ${formatCurrency(getFilteredTotalAmount())}`}
           </span>
+          {statusFilter !== 'all' && (
+            <span className="total-amount-all" title="Soma de todas as suas divisões (pendentes + pagas)">
+              Total geral: {formatCurrency(getTotalAmountAll())}
+            </span>
+          )}
         </div>
       </div>
 

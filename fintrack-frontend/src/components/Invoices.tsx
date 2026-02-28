@@ -1147,6 +1147,18 @@ const Invoices: React.FC = () => {
                 </div>
               </div>
 
+              {selectedInvoice.contactShares && selectedInvoice.contactShares.length > 0 && (
+                <div className="contact-shares-section">
+                  <h4>{t('invoices.contactSharesTitle')}</h4>
+                  {selectedInvoice.contactShares.map(cs => (
+                    <div key={cs.contactEmail} className="contact-share-row">
+                      <span className="contact-name">{cs.contactName}</span>
+                      <span className="contact-amount">{formatCurrency(cs.totalAmount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="invoice-items-section">
                 <div className="section-header">
                   <h3>{t('invoices.itemsLabel')}</h3>

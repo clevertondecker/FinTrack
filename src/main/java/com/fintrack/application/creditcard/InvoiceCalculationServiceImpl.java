@@ -1,9 +1,11 @@
 package com.fintrack.application.creditcard;
 
+import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.InvoiceCalculationService;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.ItemShare;
+import com.fintrack.domain.creditcard.ParticipantShare;
 import com.fintrack.domain.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +95,56 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
         
         BigDecimal sharedAmount = calculateTotalSharedAmount(invoice);
         return sharedAmount.divide(totalAmount, 4, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Groups shares by participant email so that a person who appears as both
+     * a system User and a TrustedContact is counted once. Only trusted contacts
+     * owned by {@code owner} are included; contacts owned by other users are
+     * excluded for security.</p>
+     */
+    @Override
+    public List<ParticipantShare> calculateOtherParticipantShares(
+            final Invoice invoice, final User owner) {
+
+        Map<String, BigDecimal> totalsByEmail = new HashMap<>();
+        Map<String, String> nameByEmail = new HashMap<>();
+
+        for (InvoiceItem item : invoice.getItems()) {
+            for (ItemShare share : item.getShares()) {
+                String email = null;
+                String name = null;
+
+                if (share.isContactShare()) {
+                    TrustedContact contact = share.getTrustedContact();
+                    if (!contact.getOwner().getId().equals(owner.getId())) {
+                        continue;
+                    }
+                    email = contact.getEmail();
+                    name = contact.getName();
+                } else if (share.getUser() != null
+                        && !share.getUser().getId().equals(owner.getId())) {
+                    User u = share.getUser();
+                    email = u.getEmail().getEmail();
+                    name = u.getName();
+                }
+
+                if (email != null) {
+                    totalsByEmail.merge(email, share.getAmount(), BigDecimal::add);
+                    nameByEmail.putIfAbsent(email, name);
+                }
+            }
+        }
+
+        List<ParticipantShare> result = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : totalsByEmail.entrySet()) {
+            String email = entry.getKey();
+            result.add(new ParticipantShare(
+                    nameByEmail.get(email), email, entry.getValue()));
+        }
+        return result;
     }
 
     /**

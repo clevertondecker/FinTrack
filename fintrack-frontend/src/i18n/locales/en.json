@@ -251,6 +251,7 @@
     "shareWithUsers": "Share with users",
     "shareSuccess": "Item shared successfully",
     "shareError": "Error sharing item",
+    "contactSharesTitle": "Share by person",
     "removeItem": "Remove item from invoice",
     "errorUpdatingCategory": "Error updating item category",
     "updatingCategory": "Updating category...",

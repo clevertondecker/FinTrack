@@ -479,6 +479,8 @@ class InvoiceServiceTest {
             assertEquals(testInvoice.getTotalAmount(), result.totalAmount());
             assertEquals(testInvoice.getPaidAmount(), result.paidAmount());
             assertEquals(testInvoice.getStatus().name(), result.status());
+            assertNotNull(result.contactShares());
+            assertTrue(result.contactShares().isEmpty());
         }
 
         @Test

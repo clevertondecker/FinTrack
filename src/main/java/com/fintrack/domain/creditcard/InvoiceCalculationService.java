@@ -3,6 +3,7 @@ package com.fintrack.domain.creditcard;
 import com.fintrack.domain.user.User;
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -60,4 +61,17 @@ public interface InvoiceCalculationService {
      * @return the percentage shared (0.0 to 1.0). Never null.
      */
     BigDecimal calculateSharedPercentage(Invoice invoice);
+
+    /**
+     * Calculates the total amount each other participant owes in a specific invoice.
+     * Includes both trusted contacts (owned by the given user) and other system users.
+     * Excludes the card owner (whose share is already captured by calculateUserShare).
+     * Participants are grouped by email to unify the same person across User and
+     * TrustedContact records.
+     *
+     * @param invoice the invoice to calculate for. Must not be null.
+     * @param owner the card owner to exclude. Must not be null.
+     * @return shares per participant, grouped by email. Never null, may be empty.
+     */
+    List<ParticipantShare> calculateOtherParticipantShares(Invoice invoice, User owner);
 } 

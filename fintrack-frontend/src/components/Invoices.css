@@ -2156,4 +2156,42 @@
 }
 .delete-invoice-btn:hover {
   background: #c0392b;
+}
+
+/* Contact Shares Section */
+.contact-shares-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--neutral-50);
+  border-radius: 10px;
+  border: 1px solid var(--neutral-200);
+}
+
+.contact-shares-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+
+.contact-share-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.contact-share-row:last-child {
+  border-bottom: none;
+}
+
+.contact-share-row .contact-name {
+  font-weight: 500;
+  color: var(--neutral-700);
+}
+
+.contact-share-row .contact-amount {
+  font-weight: 600;
+  color: var(--primary-color);
 } 

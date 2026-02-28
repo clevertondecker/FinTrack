@@ -66,6 +66,12 @@
   font-size: 16px;
 }
 
+.total-amount-all {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 /* Filters Section */
 .filters-section {
   background: #f8f9fa;

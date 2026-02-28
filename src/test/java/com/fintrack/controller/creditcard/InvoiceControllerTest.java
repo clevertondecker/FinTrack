@@ -172,7 +172,8 @@ class InvoiceControllerTest {
             testInvoice.getStatus().name(),
             testInvoice.getCreatedAt(),
             testInvoice.getUpdatedAt(),
-            testInvoice.getTotalAmount()
+            testInvoice.getTotalAmount(),
+            List.of()
         );
       return List.of(invoiceResponse);
     }
@@ -225,7 +226,6 @@ class InvoiceControllerTest {
         // Given
         Long invoiceId = 1L;
         InvoiceResponse invoiceResponse = new InvoiceResponse(
-            
             testInvoice.getId(),
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
@@ -235,7 +235,8 @@ class InvoiceControllerTest {
             testInvoice.getStatus().name(),
             testInvoice.getCreatedAt(),
             testInvoice.getUpdatedAt(),
-            testInvoice.getTotalAmount()
+            testInvoice.getTotalAmount(),
+            List.of()
         );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));

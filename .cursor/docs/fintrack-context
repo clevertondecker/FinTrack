@@ -207,6 +207,21 @@ Cada `InvoiceItem` pode ser dividido entre múltiplos participantes:
 - `markAsUnpaid()`: reverte o status de pagamento.
 - Suporta bulk: marcar múltiplos shares como pagos em uma operação.
 
+### Resumo por participante na fatura (ParticipantShare)
+O endpoint `GET /api/invoices` retorna, para cada fatura, o total que cada participante deve:
+- `userShare`: soma da parte do usuário autenticado (incluindo itens sem share e contas alternativas).
+- `contactShares[]`: lista com `contactName`, `contactEmail` e `totalAmount` de cada outro participante.
+
+**Regras de agrupamento:**
+- Participantes são agrupados por **email** para unificar a mesma pessoa que existe como `User` e `TrustedContact`.
+- Shares de `TrustedContact` são incluídos apenas se o contato pertence ao usuário autenticado (`contact.owner == user`).
+- Shares de `User` são incluídos se `user_id != owner.id`.
+- Se o participante tem o mesmo nome do dono (conta alternativa), seus valores são absorvidos no `userShare`.
+
+**Arquitetura:**
+- `InvoiceCalculationService.calculateOtherParticipantShares(invoice, owner)` retorna `List<ParticipantShare>` (domínio).
+- `InvoiceService.toInvoiceResponse` converte `ParticipantShare` → `ContactShareSummary` (DTO) e absorve contas duplicadas do dono.
+
 ### Cálculo de participação do usuário
 - Itens sem shares: o dono do cartão arca com 100% do valor.
 - Itens com shares: cada participante arca com sua porção.
@@ -308,7 +323,7 @@ Extraído do PDF via `PdfInvoiceParser` (Apache PDFBox):
 ### Páginas principais
 - **Dashboard**: visão geral com ações rápidas.
 - **Cartões**: gestão de cartões (CRUD, agrupamento por principal, ativação/desativação).
-- **Faturas**: listagem, filtros, pagamento, itens, categorização.
+- **Faturas**: listagem, filtros, pagamento, itens, categorização, divisão por pessoa no modal de detalhes.
 - **Importação**: upload de PDF, acompanhamento de progresso.
 - **Pessoas**: gestão do Círculo de Confiança (contatos).
 - **Meus Shares**: visualização dos compartilhamentos do usuário.

@@ -1,3 +1,9 @@
+export interface ContactShareSummary {
+  contactName: string;
+  contactEmail: string;
+  totalAmount: number;
+}
+
 export interface Invoice {
   id: number;
   creditCardId: number;
@@ -9,6 +15,7 @@ export interface Invoice {
   createdAt: string;
   updatedAt?: string;
   userShare?: number | null;
+  contactShares?: ContactShareSummary[];
 }
 
 export interface InvoiceItem {

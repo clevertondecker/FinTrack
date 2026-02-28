@@ -251,6 +251,7 @@
     "shareWithUsers": "Dividir com usuários",
     "shareSuccess": "Item dividido com sucesso",
     "shareError": "Erro ao dividir item",
+    "contactSharesTitle": "Divisão por pessoa",
     "removeItem": "Remover item da fatura",
     "errorUpdatingCategory": "Erro ao atualizar categoria do item",
     "updatingCategory": "Atualizando categoria...",
