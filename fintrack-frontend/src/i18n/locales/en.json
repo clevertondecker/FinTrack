@@ -510,6 +510,17 @@
     "shared": "Shared",
     "unshared": "Unshared",
     "showingMine": "My expenses",
-    "showingTotal": "Total expenses"
+    "showingTotal": "Total expenses",
+    "uncategorized": "Uncategorized",
+    "charts": {
+      "categoryBreakdown": "Category Breakdown",
+      "monthComparison": "Month Comparison",
+      "monthlyEvolution": "Spending Evolution",
+      "topExpenses": "Top 5 Expenses",
+      "noChartData": "No chart data",
+      "currentMonth": "Current Month",
+      "previousMonth": "Previous Month",
+      "percentOfTotal": "{{percent}}% of total"
+    }
   }
 } 

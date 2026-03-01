@@ -51,6 +51,24 @@ export const formatCurrency = (amount: number | null | undefined): string => {
   }).format(amount);
 };
 
+/**
+ * Formats a "yyyy-MM" month string into a localized label.
+ * @param monthStr the month string in "yyyy-MM" format
+ * @param language the i18n language code (e.g. 'pt', 'en')
+ * @param style the month display style ('long' for full name, 'short' for abbreviation)
+ * @returns the formatted month label (e.g. "mar. 2026" or "March 2026")
+ */
+export const formatMonthLabel = (
+  monthStr: string,
+  language: string,
+  style: 'long' | 'short' = 'short'
+): string => {
+  const [year, month] = monthStr.split('-');
+  const date = new Date(parseInt(year), parseInt(month) - 1);
+  const locale = language === 'pt' ? 'pt-BR' : 'en-US';
+  return date.toLocaleDateString(locale, { month: style, year: 'numeric' });
+};
+
 export const formatDate = (dateString: string): string => {
   if (!dateString || dateString === 'null' || dateString === 'undefined') return '-';
   

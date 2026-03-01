@@ -131,4 +131,19 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
     default void deleteByIdAndCreditCard(Long id, CreditCard creditCard) {
         findByIdAndCreditCard(id, creditCard).ifPresent(this::delete);
     }
+
+    /**
+     * Finds all invoices within a range of months (inclusive).
+     * Uses JOIN FETCH to eagerly load items for performance.
+     *
+     * @param fromMonth the start month. Cannot be null.
+     * @param toMonth the end month. Cannot be null.
+     * @return a list of invoices within the range with items loaded. Never null, may be empty.
+     */
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items "
+        + "WHERE i.month >= :fromMonth AND i.month <= :toMonth")
+    List<Invoice> findByMonthBetween(
+        @Param("fromMonth") YearMonth fromMonth,
+        @Param("toMonth") YearMonth toMonth);
 } 

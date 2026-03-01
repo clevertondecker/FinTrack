@@ -1,0 +1,99 @@
+.evolution-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.evolution-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  justify-content: center;
+}
+
+.evolution-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.evolution-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.evolution-legend-name {
+  color: #525252;
+  white-space: nowrap;
+}
+
+/* Tooltip */
+.evolution-tooltip {
+  background: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e5e5;
+  max-width: 260px;
+}
+
+.evolution-tooltip-month {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.25rem;
+  text-transform: capitalize;
+}
+
+.evolution-tooltip-total {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.evolution-tooltip-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.evolution-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.evolution-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.evolution-tooltip-name {
+  flex: 1;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.evolution-tooltip-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+@media (max-width: 768px) {
+  .evolution-legend {
+    gap: 0.375rem 0.75rem;
+  }
+
+  .evolution-legend-item {
+    font-size: 0.75rem;
+  }
+}

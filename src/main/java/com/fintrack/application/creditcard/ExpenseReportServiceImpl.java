@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,20 +59,13 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public Map<Category, BigDecimal> getExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-
-        // Get all invoices for the month (filtered by invoice month, not due date)
         List<Invoice> invoices = invoiceRepository.findByMonth(month);
-        
-        // For each invoice, calculate user's share per item
-        // Use the same logic as InvoiceCalculationService.calculateUserShare to ensure consistency
+
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                // Calculate user's share for this item using the same method as InvoiceCalculationService
                 BigDecimal userShareForItem = calculateUserShareForItem(item, user);
-                
                 if (userShareForItem.compareTo(BigDecimal.ZERO) > 0) {
-                    Category category = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
-                    expensesMap.merge(category, userShareForItem, BigDecimal::add);
+                    expensesMap.merge(resolveCategory(item), userShareForItem, BigDecimal::add);
                 }
             }
         }
@@ -129,88 +124,55 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         return total;
     }
 
-    /**
-     * Gets total expenses by category for all users on cards owned by the given user.
-     * Only includes expenses from invoices on credit cards where the user is the owner.
-     *
-     * @param user the card owner. Must not be null.
-     * @param month the month to get expenses for. Must not be null.
-     * @return a map of category to total expense amount. Never null.
-     */
+    @Override
     public Map<Category, BigDecimal> getTotalExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-
         List<Invoice> invoices = invoiceRepository.findByMonth(month);
-        
+
         for (Invoice invoice : invoices) {
-            // Only include invoices from cards owned by this user
-            if (!invoice.getCreditCard().getOwner().equals(user)) {
+            if (!isOwnedBy(invoice, user)) {
                 continue;
             }
-            
             for (InvoiceItem item : invoice.getItems()) {
-                Category category = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
-                expensesMap.merge(category, item.getAmount(), BigDecimal::add);
+                expensesMap.merge(resolveCategory(item), item.getAmount(), BigDecimal::add);
             }
         }
 
         return expensesMap;
     }
 
-    /**
-     * Gets grand total expenses for all items on cards owned by the given user.
-     *
-     * @param user the card owner. Must not be null.
-     * @param month the month to get expenses for. Must not be null.
-     * @return the total expense amount. Never null.
-     */
+    @Override
     public BigDecimal getGrandTotalExpenses(final User user, final YearMonth month) {
         List<Invoice> invoices = invoiceRepository.findByMonth(month);
         BigDecimal total = BigDecimal.ZERO;
-        
+
         for (Invoice invoice : invoices) {
-            // Only include invoices from cards owned by this user
-            if (!invoice.getCreditCard().getOwner().equals(user)) {
+            if (!isOwnedBy(invoice, user)) {
                 continue;
             }
             total = total.add(invoice.getTotalAmount());
         }
-        
+
         return total;
     }
 
-    /**
-     * Gets detailed total expense information for all users on a card owned by the given user.
-     *
-     * @param user the card owner. Must not be null.
-     * @param month the month to get expenses for. Must not be null.
-     * @param category the category to filter by. Can be null for uncategorized items.
-     * @return a list of detailed expense entries. Never null.
-     */
+    @Override
     public List<ExpenseDetailResponse> getTotalExpenseDetails(
             final User user, final YearMonth month, final Category category) {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
 
         List<Invoice> invoices = invoiceRepository.findByMonth(month);
-        
+
         for (Invoice invoice : invoices) {
-            // Only include invoices from cards owned by this user
-            if (!invoice.getCreditCard().getOwner().equals(user)) {
+            if (!isOwnedBy(invoice, user)) {
                 continue;
             }
-            
             for (InvoiceItem item : invoice.getItems()) {
-                Category itemCategory = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
-                
-                if (matchesCategory(itemCategory, targetCategory)) {
+                if (matchesCategory(resolveCategory(item), targetCategory)) {
                     details.add(new ExpenseDetailResponse(
-                        null, // No specific share for total view
-                        item.getId(),
-                        item.getDescription(),
-                        item.getAmount(),
-                        item.getPurchaseDate(),
-                        item.getInvoice().getId()
+                        null, item.getId(), item.getDescription(),
+                        item.getAmount(), item.getPurchaseDate(), item.getInvoice().getId()
                     ));
                 }
             }
@@ -219,47 +181,24 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         return details;
     }
 
-    /**
-     * Gets detailed expense information for a specific user, month, and category.
-     * Returns both shared amounts (ItemShare) and unshared amounts (for card owner).
-     * Uses the same logic as getExpensesByCategory to ensure consistency.
-     *
-     * @param user the user to get expenses for. Must not be null.
-     * @param month the month to get expenses for. Must not be null.
-     * @param category the category to filter by. Can be null for uncategorized items.
-     * @return a list of detailed expense entries. Never null.
-     */
+    @Override
     public List<ExpenseDetailResponse> getExpenseDetails(
             final User user, final YearMonth month, final Category category) {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
-
-        // Get all invoices for the month
         List<Invoice> invoices = invoiceRepository.findByMonth(month);
-        
-        // For each invoice, calculate user's share per item
+
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                // Calculate user's share for this item
                 BigDecimal userShareForItem = calculateUserShareForItem(item, user);
-                
-                if (userShareForItem.compareTo(BigDecimal.ZERO) > 0) {
-                    Category itemCategory = item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
-                    
-                    // Check if this item matches the target category
-                    if (matchesCategory(itemCategory, targetCategory)) {
-                        // Find the share ID if this is a shared item
-                        Long shareId = findShareIdForUser(item, user);
-                        
-                        details.add(new ExpenseDetailResponse(
-                            shareId, // null if unshared amount
-                            item.getId(),
-                            item.getDescription(),
-                            userShareForItem,
-                            item.getPurchaseDate(),
-                            item.getInvoice().getId()
-                        ));
-                    }
+
+                if (userShareForItem.compareTo(BigDecimal.ZERO) > 0
+                        && matchesCategory(resolveCategory(item), targetCategory)) {
+                    Long shareId = findShareIdForUser(item, user);
+                    details.add(new ExpenseDetailResponse(
+                        shareId, item.getId(), item.getDescription(),
+                        userShareForItem, item.getPurchaseDate(), item.getInvoice().getId()
+                    ));
                 }
             }
         }
@@ -281,6 +220,133 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             }
         }
         return null;
+    }
+
+    @Override
+    public Map<YearMonth, Map<Category, BigDecimal>> getExpensesByMonthAndCategory(
+            final User user, final YearMonth from, final YearMonth to) {
+        Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
+        List<Invoice> invoices = invoiceRepository.findByMonthBetween(from, to);
+
+        for (Invoice invoice : invoices) {
+            Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
+            if (monthMap == null) {
+                continue;
+            }
+            for (InvoiceItem item : invoice.getItems()) {
+                BigDecimal userShare = calculateUserShareForItem(item, user);
+                if (userShare.compareTo(BigDecimal.ZERO) > 0) {
+                    Category category = resolveCategory(item);
+                    monthMap.merge(category, userShare, BigDecimal::add);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public Map<YearMonth, Map<Category, BigDecimal>> getTotalExpensesByMonthAndCategory(
+            final User user, final YearMonth from, final YearMonth to) {
+        Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
+        List<Invoice> invoices = invoiceRepository.findByMonthBetween(from, to);
+
+        for (Invoice invoice : invoices) {
+            if (!isOwnedBy(invoice, user)) {
+                continue;
+            }
+            Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
+            if (monthMap == null) {
+                continue;
+            }
+            for (InvoiceItem item : invoice.getItems()) {
+                monthMap.merge(resolveCategory(item), item.getAmount(), BigDecimal::add);
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<TopExpenseEntry> getTopExpenses(final User user, final YearMonth month, final int limit) {
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<TopExpenseEntry> entries = new ArrayList<>();
+
+        for (Invoice invoice : invoices) {
+            for (InvoiceItem item : invoice.getItems()) {
+                BigDecimal userShare = calculateUserShareForItem(item, user);
+                if (userShare.compareTo(BigDecimal.ZERO) > 0) {
+                    entries.add(toTopExpenseEntry(item, invoice.getId(), userShare));
+                }
+            }
+        }
+
+        return sortAndLimit(entries, limit);
+    }
+
+    @Override
+    public List<TopExpenseEntry> getTotalTopExpenses(
+            final User user, final YearMonth month, final int limit) {
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<TopExpenseEntry> entries = new ArrayList<>();
+
+        for (Invoice invoice : invoices) {
+            if (!isOwnedBy(invoice, user)) {
+                continue;
+            }
+            for (InvoiceItem item : invoice.getItems()) {
+                entries.add(toTopExpenseEntry(item, invoice.getId(), item.getAmount()));
+            }
+        }
+
+        return sortAndLimit(entries, limit);
+    }
+
+    /**
+     * Creates a LinkedHashMap with empty maps for each month in the range.
+     */
+    private Map<YearMonth, Map<Category, BigDecimal>> initializeMonthRange(
+            final YearMonth from, final YearMonth to) {
+        Map<YearMonth, Map<Category, BigDecimal>> result = new LinkedHashMap<>();
+        YearMonth current = from;
+        while (!current.isAfter(to)) {
+            result.put(current, new HashMap<>());
+            current = current.plusMonths(1);
+        }
+        return result;
+    }
+
+    /**
+     * Resolves the category for an item, using UNCATEGORIZED_CATEGORY if null.
+     */
+    private Category resolveCategory(final InvoiceItem item) {
+        return item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
+    }
+
+    /**
+     * Checks if an invoice belongs to (is owned by) the given user.
+     */
+    private boolean isOwnedBy(final Invoice invoice, final User user) {
+        return invoice.getCreditCard().getOwner().equals(user);
+    }
+
+    /**
+     * Creates a TopExpenseEntry from an invoice item and a calculated amount.
+     */
+    private TopExpenseEntry toTopExpenseEntry(
+            final InvoiceItem item, final Long invoiceId, final BigDecimal amount) {
+        return new TopExpenseEntry(
+            item.getId(), item.getDescription(), amount,
+            item.getPurchaseDate(), invoiceId, item.getCategory()
+        );
+    }
+
+    /**
+     * Sorts entries by amount descending and returns the top N.
+     */
+    private List<TopExpenseEntry> sortAndLimit(final List<TopExpenseEntry> entries, final int limit) {
+        entries.sort(Comparator.comparing(TopExpenseEntry::amount).reversed());
+        return entries.stream().limit(limit).toList();
     }
 
     /**

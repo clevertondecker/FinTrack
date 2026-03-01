@@ -1,0 +1,140 @@
+.comparison-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.comparison-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.comparison-month-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.comparison-month-label {
+  font-size: 0.75rem;
+  color: #737373;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.comparison-month-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.comparison-diff {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #525252;
+}
+
+.comparison-diff.diff-increase {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.comparison-diff.diff-decrease {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.diff-percent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* Tooltip */
+.comparison-tooltip {
+  background: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e5e5;
+}
+
+.comparison-tooltip-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem;
+}
+
+.comparison-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.comparison-tooltip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comparison-tooltip-name {
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.comparison-tooltip-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.chart-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e5e5;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: chart-spin 0.8s linear infinite;
+}
+
+@keyframes chart-spin {
+  to { transform: rotate(360deg); }
+}
+
+.chart-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #737373;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .comparison-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .comparison-month-value {
+    font-size: 1rem;
+  }
+}

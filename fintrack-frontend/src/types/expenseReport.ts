@@ -42,3 +42,40 @@ export interface ExpenseReportResponse {
   totalAmount: number;
 }
 
+export interface MonthlyExpenseData {
+  month: string;
+  totalAmount: number;
+  categories: CategoryExpenseSummary[];
+}
+
+export interface ExpenseTrendsResponse {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  months: MonthlyExpenseData[];
+}
+
+export interface TopExpenseItem {
+  rank: number;
+  itemId: number;
+  description: string;
+  amount: number;
+  purchaseDate: string;
+  invoiceId: number;
+  category: CategoryResponse | null;
+  percentageOfTotal: number;
+}
+
+export interface TopExpensesResponse {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  month: string;
+  totalAmount: number;
+  topExpenses: TopExpenseItem[];
+}
+

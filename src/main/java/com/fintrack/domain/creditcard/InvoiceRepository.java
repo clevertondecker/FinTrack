@@ -79,4 +79,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
      * @param creditCard the credit card the invoice belongs to. Must not be null.
      */
     void deleteByIdAndCreditCard(Long id, CreditCard creditCard);
+
+    /**
+     * Finds all invoices within a range of months (inclusive).
+     *
+     * @param fromMonth the start month. Must not be null.
+     * @param toMonth the end month. Must not be null.
+     * @return a list of invoices within the range. Never null, may be empty.
+     */
+    List<Invoice> findByMonthBetween(YearMonth fromMonth, YearMonth toMonth);
 } 

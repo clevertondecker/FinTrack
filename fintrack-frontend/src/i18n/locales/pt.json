@@ -511,6 +511,17 @@
     "shared": "Compartilhado",
     "unshared": "Não compartilhado",
     "showingMine": "Meus gastos",
-    "showingTotal": "Gastos totais"
+    "showingTotal": "Gastos totais",
+    "uncategorized": "Sem categoria",
+    "charts": {
+      "categoryBreakdown": "Distribuição por Categoria",
+      "monthComparison": "Comparativo Mensal",
+      "monthlyEvolution": "Evolução de Gastos",
+      "topExpenses": "Top 5 Maiores Gastos",
+      "noChartData": "Sem dados para o gráfico",
+      "currentMonth": "Mês Atual",
+      "previousMonth": "Mês Anterior",
+      "percentOfTotal": "{{percent}}% do total"
+    }
   }
 } 

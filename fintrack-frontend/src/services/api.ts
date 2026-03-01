@@ -38,7 +38,9 @@ import {
 } from '../types/invoiceImport';
 import {
   ExpenseReportResponse,
-  CategoryExpenseSummary
+  CategoryExpenseSummary,
+  ExpenseTrendsResponse,
+  TopExpensesResponse
 } from '../types/expenseReport';
 
 class ApiService {
@@ -360,6 +362,36 @@ class ApiService {
   async getExpenseSummary(month?: string): Promise<CategoryExpenseSummary[]> {
     const url = month ? `/expenses/summary?month=${month}` : '/expenses/summary';
     const response = await this.api.get<CategoryExpenseSummary[]>(url);
+    return response.data;
+  }
+
+  async getExpenseTrends(
+    months?: number,
+    showTotal?: boolean
+  ): Promise<ExpenseTrendsResponse> {
+    const params = new URLSearchParams();
+    if (months) params.append('months', months.toString());
+    if (showTotal) params.append('showTotal', 'true');
+
+    const queryString = params.toString();
+    const url = `/expenses/trends${queryString ? `?${queryString}` : ''}`;
+    const response = await this.api.get<ExpenseTrendsResponse>(url);
+    return response.data;
+  }
+
+  async getTopExpenses(
+    month?: string,
+    limit?: number,
+    showTotal?: boolean
+  ): Promise<TopExpensesResponse> {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (limit) params.append('limit', limit.toString());
+    if (showTotal) params.append('showTotal', 'true');
+
+    const queryString = params.toString();
+    const url = `/expenses/top${queryString ? `?${queryString}` : ''}`;
+    const response = await this.api.get<TopExpensesResponse>(url);
     return response.data;
   }
 }

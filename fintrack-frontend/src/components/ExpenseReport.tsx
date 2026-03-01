@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Calendar, Filter } from 'lucide-react';
 import apiService from '../services/api';
-import { ExpenseReportResponse } from '../types/expenseReport';
+import { ExpenseReportResponse, ExpenseTrendsResponse, TopExpensesResponse } from '../types/expenseReport';
 import { Category } from '../types/invoice';
-import { formatCurrency, formatDate } from '../utils/invoiceUtils';
+import { formatCurrency, formatDate, formatMonthLabel } from '../utils/invoiceUtils';
+import CategoryDonutChart from './charts/CategoryDonutChart';
+import MonthComparisonChart from './charts/MonthComparisonChart';
+import MonthlyEvolutionChart from './charts/MonthlyEvolutionChart';
+import TopExpensesList from './charts/TopExpensesList';
 import './ExpenseReport.css';
 
 const ExpenseReport: React.FC = () => {
@@ -21,6 +25,10 @@ const ExpenseReport: React.FC = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showTotal, setShowTotal] = useState(false);
+  const [trendsData, setTrendsData] = useState<ExpenseTrendsResponse | null>(null);
+  const [topExpenses, setTopExpenses] = useState<TopExpensesResponse | null>(null);
+  const [trendsLoading, setTrendsLoading] = useState(false);
+  const [topLoading, setTopLoading] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -29,6 +37,10 @@ const ExpenseReport: React.FC = () => {
   useEffect(() => {
     loadExpenseReport();
   }, [selectedMonth, selectedCategoryId, showTotal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadChartsData();
+  }, [selectedMonth, showTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCategories = async () => {
     try {
@@ -63,6 +75,23 @@ const ExpenseReport: React.FC = () => {
     }
   };
 
+  const loadChartsData = async () => {
+    setTrendsLoading(true);
+    setTopLoading(true);
+
+    const trendsPromise = apiService.getExpenseTrends(6, showTotal)
+      .then(data => setTrendsData(data))
+      .catch(err => console.error('Error loading trends:', err))
+      .finally(() => setTrendsLoading(false));
+
+    const topPromise = apiService.getTopExpenses(selectedMonth, 5, showTotal)
+      .then(data => setTopExpenses(data))
+      .catch(err => console.error('Error loading top expenses:', err))
+      .finally(() => setTopLoading(false));
+
+    await Promise.all([trendsPromise, topPromise]);
+  };
+
   const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedMonth(e.target.value);
   };
@@ -82,14 +111,6 @@ const ExpenseReport: React.FC = () => {
       newExpanded.add(key);
     }
     setExpandedCategories(newExpanded);
-  };
-
-  const getMonthDisplay = (monthString: string) => {
-    const [year, month] = monthString.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    // Use the current i18n language for date formatting
-    const locale = i18n.language === 'pt' ? 'pt-BR' : 'en-US';
-    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   };
 
   const calculatePercentage = (amount: number, total: number) => {
@@ -239,9 +260,45 @@ const ExpenseReport: React.FC = () => {
         </div>
       </div>
 
+      {/* Charts Section */}
+      <div className="charts-section">
+        <div className="chart-card">
+          <h3 className="chart-card-title">{t('expenseReport.charts.categoryBreakdown')}</h3>
+          <CategoryDonutChart
+            data={report.expensesByCategory}
+            totalAmount={totalAmount}
+          />
+        </div>
+
+        <div className="chart-card">
+          <h3 className="chart-card-title">{t('expenseReport.charts.topExpenses')}</h3>
+          <TopExpensesList
+            expenses={topExpenses?.topExpenses || []}
+            loading={topLoading}
+          />
+        </div>
+
+        <div className="chart-card chart-full-width">
+          <h3 className="chart-card-title">{t('expenseReport.charts.monthComparison')}</h3>
+          <MonthComparisonChart
+            currentMonth={trendsData?.months?.[trendsData.months.length - 1] || null}
+            previousMonth={trendsData?.months?.[trendsData.months.length - 2] || null}
+            loading={trendsLoading}
+          />
+        </div>
+
+        <div className="chart-card chart-full-width">
+          <h3 className="chart-card-title">{t('expenseReport.charts.monthlyEvolution')}</h3>
+          <MonthlyEvolutionChart
+            data={trendsData?.months || []}
+            loading={trendsLoading}
+          />
+        </div>
+      </div>
+
       {/* Month Display */}
       <div className="month-display">
-        <h2>{getMonthDisplay(selectedMonth)}</h2>
+        <h2>{formatMonthLabel(selectedMonth, i18n.language, 'long')}</h2>
       </div>
 
       {/* Categories List */}
@@ -275,7 +332,7 @@ const ExpenseReport: React.FC = () => {
                       style={{ backgroundColor: categoryExpense.category?.color || '#CCCCCC' }}
                     />
                     <div className="category-details">
-                      <h3 className="category-name">{categoryExpense.category?.name || 'Sem categoria'}</h3>
+                      <h3 className="category-name">{categoryExpense.category?.name || t('expenseReport.uncategorized')}</h3>
                       <div className="category-meta">
                         <span className="category-percentage">
                           {percentage.toFixed(1)}% {t('expenseReport.ofTotal')}
