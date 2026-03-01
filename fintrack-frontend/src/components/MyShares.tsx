@@ -6,11 +6,17 @@ import { getStatusColor, getStatusText, formatCurrency, formatDate } from '../ut
 import MarkShareAsPaidModal from './MarkShareAsPaidModal';
 import './MyShares.css';
 
+interface InvoiceGroup {
+  invoiceId: number;
+  dueDate: string;
+  shares: MyShareResponse[];
+}
+
 interface GroupedShares {
   [key: string]: {
     creditCardName: string;
     creditCardOwnerName: string;
-    shares: MyShareResponse[];
+    invoices: InvoiceGroup[];
   };
 }
 
@@ -22,7 +28,9 @@ const MyShares: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedShare, setSelectedShare] = useState<MyShareResponse | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [monthFilter, setMonthFilter] = useState<string | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [collapsedCards, setCollapsedCards] = useState<Set<string>>(new Set());
   const [selectedShareIds, setSelectedShareIds] = useState<number[]>([]);
   const [bulkPaymentMethod, setBulkPaymentMethod] = useState('PIX');
   const [bulkPaymentDate, setBulkPaymentDate] = useState(new Date().toISOString().slice(0, 16));
@@ -38,20 +46,6 @@ const MyShares: React.FC = () => {
       setError(null);
       const response = await apiService.getMyShares();
       setShares(response);
-
-      // Group shares by credit card
-      const grouped: GroupedShares = {};
-      response.shares.forEach(share => {
-        const key = `${share.creditCardName}-${share.creditCardOwnerName}`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            creditCardName: share.creditCardName,
-            creditCardOwnerName: share.creditCardOwnerName,
-            shares: []
-          };
-        }
-        grouped[key].shares.push(share);
-      });
     } catch (err: any) {
       console.error('Error loading shares:', err);
       setError(err.response?.data?.message || t('shares.errorLoadingShares'));
@@ -64,35 +58,75 @@ const MyShares: React.FC = () => {
     return `${(percentage * 100).toFixed(1)}%`;
   };
 
-  const pluralizeDivisao = (count: number) => {
-    return count === 1 ? 'divisão' : 'divisões';
+  const getAvailableMonths = () => {
+    if (!shares) return [];
+    const unique = new Map<string, string>();
+    shares.shares.forEach(share => {
+      const ym = share.invoiceDueDate.substring(0, 7); // "YYYY-MM"
+      if (!unique.has(ym)) {
+        const [year, monthIdx] = ym.split('-');
+        const monthName = t(`shares.monthNames.${parseInt(monthIdx, 10)}`);
+        unique.set(ym, `${monthName}/${year}`);
+      }
+    });
+    return Array.from(unique.entries())
+      .map(([month, label]) => ({ month, label }))
+      .sort((a, b) => b.month.localeCompare(a.month));
+  };
+
+  const handleMonthFilterChange = (month: string | 'all') => {
+    setMonthFilter(month);
+  };
+
+  const filterByMonth = (sharesList: MyShareResponse[]) => {
+    if (monthFilter === 'all') return sharesList;
+    return sharesList.filter(s => s.invoiceDueDate.substring(0, 7) === monthFilter);
   };
 
   const filterShares = (shares: MyShareResponse[]) => {
-    if (statusFilter === 'all') return shares;
-    if (statusFilter === 'paid') return shares.filter(share => share.isPaid);
-    if (statusFilter === 'unpaid') return shares.filter(share => !share.isPaid);
-    return shares;
+    let filtered = filterByMonth(shares);
+    if (statusFilter === 'paid') filtered = filtered.filter(share => share.isPaid);
+    if (statusFilter === 'unpaid') filtered = filtered.filter(share => !share.isPaid);
+    return filtered;
   };
 
   const getFilteredGroupedShares = () => {
     if (!shares) return {};
-    
+
     const filteredShares = filterShares(shares.shares);
-    const grouped: GroupedShares = {};
-    
+    const temp: { [cardKey: string]: { creditCardName: string; creditCardOwnerName: string; invoiceMap: { [invoiceId: number]: InvoiceGroup } } } = {};
+
     filteredShares.forEach(share => {
-      const key = `${share.creditCardName}-${share.creditCardOwnerName}`;
-      if (!grouped[key]) {
-        grouped[key] = {
+      const cardKey = `${share.creditCardName}-${share.creditCardOwnerName}`;
+      if (!temp[cardKey]) {
+        temp[cardKey] = {
           creditCardName: share.creditCardName,
           creditCardOwnerName: share.creditCardOwnerName,
+          invoiceMap: {}
+        };
+      }
+      if (!temp[cardKey].invoiceMap[share.invoiceId]) {
+        temp[cardKey].invoiceMap[share.invoiceId] = {
+          invoiceId: share.invoiceId,
+          dueDate: share.invoiceDueDate,
           shares: []
         };
       }
-      grouped[key].shares.push(share);
+      temp[cardKey].invoiceMap[share.invoiceId].shares.push(share);
     });
-    
+
+    const grouped: GroupedShares = {};
+    Object.entries(temp).forEach(([cardKey, card]) => {
+      const invoices = Object.values(card.invoiceMap).sort(
+        (a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()
+      );
+      grouped[cardKey] = {
+        creditCardName: card.creditCardName,
+        creditCardOwnerName: card.creditCardOwnerName,
+        invoices
+      };
+    });
+
     return grouped;
   };
 
@@ -106,20 +140,30 @@ const MyShares: React.FC = () => {
     return filterShares(shares.shares).reduce((sum, share) => sum + share.myAmount, 0);
   };
 
-  /** Total de todas as divisões (sem filtro), para deixar claro quando o valor exibido é só do filtro. */
   const getTotalAmountAll = () => {
     if (!shares) return 0;
-    return shares.shares.reduce((sum, share) => sum + share.myAmount, 0);
+    return filterByMonth(shares.shares).reduce((sum, share) => sum + share.myAmount, 0);
   };
 
   const getStatusStats = () => {
     if (!shares) return { total: 0, paid: 0, unpaid: 0 };
-    
-    const total = shares.shares.length;
-    const paid = shares.shares.filter(share => share.isPaid).length;
+
+    const monthFiltered = filterByMonth(shares.shares);
+    const total = monthFiltered.length;
+    const paid = monthFiltered.filter(share => share.isPaid).length;
     const unpaid = total - paid;
-    
+
     return { total, paid, unpaid };
+  };
+
+  const getGroupTotalShares = (group: GroupedShares[string]) => {
+    return group.invoices.reduce((sum, inv) => sum + inv.shares.length, 0);
+  };
+
+  const getGroupTotalAmount = (group: GroupedShares[string]) => {
+    return group.invoices.reduce(
+      (sum, inv) => sum + inv.shares.reduce((s, share) => s + share.myAmount, 0), 0
+    );
   };
 
   const handleMarkAsPaid = (share: MyShareResponse) => {
@@ -130,55 +174,58 @@ const MyShares: React.FC = () => {
   const handleMarkAsUnpaid = async (share: MyShareResponse) => {
     try {
       await apiService.markShareAsUnpaid(share.shareId);
-      await loadMyShares(); // Reload to get updated data
+      await loadMyShares();
     } catch (err: any) {
       console.error('Error marking share as unpaid:', err);
-      setError(err.response?.data?.message || 'Erro ao marcar como não pago');
+      setError(err.response?.data?.message || t('shares.errorMarkUnpaid'));
     }
   };
 
   const handlePaymentMarked = () => {
-    loadMyShares(); // Reload to get updated data
+    loadMyShares();
   };
 
   const getPaymentMethodDisplayName = (method: string | null) => {
     if (!method) return '';
-    
-    const methodMap: { [key: string]: string } = {
-      'PIX': 'PIX',
-      'BANK_TRANSFER': 'Transferência Bancária',
-      'CASH': 'Dinheiro',
-      'CREDIT_CARD': 'Cartão de Crédito',
-      'DEBIT_CARD': 'Cartão de Débito',
-      'OTHER': 'Outro'
-    };
-    
-    return methodMap[method] || method;
+    return t(`shares.paymentMethod.${method}`, method);
   };
 
   const toggleSelectShare = (id: number) => {
     setSelectedShareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const handleSelectAll = () => {
+  const handleClearSelection = () => setSelectedShareIds([]);
+
+  const handleSelectAllFiltered = () => {
     if (!shares) return;
-    const ids = filterShares(shares.shares)
-      .map(s => s.shareId);
-    setSelectedShareIds(ids);
+    const filtered = filterShares(shares.shares);
+    const allIds = filtered.map(s => s.shareId);
+    const allSelected = allIds.every(id => selectedShareIds.includes(id));
+    if (allSelected) {
+      setSelectedShareIds(prev => prev.filter(id => !allIds.includes(id)));
+    } else {
+      setSelectedShareIds(prev => Array.from(new Set([...prev, ...allIds])));
+    }
   };
 
-  const handleClearSelection = () => setSelectedShareIds([]);
+  const toggleCardCollapse = (cardKey: string) => {
+    setCollapsedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardKey)) next.delete(cardKey);
+      else next.add(cardKey);
+      return next;
+    });
+  };
 
   const handleBulkMarkAsPaid = async () => {
     if (selectedShareIds.length === 0) return;
     if (!shares) return;
-    // Envia apenas itens ainda pendentes, mesmo que a seleção inclua pagos
     const idsToSend = selectedShareIds.filter(id => {
       const s = shares.shares.find(sh => sh.shareId === id);
       return s && !s.isPaid;
     });
     if (idsToSend.length === 0) {
-      setError('Nenhum item pendente para marcar como pago');
+      setError(t('shares.noPendingItems'));
       return;
     }
     try {
@@ -190,14 +237,24 @@ const MyShares: React.FC = () => {
       setSelectedShareIds([]);
     } catch (err: any) {
       console.error('Error marking shares as paid in bulk:', err);
-      setError(err.response?.data?.message || 'Erro ao marcar pagamentos em lote');
+      setError(err.response?.data?.message || t('shares.errorBulkPaid'));
     }
+  };
+
+  const getFilteredShareIds = () => {
+    if (!shares) return [];
+    return filterShares(shares.shares).map(s => s.shareId);
+  };
+
+  const isAllFilteredSelected = () => {
+    const ids = getFilteredShareIds();
+    return ids.length > 0 && ids.every(id => selectedShareIds.includes(id));
   };
 
   if (loading) {
     return (
       <div className="my-shares-container">
-        <div className="loading">Carregando suas divisões...</div>
+        <div className="loading">{t('shares.loadingShares')}</div>
       </div>
     );
   }
@@ -208,7 +265,7 @@ const MyShares: React.FC = () => {
         <div className="error-message">
           <p>{error}</p>
           <button onClick={loadMyShares} className="retry-btn">
-            Tentar Novamente
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -220,115 +277,130 @@ const MyShares: React.FC = () => {
       <div className="my-shares-container">
         <div className="empty-state">
           <div className="empty-icon">📋</div>
-          <h3>Nenhuma divisão encontrada</h3>
-          <p>Você não tem itens divididos com você por outros usuários ainda</p>
+          <h3>{t('shares.noShares')}</h3>
+          <p>{t('shares.noSharesDescription')}</p>
         </div>
       </div>
     );
   }
 
+  const filteredCount = getFilteredShareCount();
+
   return (
     <div className="my-shares-container">
       <div className="my-shares-header">
-        <h2>Minhas Divisões</h2>
+        <h2>{t('shares.title')}</h2>
         <div className="header-actions">
-          <button 
+          <button
             className="filter-button"
             onClick={() => setShowFilters(!showFilters)}
           >
-            {showFilters ? 'Ocultar Filtros' : 'Filtros'}
+            {showFilters ? t('shares.hideFilters') : t('shares.showFilters')}
           </button>
-          <button 
-            className="select-all-button"
-            onClick={handleSelectAll}
-          >
-            Selecionar todos (filtrados)
-          </button>
-          {selectedShareIds.length > 0 && (
-            <button 
-              className="clear-selection-button"
-              onClick={handleClearSelection}
-            >
-              Limpar seleção ({selectedShareIds.length})
-            </button>
-          )}
         </div>
         <div className="shares-summary">
           <span className="total-shares">
-            {getFilteredShareCount()} {pluralizeDivisao(getFilteredShareCount())}
+            {t('shares.divisionCount', { count: filteredCount })}
           </span>
           <span className="total-amount">
             {statusFilter === 'all'
-              ? `Total: ${formatCurrency(getFilteredTotalAmount())}`
-              : `Total (filtrado): ${formatCurrency(getFilteredTotalAmount())}`}
+              ? `${t('shares.totalLabel')} ${formatCurrency(getFilteredTotalAmount())}`
+              : `${t('shares.totalFiltered')} ${formatCurrency(getFilteredTotalAmount())}`}
           </span>
           {statusFilter !== 'all' && (
-            <span className="total-amount-all" title="Soma de todas as suas divisões (pendentes + pagas)">
-              Total geral: {formatCurrency(getTotalAmountAll())}
+            <span className="total-amount-all" title={t('shares.totalGeneral')}>
+              {t('shares.totalGeneral')} {formatCurrency(getTotalAmountAll())}
             </span>
           )}
         </div>
       </div>
 
       {selectedShareIds.length > 0 && (
-        <div className="bulk-actions" style={{ margin: '12px 0', padding: '12px', border: '1px solid #eee', borderRadius: 8 }}>
-          <span style={{ marginRight: 12 }}>{selectedShareIds.length} selecionado(s)</span>
-          <label style={{ marginRight: 8 }}>Método:</label>
-          <select value={bulkPaymentMethod} onChange={(e) => setBulkPaymentMethod(e.target.value)} style={{ marginRight: 12 }}>
-            <option value="PIX">PIX</option>
-            <option value="BANK_TRANSFER">Transferência Bancária</option>
-            <option value="CASH">Dinheiro</option>
-            <option value="CREDIT_CARD">Cartão de Crédito</option>
-            <option value="DEBIT_CARD">Cartão de Débito</option>
-            <option value="OTHER">Outro</option>
-          </select>
-          <label style={{ marginRight: 8 }}>Data:</label>
-          <input type="datetime-local" value={bulkPaymentDate} onChange={(e) => setBulkPaymentDate(e.target.value)} style={{ marginRight: 12 }} />
-          <button className="mark-paid-bulk-button" onClick={handleBulkMarkAsPaid}>
-            Marcar Selecionados como Pago
-          </button>
+        <div className="bulk-actions">
+          <div className="bulk-actions-top">
+            <span className="bulk-count">{t('shares.selectedCount', { count: selectedShareIds.length })}</span>
+            <button className="bulk-clear-btn" onClick={handleClearSelection}>
+              {t('shares.clearSelection')}
+            </button>
+          </div>
+          <div className="bulk-actions-controls">
+            <div className="bulk-field">
+              <label>{t('shares.methodLabel')}</label>
+              <select className="filter-select" value={bulkPaymentMethod} onChange={(e) => setBulkPaymentMethod(e.target.value)}>
+                <option value="PIX">{t('shares.paymentMethodShort.PIX')}</option>
+                <option value="BANK_TRANSFER">{t('shares.paymentMethodShort.BANK_TRANSFER')}</option>
+                <option value="CASH">{t('shares.paymentMethodShort.CASH')}</option>
+                <option value="CREDIT_CARD">{t('shares.paymentMethodShort.CREDIT_CARD')}</option>
+                <option value="DEBIT_CARD">{t('shares.paymentMethodShort.DEBIT_CARD')}</option>
+                <option value="OTHER">{t('shares.paymentMethodShort.OTHER')}</option>
+              </select>
+            </div>
+            <div className="bulk-field">
+              <label>{t('shares.dateLabel')}</label>
+              <input className="bulk-date-input" type="datetime-local" value={bulkPaymentDate} onChange={(e) => setBulkPaymentDate(e.target.value)} />
+            </div>
+            <button className="mark-paid-button" onClick={handleBulkMarkAsPaid}>
+              {t('shares.markAsPaid')}
+            </button>
+          </div>
         </div>
       )}
 
       {/* Filters Section */}
       {showFilters && (
         <div className="filters-section">
-          <div className="filter-stats">
-            <div className="stat-item">
-              <span className="stat-label">Total:</span>
-              <span className="stat-value">{getStatusStats().total}</span>
+          <div className="filters-row">
+            {getAvailableMonths().length > 1 && (
+              <div className="filter-inline">
+                <label>{t('shares.monthLabel')}</label>
+                <select
+                  className="filter-select"
+                  value={monthFilter}
+                  onChange={(e) => handleMonthFilterChange(e.target.value)}
+                >
+                  <option value="all">{t('shares.allMonths')}</option>
+                  {getAvailableMonths().map(m => (
+                    <option key={m.month} value={m.month}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="filter-inline">
+              <label>{t('shares.statusFilterLabel')}</label>
+              <div className="status-toggle">
+                <button
+                  className={`toggle-option ${statusFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('all')}
+                >
+                  {t('shares.filterAll')}
+                </button>
+                <button
+                  className={`toggle-option ${statusFilter === 'unpaid' ? 'active unpaid' : ''}`}
+                  onClick={() => setStatusFilter('unpaid')}
+                >
+                  {t('shares.filterPending')}
+                </button>
+                <button
+                  className={`toggle-option ${statusFilter === 'paid' ? 'active paid' : ''}`}
+                  onClick={() => setStatusFilter('paid')}
+                >
+                  {t('shares.filterPaid')}
+                </button>
+              </div>
             </div>
-            <div className="stat-item">
-              <span className="stat-label">Pendentes:</span>
-              <span className="stat-value unpaid">{getStatusStats().unpaid}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Pagos:</span>
-              <span className="stat-value paid">{getStatusStats().paid}</span>
+            <div className="filter-inline">
+              <button
+                className={`toggle-option select-all-btn ${isAllFilteredSelected() ? 'active' : ''}`}
+                onClick={handleSelectAllFiltered}
+              >
+                {isAllFilteredSelected() ? t('shares.deselectAll') : t('shares.selectAll')}
+              </button>
             </div>
           </div>
-          <div className="filter-group">
-            <label>Status de Pagamento:</label>
-            <div className="filter-options">
-              <button
-                className={`filter-option ${statusFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setStatusFilter('all')}
-              >
-                Todos ({getStatusStats().total})
-              </button>
-              <button
-                className={`filter-option ${statusFilter === 'unpaid' ? 'active' : ''}`}
-                onClick={() => setStatusFilter('unpaid')}
-              >
-                ⏳ Pendentes ({getStatusStats().unpaid})
-              </button>
-              <button
-                className={`filter-option ${statusFilter === 'paid' ? 'active' : ''}`}
-                onClick={() => setStatusFilter('paid')}
-              >
-                ✅ Pagos ({getStatusStats().paid})
-              </button>
-            </div>
+          <div className="filter-summary">
+            <span className="summary-badge">{t('shares.divisionCount', { count: getStatusStats().total })}</span>
+            <span className="summary-badge unpaid">{t('shares.pendingCount', { count: getStatusStats().unpaid })}</span>
+            <span className="summary-badge paid">{t('shares.paidCount', { count: getStatusStats().paid })}</span>
           </div>
         </div>
       )}
@@ -337,171 +409,189 @@ const MyShares: React.FC = () => {
         {Object.entries(getFilteredGroupedShares()).length === 0 ? (
           <div className="no-results">
             <div className="no-results-icon">🔍</div>
-            <h3>Nenhuma divisão encontrada</h3>
+            <h3>{t('shares.noShares')}</h3>
             <p>
-              {statusFilter === 'all' && 'Você não tem divisões ainda.'}
-              {statusFilter === 'paid' && 'Você não tem divisões pagas.'}
-              {statusFilter === 'unpaid' && 'Você não tem divisões pendentes.'}
+              {statusFilter === 'all' && t('shares.noSharesYet')}
+              {statusFilter === 'paid' && t('shares.noSharesPaid')}
+              {statusFilter === 'unpaid' && t('shares.noSharesPending')}
             </p>
-            {statusFilter !== 'all' && (
+            {(statusFilter !== 'all' || monthFilter !== 'all') && (
               <button
                 className="clear-filter-button"
-                onClick={() => setStatusFilter('all')}
+                onClick={() => { setStatusFilter('all'); setMonthFilter('all'); }}
               >
-                Ver todas as divisões
+                {t('shares.clearFilters')}
               </button>
             )}
           </div>
         ) : (
           Object.entries(getFilteredGroupedShares()).map(([key, group]) => {
-            const owner = group.creditCardOwnerName;
-            const count = group.shares.length;
-            
-            // Usar interpolação direta
-            const cardTitle = `Cartão de ${owner} - ${count} ${pluralizeDivisao(count)}`;
+            const totalShares = getGroupTotalShares(group);
+            const cardTitle = t('shares.cardOf', { owner: group.creditCardOwnerName, count: totalShares });
+
+            const isCollapsed = collapsedCards.has(key);
 
             return (
               <div key={key} className="credit-card-group">
-                <div className="group-header">
+                <div className="group-header" onClick={() => toggleCardCollapse(key)} style={{ cursor: 'pointer' }}>
                   <div className="card-info">
-                    <h3 className="card-name">{group.creditCardName}</h3>
+                    <h3 className="card-name">
+                      <span className="collapse-icon">{isCollapsed ? '\u25B6' : '\u25BC'}</span>
+                      {group.creditCardName}
+                    </h3>
                     <p className="card-owner">{cardTitle}</p>
                   </div>
                   <div className="group-summary">
                     <span className="group-count">
-                      {group.shares.length} item{group.shares.length > 1 ? 's' : ''}
+                      {t('shares.itemCount', { count: totalShares })}
                     </span>
                     <span className="group-total">
-                      {formatCurrency(
-                        group.shares.reduce((sum, share) => sum + share.myAmount, 0)
-                      )}
+                      {formatCurrency(getGroupTotalAmount(group))}
                     </span>
                   </div>
                 </div>
-                
-                <div className="shares-list">
-                  {group.shares.map((share) => (
-                    <div key={share.shareId} className="share-item">
-                      <div className="share-select" style={{ marginRight: 8 }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedShareIds.includes(share.shareId)}
-                          onChange={() => toggleSelectShare(share.shareId)}
-                        />
-                      </div>
-                      <div className="share-main-info">
-                        <div className="item-description">
-                          <h4>{share.itemDescription}</h4>
-                          {share.totalInstallments > 1 && (
-                            <span className="installment-info">
-                              Parcela {share.installments} de {share.totalInstallments}
-                              {share.remainingInstallments > 0 && (
-                                <span className="remaining-installments">
-                                  • Faltam {share.remainingInstallments} parcela{share.remainingInstallments > 1 ? 's' : ''}
-                                </span>
-                              )}
-                            </span>
-                          )}
-                          <div className="item-meta">
-                            <span className="invoice-info">
-                              Fatura #{share.invoiceId} • Vencimento: {formatDate(share.invoiceDueDate)}
-                            </span>
-                            <span className={`invoice-status ${getStatusColor(share.invoiceStatus)}`}>
-                              {getStatusText(share.invoiceStatus, t)}
-                            </span>
-                          </div>
+
+                {!isCollapsed && group.invoices.map((invoice) => {
+                  const invoiceTotal = invoice.shares.reduce((sum, s) => sum + s.myAmount, 0);
+                  return (
+                    <div key={invoice.invoiceId} className="invoice-subgroup">
+                      <div className="invoice-subgroup-header">
+                        <div className="invoice-subgroup-info">
+                          <span className="invoice-subgroup-label">
+                            {t('shares.invoiceDue', { date: formatDate(invoice.dueDate) })}
+                          </span>
+                          <span className="invoice-subgroup-count">
+                            {t('shares.divisionCount', { count: invoice.shares.length })}
+                          </span>
                         </div>
-                        
-                        <div className="share-amounts">
-                          <div className="amount-breakdown">
-                            <div className="total-item">
-                              <span className="label">Valor total:</span>
-                              <span className="value">{formatCurrency(share.itemAmount)}</span>
-                            </div>
-                            {share.totalInstallments > 1 && (
-                              <>
-                                <div className="total-item-amount">
-                                  <span className="label">Valor total do item:</span>
-                                  <span className="value">{formatCurrency(share.totalItemAmount)}</span>
-                                </div>
-                                {share.remainingInstallments > 0 && (
-                                  <div className="remaining-item-amount">
-                                    <span className="label">Valor restante:</span>
-                                    <span className="value remaining">{formatCurrency(share.remainingItemAmount)}</span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            <div className="my-share">
-                              <span className="label">Minha parte:</span>
-                              <span className="value highlight">
-                                {formatCurrency(share.myAmount)} ({formatPercentage(share.myPercentage)})
-                              </span>
-                            </div>
-                            
-                            {share.isPaid && (
-                              <div className="payment-info">
-                                <span className="label">Status:</span>
-                                <span className="value paid">✅ Pago</span>
-                                <div className="payment-details">
-                                  <span className="payment-method">
-                                    {getPaymentMethodDisplayName(share.paymentMethod)}
-                                  </span>
-                                  <span className="payment-date">
-                                    {formatDate(share.paidAt || '')}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {!share.isPaid && (
-                              <div className="payment-info">
-                                <span className="label">Status:</span>
-                                <span className="value unpaid">⏳ Pendente</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {share.isResponsible && (
-                            <div className="responsible-badge">
-                              <span>Responsável pelo pagamento</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="share-footer">
-                        <span className="share-date">
-                          Dividido em {formatDate(share.shareCreatedAt)}
+                        <span className="invoice-subgroup-total">
+                          {formatCurrency(invoiceTotal)}
                         </span>
                       </div>
-                      
-                      <div className="share-actions">
-                        {!share.isPaid ? (
-                          <button
-                            onClick={() => handleMarkAsPaid(share)}
-                            className="mark-paid-button"
-                          >
-                            Marcar como Pago
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleMarkAsUnpaid(share)}
-                            className="mark-unpaid-button"
-                          >
-                            Marcar como Não Pago
-                          </button>
-                        )}
+
+                      <div className="shares-list">
+                        {invoice.shares.map((share) => (
+                          <div key={share.shareId} className="share-item">
+                            <div className="share-select" style={{ marginRight: 8 }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedShareIds.includes(share.shareId)}
+                                onChange={() => toggleSelectShare(share.shareId)}
+                              />
+                            </div>
+                            <div className="share-main-info">
+                              <div className="item-description">
+                                <h4>{share.itemDescription}</h4>
+                                {share.totalInstallments > 1 && (
+                                  <span className="installment-info">
+                                    {t('shares.installmentOf', { current: share.installments, total: share.totalInstallments })}
+                                    {share.remainingInstallments > 0 && (
+                                      <span className="remaining-installments">
+                                        {t('shares.remainingInstallments', { count: share.remainingInstallments })}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                                <div className="item-meta">
+                                  <span className={`invoice-status ${getStatusColor(share.invoiceStatus)}`}>
+                                    {getStatusText(share.invoiceStatus, t)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="share-amounts">
+                                <div className="amount-breakdown">
+                                  <div className="total-item">
+                                    <span className="label">{t('shares.totalAmount')}</span>
+                                    <span className="value">{formatCurrency(share.itemAmount)}</span>
+                                  </div>
+                                  {share.totalInstallments > 1 && (
+                                    <>
+                                      <div className="total-item-amount">
+                                        <span className="label">{t('shares.totalItemAmount')}</span>
+                                        <span className="value">{formatCurrency(share.totalItemAmount)}</span>
+                                      </div>
+                                      {share.remainingInstallments > 0 && (
+                                        <div className="remaining-item-amount">
+                                          <span className="label">{t('shares.remainingItemAmount')}</span>
+                                          <span className="value remaining">{formatCurrency(share.remainingItemAmount)}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  <div className="my-share">
+                                    <span className="label">{t('shares.myShare')}</span>
+                                    <span className="value highlight">
+                                      {formatCurrency(share.myAmount)} ({formatPercentage(share.myPercentage)})
+                                    </span>
+                                  </div>
+
+                                  {share.isPaid && (
+                                    <div className="payment-info">
+                                      <span className="label">{t('common.status')}:</span>
+                                      <span className="value paid">{t('shares.paidStatus')}</span>
+                                      <div className="payment-details">
+                                        <span className="payment-method">
+                                          {getPaymentMethodDisplayName(share.paymentMethod)}
+                                        </span>
+                                        <span className="payment-date">
+                                          {formatDate(share.paidAt || '')}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {!share.isPaid && (
+                                    <div className="payment-info">
+                                      <span className="label">{t('common.status')}:</span>
+                                      <span className="value unpaid">{t('shares.pendingStatus')}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {share.isResponsible && (
+                                  <div className="responsible-badge">
+                                    <span>{t('shares.responsibleForPayment')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="share-footer">
+                              <span className="share-date">
+                                {t('shares.sharedOn', { date: formatDate(share.shareCreatedAt) })}
+                              </span>
+                            </div>
+
+                            <div className="share-actions">
+                              {!share.isPaid ? (
+                                <button
+                                  onClick={() => handleMarkAsPaid(share)}
+                                  className="mark-paid-button"
+                                >
+                                  {t('shares.markAsPaid')}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleMarkAsUnpaid(share)}
+                                  className="mark-unpaid-button"
+                                >
+                                  {t('shares.markAsUnpaid')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             );
           })
         )}
       </div>
-      
+
       {/* Payment Modal */}
       {showPaymentModal && selectedShare && (
         <MarkShareAsPaidModal
@@ -520,4 +610,4 @@ const MyShares: React.FC = () => {
   );
 };
 
-export default MyShares; 
+export default MyShares;

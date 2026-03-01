@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MarkShareAsPaidRequest } from '../types/itemShare';
 import apiService from '../services/api';
+import { formatCurrency } from '../utils/invoiceUtils';
 import './MarkShareAsPaidModal.css';
 
 interface MarkShareAsPaidModalProps {
@@ -12,14 +14,7 @@ interface MarkShareAsPaidModalProps {
   onPaymentMarked: () => void;
 }
 
-const PAYMENT_METHODS = [
-  { value: 'PIX', label: 'PIX' },
-  { value: 'BANK_TRANSFER', label: 'Transferência Bancária' },
-  { value: 'CASH', label: 'Dinheiro' },
-  { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
-  { value: 'DEBIT_CARD', label: 'Cartão de Débito' },
-  { value: 'OTHER', label: 'Outro' }
-];
+const PAYMENT_METHOD_KEYS = ['PIX', 'BANK_TRANSFER', 'CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'OTHER'];
 
 const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
   isOpen,
@@ -29,6 +24,7 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
   shareAmount,
   onPaymentMarked
 }) => {
+  const { t } = useTranslation();
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 16));
   const [saving, setSaving] = useState(false);
@@ -36,7 +32,7 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     setSaving(true);
     setError(null);
 
@@ -50,7 +46,7 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
       onPaymentMarked();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao marcar pagamento');
+      setError(err.response?.data?.message || t('shares.markAsPaidModal.errorMarking'));
     } finally {
       setSaving(false);
     }
@@ -62,35 +58,35 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-container mark-share-paid-modal">
         <div className="modal-header">
-          <h2>Marcar como Pago</h2>
+          <h2>{t('shares.markAsPaidModal.title')}</h2>
           <button onClick={onClose} className="close-button">&times;</button>
         </div>
-        
+
         <div className="modal-content">
           <div className="share-info">
             <h3>{shareDescription}</h3>
-            <p className="share-amount">Valor: R$ {shareAmount.toFixed(2)}</p>
+            <p className="share-amount">{t('shares.markAsPaidModal.amount', { amount: formatCurrency(shareAmount) })}</p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="paymentMethod">Método de Pagamento:</label>
+              <label htmlFor="paymentMethod">{t('shares.markAsPaidModal.paymentMethodLabel')}</label>
               <select
                 id="paymentMethod"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 required
               >
-                {PAYMENT_METHODS.map(method => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
+                {PAYMENT_METHOD_KEYS.map(key => (
+                  <option key={key} value={key}>
+                    {t(`shares.paymentMethod.${key}`)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="paymentDate">Data do Pagamento:</label>
+              <label htmlFor="paymentDate">{t('shares.markAsPaidModal.paymentDateLabel')}</label>
               <input
                 type="datetime-local"
                 id="paymentDate"
@@ -104,10 +100,10 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
 
             <div className="form-actions">
               <button type="submit" className="submit-button" disabled={saving}>
-                {saving ? 'Salvando...' : 'Marcar como Pago'}
+                {saving ? t('shares.markAsPaidModal.saving') : t('shares.markAsPaid')}
               </button>
               <button type="button" onClick={onClose} className="cancel-button">
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </form>
@@ -117,4 +113,4 @@ const MarkShareAsPaidModal: React.FC<MarkShareAsPaidModalProps> = ({
   );
 };
 
-export default MarkShareAsPaidModal; 
+export default MarkShareAsPaidModal;

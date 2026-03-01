@@ -76,90 +76,150 @@
 .filters-section {
   background: #f8f9fa;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 16px 20px;
   margin-bottom: 24px;
 }
 
-.filter-stats {
+.filters-row {
   display: flex;
-  gap: 24px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
-.stat-item {
+.filter-inline {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.stat-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #2c3e50;
-}
-
-.stat-value.paid {
-  color: #28a745;
-}
-
-.stat-value.unpaid {
-  color: #dc3545;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.filter-group label {
+.filter-inline label {
   font-weight: 600;
   color: #2c3e50;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
-.filter-options {
+.filter-select {
+  appearance: none;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 7px 32px 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-width: 140px;
+}
+
+.filter-select:hover {
+  border-color: #667eea;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+/* Status toggle pills */
+.status-toggle {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-option {
   background: white;
   border: 1px solid #ddd;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-option {
+  background: transparent;
+  border: none;
+  padding: 7px 14px;
+  font-size: 13px;
   font-weight: 500;
-  transition: all 0.2s;
   color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-right: 1px solid #ddd;
+  white-space: nowrap;
 }
 
-.filter-option:hover {
-  border-color: #667eea;
-  color: #667eea;
+.toggle-option:last-child {
+  border-right: none;
 }
 
-.filter-option.active {
+.toggle-option:hover {
+  background: #f0f2f8;
+  color: #2c3e50;
+}
+
+.toggle-option.active {
   background: #667eea;
-  border-color: #667eea;
   color: white;
 }
 
-.filter-option.active:hover {
-  background: #5a67d8;
+.toggle-option.active.unpaid {
+  background: #dc3545;
+}
+
+.toggle-option.active.paid {
+  background: #28a745;
+}
+
+.select-all-btn {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-all-btn:hover {
+  background: #f0f2f8;
+  border-color: #667eea;
+  color: #2c3e50;
+}
+
+.select-all-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+/* Summary badges */
+.filter-summary {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e8e8e8;
+  flex-wrap: wrap;
+}
+
+.summary-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #e8ecf4;
+  color: #2c3e50;
+}
+
+.summary-badge.unpaid {
+  background: #fde8ea;
+  color: #dc3545;
+}
+
+.summary-badge.paid {
+  background: #e6f4ea;
+  color: #28a745;
 }
 
 .shares-groups {
@@ -189,6 +249,14 @@
   margin: 0 0 4px 0;
   font-size: 20px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapse-icon {
+  font-size: 12px;
+  transition: transform 0.2s;
 }
 
 .card-owner {
@@ -212,6 +280,43 @@
 .group-total {
   font-size: 18px;
   font-weight: 600;
+}
+
+/* Invoice sub-group */
+.invoice-subgroup {
+  border-top: 1px solid #e0e0e0;
+}
+
+.invoice-subgroup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #f0f2f8;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.invoice-subgroup-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invoice-subgroup-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.invoice-subgroup-count {
+  color: #666;
+  font-size: 13px;
+}
+
+.invoice-subgroup-total {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 15px;
 }
 
 .shares-list {
@@ -410,6 +515,78 @@
   border: 1px solid #ffeaa7;
 }
 
+/* Bulk actions */
+.bulk-actions {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.bulk-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bulk-count {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.bulk-clear-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.bulk-clear-btn:hover {
+  background: #5a6268;
+}
+
+.bulk-actions-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bulk-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulk-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  white-space: nowrap;
+}
+
+.bulk-date-input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #2c3e50;
+  transition: border-color 0.2s;
+}
+
+.bulk-date-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
 .share-actions {
   display: flex;
   justify-content: flex-end;
@@ -516,13 +693,19 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .my-shares-container {
-    padding: 16px;
+    padding: 12px;
   }
 
   .my-shares-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .my-shares-header h2 {
+    font-size: 20px;
   }
 
   .header-actions {
@@ -532,32 +715,141 @@
 
   .shares-summary {
     width: 100%;
+    gap: 12px;
+  }
+
+  .total-shares {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+
+  .total-amount {
+    font-size: 14px;
+  }
+
+  .total-amount-all {
+    font-size: 12px;
+  }
+
+  /* Filters mobile */
+  .filters-section {
+    padding: 12px;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .filter-inline {
+    width: 100%;
+  }
+
+  .filter-inline label {
+    min-width: 50px;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .status-toggle {
+    flex: 1;
+  }
+
+  .toggle-option {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .filter-summary {
+    justify-content: center;
+  }
+
+  /* Bulk actions mobile */
+  .bulk-actions-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bulk-field {
+    width: 100%;
+  }
+
+  .bulk-field select,
+  .bulk-date-input {
+    flex: 1;
+  }
+
+  .bulk-actions-controls .mark-paid-button {
+    width: 100%;
+  }
+
+  /* Card groups mobile */
+  .group-header {
+    padding: 14px 16px;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .card-info h3 {
+    font-size: 16px;
+  }
+
+  .card-owner {
+    font-size: 12px;
+  }
+
+  .group-summary {
+    flex-direction: row;
+    gap: 12px;
+    width: 100%;
     justify-content: space-between;
   }
 
-  .filters-section {
-    padding: 16px;
+  .group-total {
+    font-size: 16px;
   }
 
-  .filter-options {
+  /* Invoice subgroup mobile */
+  .invoice-subgroup-header {
+    padding: 10px 16px;
     flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
   }
 
-  .filter-option {
-    text-align: center;
+  .invoice-subgroup-info {
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
   }
 
-  .credit-card-group {
-    margin-bottom: 20px;
+  .invoice-subgroup-total {
+    font-size: 14px;
   }
 
+  /* Share items mobile */
   .share-item {
-    padding: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 6px;
   }
 
   .share-main-info {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .item-description h4 {
+    font-size: 15px;
+    margin-bottom: 6px;
   }
 
   .share-amounts {
@@ -566,34 +858,51 @@
 
   .share-actions {
     flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
   }
 
   .mark-paid-button,
   .mark-unpaid-button {
     width: 100%;
+    padding: 10px 16px;
+  }
+
+  .share-footer {
+    margin-top: 8px;
+    padding-top: 8px;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 380px) {
+  .my-shares-container {
+    padding: 8px;
+  }
+
   .my-shares-header h2 {
-    font-size: 24px;
-  }
-
-  .total-shares, .total-amount {
-    font-size: 12px;
-    padding: 6px 12px;
-  }
-
-  .card-info h3 {
     font-size: 18px;
   }
 
-  .item-description h4 {
+  .group-header {
+    padding: 12px;
+  }
+
+  .card-info h3 {
     font-size: 15px;
   }
 
   .share-item {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .item-description h4 {
+    font-size: 14px;
+  }
+
+  .toggle-option {
+    padding: 7px 4px;
+    font-size: 11px;
   }
 }
 

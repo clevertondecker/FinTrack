@@ -124,6 +124,10 @@ const Invoices: React.FC = () => {
     }
   };
 
+  const updateInvoiceInList = (updated: Invoice) => {
+    setInvoices(prev => prev.map(inv => inv.id === updated.id ? updated : inv));
+  };
+
   const loadCreditCards = async () => {
     try {
       const response = await apiService.getCreditCards();
@@ -378,19 +382,17 @@ const Invoices: React.FC = () => {
       
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
-      
+      updateInvoiceInList(invoiceResponse.invoice);
+
       // Limpa apenas descrição e valor, mantém categoria e data
-      setItemForm(prev => ({ 
-        ...prev, 
-        description: '', 
-        amount: '' 
+      setItemForm(prev => ({
+        ...prev,
+        description: '',
+        amount: ''
       }));
-      
+
       setShowAddMore(true);
       setQuickAddMode(false);
-      
-      // Atualiza também a lista principal de faturas para refletir o novo valor total
-      await loadInvoices();
       
     } catch (err: any) {
       // Tenta extrair a mensagem de erro específica do backend
@@ -439,9 +441,7 @@ const Invoices: React.FC = () => {
       
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
-      
-      // Atualiza também a lista principal de faturas para refletir o novo valor total
-      await loadInvoices();
+      updateInvoiceInList(invoiceResponse.invoice);
       
     } catch (err) {
       // Pode exibir erro se quiser
@@ -472,9 +472,7 @@ const Invoices: React.FC = () => {
       
       setInvoiceItems(itemsResponse.items);
       setSelectedInvoice(invoiceResponse.invoice);
-      
-      // Atualiza também a lista principal de faturas
-      await loadInvoices();
+      updateInvoiceInList(invoiceResponse.invoice);
       
     } catch (err) {
       console.error('Error reloading invoice items:', err);
@@ -564,7 +562,11 @@ const Invoices: React.FC = () => {
     setPayError(null);
     try {
       await apiService.payInvoice(invoiceToPay.id, { amount });
-      await loadInvoices();
+      const invoiceResponse = await apiService.getInvoice(invoiceToPay.id);
+      updateInvoiceInList(invoiceResponse.invoice);
+      if (selectedInvoice?.id === invoiceToPay.id) {
+        setSelectedInvoice(invoiceResponse.invoice);
+      }
       handleClosePayModal();
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || t('invoices.errorPayingInvoice');

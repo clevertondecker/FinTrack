@@ -506,26 +506,125 @@
 /* Responsive */
 @media (max-width: 768px) {
   .expense-report-container {
+    padding: 0.75rem;
+  }
+
+  .report-header {
     padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .report-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .summary-cards {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .card-icon {
+    font-size: 2rem;
+  }
+
+  .card-value {
+    font-size: 1.5rem;
   }
 
   .filters-container {
     flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filter-group.view-toggle {
+    margin-left: 0;
+  }
+
+  .category-filter-button {
+    min-width: 0;
+    width: 100%;
   }
 
   .category-card-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .category-name {
+    font-size: 1.1rem;
+  }
+
+  .category-amount {
+    font-size: 1.25rem;
   }
 
   .category-amount-section {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .category-details-expanded {
+    padding: 1rem;
+  }
+
+  .detail-main {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .detail-amount {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .expense-report-container {
+    padding: 0.5rem;
+  }
+
+  .report-title {
+    font-size: 1.25rem;
+  }
+
+  .card-value {
+    font-size: 1.25rem;
+  }
+
+  .card-label {
+    font-size: 0.75rem;
+  }
+
+  .category-card-header {
+    padding: 0.75rem;
+  }
+
+  .category-name {
+    font-size: 1rem;
+  }
+
+  .category-meta {
+    font-size: 0.8rem;
+  }
+
+  .expense-detail-item {
+    padding: 0.75rem;
+  }
+
+  .toggle-label {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .toggle-text {
+    font-size: 0.8rem;
   }
 }
 

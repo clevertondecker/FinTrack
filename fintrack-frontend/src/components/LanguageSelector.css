@@ -107,4 +107,24 @@
 
 .language-option:only-child {
   border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .language-button {
+    padding: 6px 8px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .language-text {
+    display: none;
+  }
+
+  .dropdown-arrow {
+    display: none;
+  }
+
+  .language-options-portal {
+    min-width: 120px;
+  }
 } 

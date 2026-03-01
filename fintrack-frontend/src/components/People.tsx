@@ -151,10 +151,10 @@ const People: React.FC = () => {
               ) : (
                 contacts.map((c) => (
                   <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.email}</td>
-                    <td>{c.tags ?? '—'}</td>
-                    <td>
+                    <td data-label={t('people.name')}>{c.name}</td>
+                    <td data-label={t('people.email')}>{c.email}</td>
+                    <td data-label={t('people.tags')}>{c.tags ?? '—'}</td>
+                    <td data-label={t('people.actions')}>
                       <button type="button" className="people-btn-edit" onClick={() => handleOpenEdit(c)}>
                         {t('people.edit')}
                       </button>
