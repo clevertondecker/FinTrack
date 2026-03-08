@@ -754,6 +754,46 @@ class InvoiceImportServiceTest {
     }
 
     @Test
+    void shouldProduceSameSignatureRegardlessOfDatePrefixOrInstallmentSuffix() throws Exception {
+        // Given — same item parsed with different description formats
+        BigDecimal amount = BigDecimal.valueOf(214.85);
+        LocalDate date = LocalDate.of(2025, 2, 15);
+
+        // Old flow: "02/02 MERCADOLIVRE*5PRODUTOS" with installments 1/2
+        String oldFlowDesc = "02/02 MERCADOLIVRE*5PRODUTOS";
+        // New flow: "MERCADOLIVRE*5PRODUTOS 01/02" with installments 1/1
+        String newFlowDesc = "MERCADOLIVRE*5PRODUTOS 01/02";
+        // Clean description (no prefix/suffix)
+        String cleanDesc = "MERCADOLIVRE*5PRODUTOS";
+
+        // When — compute signatures with SAME installment values (normalization strips from desc)
+        String sigOld = invokeComputeItemSignature(oldFlowDesc, amount, date, 1, 2);
+        String sigNew = invokeComputeItemSignature(newFlowDesc, amount, date, 1, 2);
+        String sigClean = invokeComputeItemSignature(cleanDesc, amount, date, 1, 2);
+
+        // Then — all should match because date prefix/installment suffix are stripped
+        assertThat(sigOld).isEqualTo(sigClean);
+        assertThat(sigNew).isEqualTo(sigClean);
+    }
+
+    @Test
+    void shouldNotStripLegitimateDescriptionParts() throws Exception {
+        // Given — descriptions that look like but aren't date/installment patterns
+        BigDecimal amount = BigDecimal.valueOf(50.00);
+        LocalDate date = LocalDate.of(2025, 3, 1);
+
+        // "12/2025 Annual Fee" — not DD/MM pattern (4-digit year)
+        String sig1 = invokeComputeItemSignature("12/2025 Annual Fee", amount, date, 1, 1);
+        String sig2 = invokeComputeItemSignature("12/2025 annual fee", amount, date, 1, 1);
+        assertThat(sig1).isEqualTo(sig2);
+
+        // Different actual descriptions should produce different signatures
+        String sigA = invokeComputeItemSignature("STORE ABC", amount, date, 1, 1);
+        String sigB = invokeComputeItemSignature("STORE XYZ", amount, date, 1, 1);
+        assertThat(sigA).isNotEqualTo(sigB);
+    }
+
+    @Test
     void shouldBuildExistingSignaturesEfficiently() throws Exception {
         // Given
         Invoice invoice = createExistingInvoiceWithItems();
@@ -795,13 +835,10 @@ class InvoiceImportServiceTest {
         // When
         InvoiceImportService.ItemProcessingResult addedResult = InvoiceImportService.ItemProcessingResult.added();
         InvoiceImportService.ItemProcessingResult skippedResult = InvoiceImportService.ItemProcessingResult.skipped();
-        InvoiceImportService.ItemProcessingResult conditionalResult =
-            InvoiceImportService.ItemProcessingResult.fromCondition(true);
 
         // Then
         assertThat(addedResult.wasAdded()).isTrue();
         assertThat(skippedResult.wasAdded()).isFalse();
-        assertThat(conditionalResult.wasAdded()).isTrue();
     }
 
     @Test

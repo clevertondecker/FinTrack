@@ -21,4 +21,14 @@ public record ImportInvoiceResponse(
     BigDecimal totalAmount,
     String bankName,
     String cardLastFourDigits
-) {} 
+) {
+    /**
+     * Creates an error response with only the error message populated.
+     */
+    public static ImportInvoiceResponse error(String errorMessage) {
+        return new ImportInvoiceResponse(
+            errorMessage, null, null, null, null,
+            errorMessage, null, null, null, null, null
+        );
+    }
+}

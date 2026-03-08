@@ -525,12 +525,22 @@ const Invoices: React.FC = () => {
     setPaying(true);
     setPayError(null);
     try {
-      await apiService.payInvoice(invoiceToPay.id, { amount });
-      const invoiceResponse = await apiService.getInvoice(invoiceToPay.id);
-      updateInvoiceInList(invoiceResponse.invoice);
-      if (selectedInvoice?.id === invoiceToPay.id) {
-        setSelectedInvoice(invoiceResponse.invoice);
+      const cards = invoiceToPay._consolidatedCards;
+      if (cards && cards.length > 1) {
+        // Consolidated: distribute payment proportionally across sub-invoices
+        const totalRemaining = cards.reduce((s, c) => s + (c.totalAmount || 0) - (c.paidAmount || 0), 0);
+        for (const card of cards) {
+          const cardRemaining = (card.totalAmount || 0) - (card.paidAmount || 0);
+          if (cardRemaining <= 0) continue;
+          const cardPayment = Math.round((cardRemaining / totalRemaining) * amount * 100) / 100;
+          if (cardPayment > 0) {
+            await apiService.payInvoice(card.id, { amount: cardPayment });
+          }
+        }
+      } else {
+        await apiService.payInvoice(invoiceToPay.id, { amount });
       }
+      await loadInvoices();
       handleClosePayModal();
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || t('invoices.errorPayingInvoice');
@@ -649,7 +659,7 @@ const Invoices: React.FC = () => {
               {t('invoices.viewButton')}
             </button>
           )}
-          {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && !consolidated && (
+          {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && (
             <button
               onClick={() => handleOpenPayModal(invoice)}
               className="pay-button"
@@ -1243,6 +1253,22 @@ const Invoices: React.FC = () => {
                 <p><strong>{t('invoices.paidAmountLabel')}:</strong> {formatCurrency(getInvoiceUserPaid(invoiceToPay))}</p>
                 <p><strong>{t('invoices.remainingAmountLabel')}:</strong> {formatCurrency(getInvoiceUserRemaining(invoiceToPay))}</p>
               </div>
+              {invoiceToPay._consolidatedCards && invoiceToPay._consolidatedCards.length > 1 && (
+                <div className="consolidated-pay-breakdown">
+                  <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
+                    {t('invoices.paymentDistribution', 'O pagamento será distribuído proporcionalmente:')}
+                  </p>
+                  {invoiceToPay._consolidatedCards.map(card => {
+                    const remaining = (card.totalAmount || 0) - (card.paidAmount || 0);
+                    return remaining > 0 ? (
+                      <div key={card.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '2px 0' }}>
+                        <span>{card.creditCardName}</span>
+                        <span>{formatCurrency(remaining)}</span>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
 
               <form onSubmit={handlePayInvoice} className="pay-form">
                 <div className="form-group">

@@ -76,13 +76,6 @@ public class InvoiceImportService {
     /** Confidence threshold below which imports require manual review. */
     private static final double MANUAL_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
     
-    /** Hexadecimal mask for byte-to-hex conversion in SHA-256 computation. */
-    private static final int HEX_MASK = 0xff;
-
-    /** Initial capacity for collections. */
-    private static final int INITIAL_CAPACITY = 16;
-    /** Load factor for collections. */
-    private static final float LOAD_FACTOR = 0.75f;
     
     /** Cached special item types for performance. */
     private static final Set<String> SPECIAL_ITEM_TYPES = Set.of(
@@ -92,6 +85,14 @@ public class InvoiceImportService {
     
     /** Compiled regex pattern for whitespace normalization. */
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+
+    /** Pattern to strip date prefix like "02/02 " or "N 02/02 " from descriptions. */
+    private static final Pattern DATE_PREFIX_PATTERN =
+        Pattern.compile("^(?:\\d{1,2}\\s+)?\\d{2}/\\d{2}\\s+");
+
+    /** Pattern to strip installment suffix like " 01/02" from descriptions. */
+    private static final Pattern INSTALLMENT_SUFFIX_PATTERN =
+        Pattern.compile("\\s+\\d{1,2}/\\d{1,2}$");
 
     /** The invoice import repository. */
     private final InvoiceImportJpaRepository invoiceImportRepository;
@@ -182,16 +183,26 @@ public class InvoiceImportService {
                 user.getEmail(), file.getOriginalFilename());
 
         ImportSource source = determineImportSource(file.getOriginalFilename());
+        logger.info("Preview import: source={}, fileSize={}", source, file.getSize());
+
         String filePath = saveFileToDisk(file);
+        logger.info("File saved to: {}", filePath);
 
         InvoiceImport importRecord = InvoiceImport.of(user, source, file.getOriginalFilename(), filePath);
         importRecord = invoiceImportRepository.save(importRecord);
+        logger.info("Import record created: id={}", importRecord.getId());
 
         ParsedInvoiceData parsedData = parseFile(importRecord);
+        logger.info("Parsed data: items={}, cardSections={}, bank={}, confidence={}",
+                parsedData.items() != null ? parsedData.items().size() : 0,
+                parsedData.cardSections() != null ? parsedData.cardSections().size() : 0,
+                parsedData.bankName(), parsedData.confidence());
+
         updateImportWithParsedData(importRecord, parsedData);
 
         List<DetectedCardMapping> detectedCards = cardAutoMatchService.buildDetectedCardMappings(parsedData, user);
         boolean allMatched = detectedCards.stream().allMatch(DetectedCardMapping::autoMatched);
+        logger.info("Card matching: detected={}, allMatched={}", detectedCards.size(), allMatched);
 
         importRecord.markAsPendingReview();
         invoiceImportRepository.save(importRecord);
@@ -220,6 +231,8 @@ public class InvoiceImportService {
         Validate.notNull(importId, "Import ID must not be null.");
         Validate.notNull(request, "Request must not be null.");
 
+        logger.info("Confirming import {}: {} card mappings", importId, request.cardMappings().size());
+
         InvoiceImport importRecord = invoiceImportRepository.findByIdAndUser(importId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Import not found or access denied."));
 
@@ -232,6 +245,7 @@ public class InvoiceImportService {
 
         Map<String, List<ParsedInvoiceData.ParsedInvoiceItem>> itemsByCard =
                 cardAutoMatchService.buildItemsByCardMap(parsedData);
+        logger.info("Items by card map: {} entries, keys={}", itemsByCard.size(), itemsByCard.keySet());
 
         LocalDate dueDate = parsedData.dueDate() != null
                 ? parsedData.dueDate()
@@ -244,9 +258,17 @@ public class InvoiceImportService {
         int totalItems = 0;
 
         String groupId = request.cardMappings().size() > 1
-                ? java.util.UUID.randomUUID().toString() : null;
+                ? UUID.randomUUID().toString() : null;
+
+        // Build global signatures from ALL invoices of the same month to prevent
+        // cross-card duplicates (e.g., old single-card import put all items in one invoice)
+        Set<String> globalSignatures = buildGlobalSignatures(invoiceMonth);
+        logger.info("Built {} global signatures for month {}", globalSignatures.size(), invoiceMonth);
 
         for (ConfirmImportRequest.CardMapping mapping : request.cardMappings()) {
+            logger.info("Processing mapping: digits={}, creditCardId={}",
+                    mapping.detectedLastFourDigits(), mapping.creditCardId());
+
             CreditCard creditCard = validateAndGetCreditCard(mapping.creditCardId(), user);
             List<ParsedInvoiceData.ParsedInvoiceItem> cardItems =
                     itemsByCard.getOrDefault(mapping.detectedLastFourDigits(), List.of());
@@ -261,7 +283,7 @@ public class InvoiceImportService {
             if (groupId != null) {
                 invoice.setImportGroupId(groupId);
             }
-            addItemsToInvoice(invoice, cardItems);
+            addItemsToInvoice(invoice, cardItems, globalSignatures);
 
             int categorized = merchantCategorizationService.applyRulesToItems(
                     invoice.getItems(), creditCard.getOwner());
@@ -380,18 +402,25 @@ public class InvoiceImportService {
             // Update import record with parsed data
             updateImportWithParsedData(importRecord, parsedData);
 
-            // Determine if manual review is needed
-            if (requiresManualReview(parsedData.confidence())) {
+            // Force manual review when multiple cards are detected
+            boolean multiCard = parsedData.cardSections() != null
+                    && parsedData.cardSections().size() > 1;
+
+            if (multiCard) {
+                importRecord.markForManualReview();
+                logger.info("Import {} requires review: {} card sections detected",
+                    importId, parsedData.cardSections().size());
+            } else if (requiresManualReview(parsedData.confidence())) {
                 importRecord.markForManualReview();
                 logger.info(
                     "Import {} marked for manual review due to low confidence: {}",
                     importId, parsedData.confidence());
             } else {
-                // Create invoice automatically
+                // Create invoice automatically (single card only)
                 logger.info("Creating invoice for import: {}", importId);
                 Invoice invoice = createInvoiceFromParsedData(importRecord, parsedData);
                 handleImportCompletion(importRecord, invoice);
-                logger.info("Import {} completed successfully, invoice: {} with {} items", 
+                logger.info("Import {} completed successfully, invoice: {} with {} items",
                     importId, invoice.getId(), invoice.getItems().size());
             }
 
@@ -469,16 +498,26 @@ public class InvoiceImportService {
      * @throws IOException if there's an error saving the file.
      */
     private String saveFileToDisk(MultipartFile file) throws IOException {
-        // Use upload directory or fallback to temp directory for tests
-        String directory = uploadDirectory != null ? uploadDirectory : System.getProperty("java.io.tmpdir");
-        
-        // Create upload directory if it doesn't exist
-        Path uploadPath = Paths.get(directory);
+        String directory = uploadDirectory != null && !uploadDirectory.isBlank()
+                ? uploadDirectory
+                : System.getProperty("java.io.tmpdir");
+
+        Path uploadPath = Paths.get(directory).toAbsolutePath();
+        logger.info("Upload directory: {} (exists={}, writable={})",
+                uploadPath, Files.exists(uploadPath),
+                Files.exists(uploadPath) && Files.isWritable(uploadPath));
+
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
+            logger.info("Created upload directory: {}", uploadPath);
         }
 
-        // Generate unique filename
+        if (!Files.isWritable(uploadPath)) {
+            // Fallback to temp directory if upload dir is not writable
+            uploadPath = Paths.get(System.getProperty("java.io.tmpdir")).toAbsolutePath();
+            logger.warn("Upload directory not writable, falling back to temp: {}", uploadPath);
+        }
+
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
@@ -486,9 +525,9 @@ public class InvoiceImportService {
         }
         String uniqueFilename = UUID.randomUUID() + extension;
 
-        // Save file
         Path filePath = uploadPath.resolve(uniqueFilename);
         Files.copy(file.getInputStream(), filePath);
+        logger.info("File saved: {} ({} bytes)", filePath, Files.size(filePath));
 
         return filePath.toString();
     }
@@ -554,7 +593,7 @@ public class InvoiceImportService {
             : YearMonth.from(dueDate);
         Invoice invoice = findOrCreateInvoice(creditCard, invoiceMonth, dueDate);
         
-        addItemsToInvoice(invoice, parsedData.items());
+        addItemsToInvoice(invoice, parsedData.items(), Set.of());
         
         // Apply merchant categorization rules to new items
         User owner = creditCard.getOwner();
@@ -622,13 +661,15 @@ public class InvoiceImportService {
      * Adds parsed items to an invoice with duplicate detection and removal.
      * Items are deduplicated based on their computed signature to prevent
      * adding the same item multiple times during re-imports.
-     * REFACTORED: Enhanced with performance metrics and better logging.
      *
      * @param invoice the invoice to add items to. Cannot be null.
      * @param parsedItems the list of parsed items to add. Can be null or empty.
+     * @param extraSignatures additional signatures (e.g., from other invoices of the same month)
+     *                        to check for cross-invoice duplicates. Can be empty.
      */
     private void addItemsToInvoice(
-            Invoice invoice, List<ParsedInvoiceData.ParsedInvoiceItem> parsedItems) {
+            Invoice invoice, List<ParsedInvoiceData.ParsedInvoiceItem> parsedItems,
+            Set<String> extraSignatures) {
         if (parsedItems == null || parsedItems.isEmpty()) {
             logger.warn("No items found in parsed data for invoice: {}", invoice.getId());
             return;
@@ -636,11 +677,12 @@ public class InvoiceImportService {
 
         long startTime = System.currentTimeMillis();
         int initialItemCount = invoice.getItems().size();
-        
+
         logger.info("Adding {} items to invoice {} (with enhanced deduplication)",
                 parsedItems.size(), invoice.getId());
 
         Set<String> existingSignatures = buildExistingSignatures(invoice);
+        existingSignatures.addAll(extraSignatures);
         ItemAdditionResult result = processItems(invoice, parsedItems, existingSignatures);
 
         long processingTime = System.currentTimeMillis() - startTime;
@@ -658,9 +700,24 @@ public class InvoiceImportService {
     }
 
     /**
+     * Builds signatures from ALL invoices of the given month.
+     * Used during multi-card confirm to detect items already imported
+     * by a previous single-card import into the wrong invoice.
+     */
+    private Set<String> buildGlobalSignatures(YearMonth month) {
+        List<Invoice> allMonthInvoices = invoiceRepository.findByMonth(month);
+        Set<String> signatures = new HashSet<>();
+        for (Invoice inv : allMonthInvoices) {
+            inv.getItems().stream()
+                .map(this::safeComputeSignature)
+                .filter(sig -> !sig.isEmpty())
+                .forEach(signatures::add);
+        }
+        return signatures;
+    }
+
+    /**
      * Builds a set of signatures for all existing items in the invoice.
-     * REFACTORED: Optimized with better performance and capacity pre-allocation.
-     * Used to identify duplicate items during import processing.
      *
      * @param invoice the invoice to extract signatures from. Cannot be null.
      * @return a set of unique item signatures. Never null, may be empty.
@@ -674,7 +731,7 @@ public class InvoiceImportService {
         }
         
         // Pre-allocate capacity for better performance
-        Set<String> signatures = new HashSet<>(items.size(), LOAD_FACTOR);
+        Set<String> signatures = new HashSet<>(items.size());
         
         // Use stream for better readability and potential parallelization
         items.stream()
@@ -725,7 +782,7 @@ public class InvoiceImportService {
         int skipped = 0;
 
         // Pre-allocate capacity for better performance
-        Set<String> processedSignatures = new HashSet<>(INITIAL_CAPACITY, LOAD_FACTOR);
+        Set<String> processedSignatures = new HashSet<>();
         processedSignatures.addAll(existingSignatures);
 
         for (ParsedInvoiceData.ParsedInvoiceItem parsedItem : parsedItems) {
@@ -947,12 +1004,6 @@ public class InvoiceImportService {
             return new ItemProcessingResult(false);
         }
 
-        /**
-         * Creates a result based on a condition.
-         */
-        static ItemProcessingResult fromCondition(boolean condition) {
-            return condition ? added() : skipped();
-        }
     }
 
     /**
@@ -1042,11 +1093,15 @@ public class InvoiceImportService {
         if (description == null) {
             return "";
         }
-        
-        // Use compiled regex pattern for better performance
+
         String trimmed = description.trim().toLowerCase();
-        // Collapse multiple whitespaces into single space using optimized regex
-        return WHITESPACE_PATTERN.matcher(trimmed).replaceAll(" ");
+        // Collapse multiple whitespaces into single space
+        trimmed = WHITESPACE_PATTERN.matcher(trimmed).replaceAll(" ");
+        // Strip date prefix (e.g., "02/02 " or "1 02/02 ") — already captured in date field
+        trimmed = DATE_PREFIX_PATTERN.matcher(trimmed).replaceAll("");
+        // Strip installment suffix (e.g., " 01/02") — already captured in installment fields
+        trimmed = INSTALLMENT_SUFFIX_PATTERN.matcher(trimmed).replaceAll("");
+        return trimmed;
     }
 
     /**
@@ -1064,7 +1119,7 @@ public class InvoiceImportService {
             StringBuilder hex = new StringBuilder(hash.length * 2);
             
             for (byte b : hash) {
-                String h = Integer.toHexString(HEX_MASK & b);
+                String h = Integer.toHexString(0xff & b);
                 // Ensure two-digit hex representation
                 if (h.length() == 1) {
                     hex.append('0');
@@ -1084,16 +1139,17 @@ public class InvoiceImportService {
      * Determines if an item is a special type that should have more permissive deduplication.
      * REFACTORED: Optimized with cached set and better performance.
      *
-     * @param normalizedDescription the normalized description to check. Cannot be null.
+     * @param description the description to check. Cannot be null.
      * @return true if this is a special item type, false otherwise.
      */
-    private boolean isSpecialItemType(String normalizedDescription) {
-        if (normalizedDescription == null || normalizedDescription.isEmpty()) {
+    private boolean isSpecialItemType(String description) {
+        if (description == null || description.isEmpty()) {
             return false;
         }
-        
+
+        String lower = description.toLowerCase();
         return SPECIAL_ITEM_TYPES.stream()
-            .anyMatch(normalizedDescription::contains);
+            .anyMatch(lower::contains);
     }
 
     /**

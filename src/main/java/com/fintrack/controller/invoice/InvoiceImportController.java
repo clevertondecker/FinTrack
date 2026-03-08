@@ -26,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for invoice import operations.
@@ -64,40 +65,28 @@ public class InvoiceImportController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Validate.notNull(file, "File must not be null.");
-        if (userDetails == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
+        requireAuthentication(userDetails);
 
         try {
-            // Parse the request JSON using ObjectMapper
             ImportInvoiceRequest request =
                 objectMapper.readValue(requestJson, ImportInvoiceRequest.class);
-            
+
             User user = userService.getCurrentUser(userDetails.getUsername());
             ImportInvoiceResponse response = invoiceImportService.importInvoice(file, request, user);
             return ResponseEntity.accepted().body(response);
 
         } catch (IOException e) {
-            logger.error("Error importing invoice", e);
+            logger.error("Error importing invoice file='{}': {}", file.getOriginalFilename(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ImportInvoiceResponse(
-                    "Erro ao processar arquivo: " + e.getMessage(),
-                    null, null, null, null, e.getMessage(), null, null, null, null, null
-                ));
+                .body(ImportInvoiceResponse.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid import request: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ImportInvoiceResponse(
-                    "Dados inválidos: " + e.getMessage(),
-                    null, null, null, null, e.getMessage(), null, null, null, null, null
-                ));
+                .body(ImportInvoiceResponse.error(e.getMessage()));
         } catch (Exception e) {
-            logger.error("Unexpected error during import", e);
+            logger.error("Unexpected error during import file='{}': {}", file.getOriginalFilename(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ImportInvoiceResponse(
-                    "Erro inesperado: " + e.getMessage(),
-                    null, null, null, null, e.getMessage(), null, null, null, null, null
-                ));
+                .body(ImportInvoiceResponse.error(e.getMessage()));
         }
     }
 
@@ -106,7 +95,7 @@ public class InvoiceImportController {
      * No credit card selection is required; cards are detected from the PDF.
      */
     @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ImportPreviewResponse> previewImport(
+    public ResponseEntity<?> previewImport(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -114,15 +103,24 @@ public class InvoiceImportController {
         requireAuthentication(userDetails);
 
         try {
+            logger.info("Preview import request: file='{}', size={}, user='{}'",
+                    file.getOriginalFilename(), file.getSize(), userDetails.getUsername());
             User user = userService.getCurrentUser(userDetails.getUsername());
             ImportPreviewResponse response = invoiceImportService.previewImport(file, user);
             return ResponseEntity.ok(response);
         } catch (IOException e) {
-            logger.error("Error previewing import", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            logger.error("Error previewing import file='{}': {}", file.getOriginalFilename(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage(), "type", "IO_ERROR"));
         } catch (IllegalArgumentException e) {
-            logger.warn("Invalid preview request: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            logger.warn("Invalid preview request file='{}': {}", file.getOriginalFilename(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage(), "type", "VALIDATION_ERROR"));
+        } catch (Exception e) {
+            logger.error("Unexpected error previewing import file='{}': {}",
+                    file.getOriginalFilename(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage(), "type", e.getClass().getSimpleName()));
         }
     }
 
@@ -130,7 +128,7 @@ public class InvoiceImportController {
      * Confirms a previewed import with user-verified card mappings, creating invoices per card.
      */
     @PostMapping("/{importId}/confirm")
-    public ResponseEntity<ConfirmImportResponse> confirmImport(
+    public ResponseEntity<?> confirmImport(
             @PathVariable Long importId,
             @Valid @RequestBody ConfirmImportRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -138,16 +136,24 @@ public class InvoiceImportController {
         requireAuthentication(userDetails);
 
         try {
+            logger.info("Confirm import request: importId={}, mappings={}, user='{}'",
+                    importId, request.cardMappings().size(), userDetails.getUsername());
             User user = userService.getCurrentUser(userDetails.getUsername());
             ConfirmImportResponse response =
                     invoiceImportService.confirmImport(importId, request, user);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            logger.warn("Invalid confirm request: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            logger.warn("Invalid confirm request importId={}: {}", importId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage(), "type", "VALIDATION_ERROR"));
         } catch (IllegalStateException e) {
-            logger.warn("Invalid import state: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            logger.warn("Invalid import state importId={}: {}", importId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage(), "type", "STATE_ERROR"));
+        } catch (Exception e) {
+            logger.error("Unexpected error confirming import importId={}: {}", importId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage(), "type", e.getClass().getSimpleName()));
         }
     }
 
@@ -162,9 +168,7 @@ public class InvoiceImportController {
     public ResponseEntity<ImportProgressResponse> getImportProgress(
             @PathVariable Long importId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado");
-        }
+        requireAuthentication(userDetails);
         
         try {
             User user = userService.getCurrentUser(userDetails.getUsername());

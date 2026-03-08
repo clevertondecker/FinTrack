@@ -380,9 +380,16 @@ public class PdfInvoiceParser {
     private LocalDate parseDate(String dateStr) {
         int currentYear = Year.now().getValue();
         try {
-            return LocalDate.parse(dateStr + "/" + currentYear, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            LocalDate date = LocalDate.parse(dateStr + "/" + currentYear,
+                    DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            // If the parsed date is more than 2 months in the future,
+            // it likely belongs to the previous year (e.g. Dec purchase parsed in Jan)
+            if (date.isAfter(LocalDate.now().plusMonths(2))) {
+                date = date.minusYears(1);
+            }
+            return date;
         } catch (DateTimeParseException e) {
-            logger.warn("Error parsing date '{}' with current year {}", dateStr, currentYear);
+            logger.warn("Error parsing date '{}' with year {}", dateStr, currentYear);
             return null;
         }
     }
@@ -400,92 +407,117 @@ public class PdfInvoiceParser {
      */
     private List<ParsedInvoiceItem> extractItemsFromLines(String[] lines) {
         List<ParsedInvoiceItem> items = new ArrayList<>();
-        
-        List<String> ignoredLines = new ArrayList<>();
-        List<String> processedLines = new ArrayList<>();
-        
-        for (String line : lines) {
-            line = line.trim();
-            
+        int processed = 0;
+        int ignored = 0;
+
+        for (String rawLine : lines) {
+            String line = rawLine.trim();
             if (line.isEmpty() || shouldSkipLine(line)) {
                 continue;
             }
 
-            Matcher iofMatcher = IOF_PATTERN.matcher(line);
-               if (iofMatcher.find()) {
-                   try {
-                       BigDecimal amount = parseBrazilianAmount(iofMatcher.group(1));
-                       items.add(new ParsedInvoiceItem(
-                           "IOF DESPESA NO EXTERIOR", amount, LocalDate.now(), null, 1, 1, 0.9));
-                       processedLines.add("IOF: " + line + " -> R$ " + amount);
-                   } catch (Exception e) {
-                       logger.warn("Error processing IOF line: {}", line, e);
-                       ignoredLines.add("ERROR (IOF): " + line);
-                   }
-                   continue;
-               }
-
-               Matcher internationalMatcher = INTERNATIONAL_ITEM_PATTERN.matcher(line);
-               if (internationalMatcher.find()) {
-                   try {
-                       String dateStr = internationalMatcher.group(1);
-                       String description = internationalMatcher.group(2).trim();
-                       BigDecimal amount = parseBrazilianAmount(internationalMatcher.group(4));
-                       LocalDate date = parseDate(dateStr);
-                       items.add(new ParsedInvoiceItem(description, amount, date, null, 1, 1, 0.9));
-                       processedLines.add("INTERNATIONAL: " + line + " -> R$ " + amount);
-                   } catch (Exception e) {
-                       logger.warn("Error processing international item: {}", line, e);
-                       ignoredLines.add("ERROR (international): " + line);
-                   }
-                   continue;
-               }
-
-               Matcher parceledMatcher = PARCELED_ITEM_PATTERN.matcher(line);
-               if (parceledMatcher.find()) {
-                   try {
-                       String description = parceledMatcher.group(1).trim();
-                       String[] parts = parceledMatcher.group(2).split("/");
-                       int currentInstallment = Integer.parseInt(parts[0]);
-                       int totalInstallments = Integer.parseInt(parts[1]);
-                       BigDecimal amount = parseBrazilianAmount(parceledMatcher.group(3));
-                       items.add(new ParsedInvoiceItem(
-                           description, amount, LocalDate.now(), null,
-                           currentInstallment, totalInstallments, 0.9));
-                       processedLines.add("PARCELED: " + line + " -> R$ " + amount);
-                   } catch (Exception e) {
-                       logger.warn("Error processing parceled item: {}", line, e);
-                       ignoredLines.add("ERROR (parceled): " + line);
-                   }
-                   continue;
-               }
-
-               Matcher matcher = SANTANDER_ITEM_PATTERN.matcher(line);
-               if (matcher.find()) {
-                   try {
-                       String dateStr = matcher.group(1);
-                       String description = matcher.group(2).trim();
-                       BigDecimal amount = parseBrazilianAmount(matcher.group(3));
-                       LocalDate date = parseDate(dateStr);
-                       items.add(new ParsedInvoiceItem(description, amount, date, null, 1, 1, 0.9));
-                       processedLines.add("NORMAL: " + line + " -> R$ " + amount);
-                   } catch (Exception e) {
-                       logger.warn("Error processing normal item: {}", line, e);
-                       ignoredLines.add("ERROR (normal): " + line);
-                   }
-               } else {
-                   ignoredLines.add("NO PATTERN: " + line);
-               }
+            ParsedInvoiceItem item = tryParseLine(line);
+            if (item != null) {
+                items.add(item);
+                processed++;
+            } else {
+                ignored++;
+                logger.debug("No pattern matched: {}", line);
+            }
         }
-        
+
         logger.info("Extracted {} items (processed={}, ignored={})",
-                items.size(), processedLines.size(), ignoredLines.size());
-        
-        if (logger.isDebugEnabled() && !ignoredLines.isEmpty()) {
-            ignoredLines.forEach(ignored -> logger.debug("Ignored: {}", ignored));
-        }
-        
+                items.size(), processed, ignored);
         return items;
+    }
+
+    private ParsedInvoiceItem tryParseLine(String line) {
+        ParsedInvoiceItem item = tryParseIof(line);
+        if (item != null) {
+            return item;
+        }
+        item = tryParseInternational(line);
+        if (item != null) {
+            return item;
+        }
+        item = tryParseParceled(line);
+        if (item != null) {
+            return item;
+        }
+        return tryParseStandard(line);
+    }
+
+    private ParsedInvoiceItem tryParseIof(String line) {
+        Matcher m = IOF_PATTERN.matcher(line);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            BigDecimal amount = parseBrazilianAmount(m.group(1));
+            return new ParsedInvoiceItem(
+                "IOF DESPESA NO EXTERIOR", amount,
+                LocalDate.now(), null, 1, 1, 0.9);
+        } catch (Exception e) {
+            logger.warn("Error processing IOF line: {}", line, e);
+            return null;
+        }
+    }
+
+    private ParsedInvoiceItem tryParseInternational(String line) {
+        Matcher m = INTERNATIONAL_ITEM_PATTERN.matcher(line);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            LocalDate date = parseDate(m.group(1));
+            String description = m.group(2).trim();
+            BigDecimal amount = parseBrazilianAmount(m.group(4));
+            return new ParsedInvoiceItem(
+                description, amount, date, null, 1, 1, 0.9);
+        } catch (Exception e) {
+            logger.warn("Error processing international item: {}", line, e);
+            return null;
+        }
+    }
+
+    private ParsedInvoiceItem tryParseParceled(String line) {
+        Matcher m = PARCELED_ITEM_PATTERN.matcher(line);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            String[] parts = m.group(2).split("/");
+            int first = Integer.parseInt(parts[0]);
+            int second = Integer.parseInt(parts[1]);
+            // Disambiguate: installments have second >= first and second > 12
+            if (second >= first && second > 12 && second <= 48) {
+                String description = m.group(1).trim();
+                BigDecimal amount = parseBrazilianAmount(m.group(3));
+                return new ParsedInvoiceItem(
+                    description, amount, LocalDate.now(), null,
+                    first, second, 0.9);
+            }
+        } catch (Exception e) {
+            logger.warn("Error processing parceled item: {}", line, e);
+        }
+        return null;
+    }
+
+    private ParsedInvoiceItem tryParseStandard(String line) {
+        Matcher m = SANTANDER_ITEM_PATTERN.matcher(line);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            LocalDate date = parseDate(m.group(1));
+            String description = m.group(2).trim();
+            BigDecimal amount = parseBrazilianAmount(m.group(3));
+            return new ParsedInvoiceItem(
+                description, amount, date, null, 1, 1, 0.9);
+        } catch (Exception e) {
+            logger.warn("Error processing standard item: {}", line, e);
+            return null;
+        }
     }
 
     /**

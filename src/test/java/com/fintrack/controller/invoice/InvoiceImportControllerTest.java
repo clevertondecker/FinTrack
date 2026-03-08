@@ -118,7 +118,7 @@ class InvoiceImportControllerTest {
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().message()).contains("Dados inválidos");
+        assertThat(response.getBody().message()).contains("Invalid credit card");
         verify(invoiceImportService).importInvoice(eq(testFile), eq(testRequest), eq(testUser));
         verify(objectMapper).readValue(eq(testRequestJson), eq(ImportInvoiceRequest.class));
     }
@@ -136,7 +136,7 @@ class InvoiceImportControllerTest {
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().message()).contains("Erro ao processar arquivo");
+        assertThat(response.getBody().message()).contains("File processing error");
         verify(invoiceImportService).importInvoice(eq(testFile), eq(testRequest), eq(testUser));
         verify(objectMapper).readValue(eq(testRequestJson), eq(ImportInvoiceRequest.class));
     }
@@ -154,7 +154,7 @@ class InvoiceImportControllerTest {
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().message()).contains("Erro inesperado");
+        assertThat(response.getBody().message()).contains("JSON parsing error");
         verify(objectMapper).readValue(eq(testRequestJson), eq(ImportInvoiceRequest.class));
         verify(invoiceImportService, never()).importInvoice(any(), any(), any());
     }
@@ -279,7 +279,7 @@ class InvoiceImportControllerTest {
         ImportPreviewResponse expectedResponse = createTestPreviewResponse();
         when(invoiceImportService.previewImport(any(), any())).thenReturn(expectedResponse);
 
-        ResponseEntity<ImportPreviewResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.previewImport(testFile, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -292,11 +292,11 @@ class InvoiceImportControllerTest {
         when(invoiceImportService.previewImport(any(), any()))
             .thenThrow(new IOException("File error"));
 
-        ResponseEntity<ImportPreviewResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.previewImport(testFile, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody()).isNull();
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
@@ -304,11 +304,11 @@ class InvoiceImportControllerTest {
         when(invoiceImportService.previewImport(any(), any()))
             .thenThrow(new IllegalArgumentException("Invalid file"));
 
-        ResponseEntity<ImportPreviewResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.previewImport(testFile, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNull();
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
@@ -321,7 +321,7 @@ class InvoiceImportControllerTest {
         );
         when(invoiceImportService.confirmImport(eq(1L), any(), any())).thenReturn(expectedResponse);
 
-        ResponseEntity<ConfirmImportResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.confirmImport(1L, request, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -337,11 +337,11 @@ class InvoiceImportControllerTest {
         when(invoiceImportService.confirmImport(eq(1L), any(), any()))
             .thenThrow(new IllegalArgumentException("Import not found"));
 
-        ResponseEntity<ConfirmImportResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.confirmImport(1L, request, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNull();
+        assertThat(response.getBody()).isNotNull();
     }
 
     @Test
@@ -352,11 +352,11 @@ class InvoiceImportControllerTest {
         when(invoiceImportService.confirmImport(eq(1L), any(), any()))
             .thenThrow(new IllegalStateException("Import is not in PENDING_REVIEW status"));
 
-        ResponseEntity<ConfirmImportResponse> response =
+        ResponseEntity<?> response =
             invoiceImportController.confirmImport(1L, request, testUserDetails);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).isNull();
+        assertThat(response.getBody()).isNotNull();
     }
 
     private ImportProgressResponse createTestProgressResponse() {
