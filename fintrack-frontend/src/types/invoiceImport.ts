@@ -40,7 +40,8 @@ export enum ImportStatus {
   PROCESSING = 'PROCESSING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
-  MANUAL_REVIEW = 'MANUAL_REVIEW'
+  MANUAL_REVIEW = 'MANUAL_REVIEW',
+  PENDING_REVIEW = 'PENDING_REVIEW'
 }
 
 export interface InvoiceImportListResponse {
@@ -74,4 +75,55 @@ export interface ManualReviewItem {
 export interface ManualReviewResponse {
   message: string;
   invoiceId: number;
+}
+
+// Multi-card import preview/confirm types
+
+export interface ParsedInvoiceItem {
+  description: string;
+  amount: number;
+  purchaseDate?: string;
+  category?: string;
+  installments?: number;
+  totalInstallments?: number;
+  confidence?: number;
+}
+
+export interface DetectedCardMapping {
+  detectedLastFourDigits: string;
+  detectedCardName?: string;
+  matchedCreditCardId?: number;
+  matchedCardName?: string;
+  autoMatched: boolean;
+  ambiguous: boolean;
+  candidateCardIds: number[];
+  items: ParsedInvoiceItem[];
+  subtotal: number;
+}
+
+export interface ImportPreviewResponse {
+  importId: number;
+  bankName?: string;
+  invoiceMonth?: string;
+  dueDate?: string;
+  totalAmount?: number;
+  confidence?: number;
+  detectedCards: DetectedCardMapping[];
+  allCardsMatched: boolean;
+}
+
+export interface CardMapping {
+  detectedLastFourDigits: string;
+  creditCardId: number;
+}
+
+export interface ConfirmImportRequest {
+  cardMappings: CardMapping[];
+}
+
+export interface ConfirmImportResponse {
+  message: string;
+  importId: number;
+  createdInvoiceIds: number[];
+  itemsImported: number;
 } 

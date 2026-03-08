@@ -295,7 +295,12 @@
       "dueTomorrow": "Vence amanhã",
       "dueInDays": "Vence em {{days}} dias"
     },
-    "noCategory": "Sem categoria"
+    "noCategory": "Sem categoria",
+    "viewAllDetails": "Ver Fatura Completa",
+    "consolidatedDetailsTitle": "Fatura Consolidada",
+    "allCards": "Todos",
+    "consolidatedBill": "Fatura Consolidada",
+    "cardBreakdown": "Cartões nesta fatura"
   },
   "invoiceItems": {
     "title": "Itens da Fatura",
@@ -477,12 +482,25 @@
     "cardLastFourDigitsPlaceholder": "1234",
     "errorLoadingCreditCards": "Erro ao carregar cartões de crédito",
     "errorLoadingImports": "Erro ao carregar importações",
+    "totalAmount": "Valor Total",
+    "dueDate": "Vencimento",
+    "analyzeFile": "Analisar Arquivo",
+    "previewTitle": "Pré-visualização da Importação",
+    "invoiceMonth": "Mês da Fatura",
+    "detectedCards": "Cartões Detectados",
+    "autoMatched": "Vinculado automaticamente",
+    "ambiguous": "Múltiplas correspondências",
+    "unmatched": "Não encontrado",
+    "mapToCard": "Vincular ao cartão",
+    "viewItems": "Ver itens",
+    "confirmImport": "Confirmar Importação",
     "status": {
       "pending": "Pendente",
       "processing": "Processando",
       "completed": "Concluído",
       "failed": "Falhou",
-      "manualReview": "Revisão Manual"
+      "manualReview": "Revisão Manual",
+      "pendingReview": "Aguardando Confirmação"
     },
     "source": {
       "pdf": "PDF",

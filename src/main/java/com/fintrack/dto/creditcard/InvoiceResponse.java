@@ -21,5 +21,6 @@ public record InvoiceResponse(
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
     BigDecimal userShare,
-    List<ContactShareSummary> contactShares
+    List<ContactShareSummary> contactShares,
+    String importGroupId
 ) {}

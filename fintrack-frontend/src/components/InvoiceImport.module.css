@@ -556,6 +556,144 @@
   box-shadow: none;
 }
 
+/* Card Sections Preview */
+.cardSectionsContainer {
+  margin-top: 24px;
+}
+
+.cardSectionsContainer h4 {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.cardSection {
+  border: 1px solid #e1e8ed;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: #fafbfc;
+}
+
+.cardSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cardSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardDigits {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.autoMatchBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #d4edda;
+  color: #155724;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ambiguousBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.unmatchedBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cardSubtotal {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.itemsPreview {
+  margin-top: 12px;
+}
+
+.itemsPreview summary {
+  cursor: pointer;
+  color: #3498db;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 4px 0;
+}
+
+.itemsPreview summary:hover {
+  color: #2980b9;
+}
+
+.previewItemsList {
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.previewItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+
+.previewItem:last-child {
+  border-bottom: none;
+}
+
+.previewItemDesc {
+  color: #34495e;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.previewItemAmount {
+  color: #2c3e50;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.previewActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e8ed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .invoiceImportContainer {

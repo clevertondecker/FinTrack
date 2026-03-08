@@ -380,8 +380,9 @@ public class InvoiceService {
             currentStatus.name(),
             invoice.getCreatedAt(),
             invoice.getUpdatedAt(),
-            invoice.getTotalAmount(), // Default to total amount when no user is specified
-            List.of()
+            invoice.getTotalAmount(),
+            List.of(),
+            invoice.getImportGroupId()
         );
     }
 
@@ -427,7 +428,8 @@ public class InvoiceService {
             invoice.getCreatedAt(),
             invoice.getUpdatedAt(),
             userShare,
-            contactShares
+            contactShares,
+            invoice.getImportGroupId()
         );
     }
 

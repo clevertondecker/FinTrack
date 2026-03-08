@@ -7,8 +7,12 @@ import com.fintrack.domain.invoice.ImportStatus;
 import com.fintrack.domain.user.Role;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.User;
+import com.fintrack.dto.invoice.ConfirmImportRequest;
+import com.fintrack.dto.invoice.ConfirmImportResponse;
+import com.fintrack.dto.invoice.DetectedCardMapping;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
+import com.fintrack.dto.invoice.ImportPreviewResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -270,11 +274,96 @@ class InvoiceImportControllerTest {
         );
     }
 
+    @Test
+    void previewImport_WithValidFile_ShouldReturnOkResponse() throws IOException {
+        ImportPreviewResponse expectedResponse = createTestPreviewResponse();
+        when(invoiceImportService.previewImport(any(), any())).thenReturn(expectedResponse);
+
+        ResponseEntity<ImportPreviewResponse> response =
+            invoiceImportController.previewImport(testFile, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(expectedResponse);
+        verify(invoiceImportService).previewImport(eq(testFile), eq(testUser));
+    }
+
+    @Test
+    void previewImport_WithIOException_ShouldReturnInternalServerError() throws IOException {
+        when(invoiceImportService.previewImport(any(), any()))
+            .thenThrow(new IOException("File error"));
+
+        ResponseEntity<ImportPreviewResponse> response =
+            invoiceImportController.previewImport(testFile, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    void previewImport_WithInvalidArgument_ShouldReturnBadRequest() throws IOException {
+        when(invoiceImportService.previewImport(any(), any()))
+            .thenThrow(new IllegalArgumentException("Invalid file"));
+
+        ResponseEntity<ImportPreviewResponse> response =
+            invoiceImportController.previewImport(testFile, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    void confirmImport_WithValidRequest_ShouldReturnOkResponse() {
+        ConfirmImportRequest request = new ConfirmImportRequest(
+            List.of(new ConfirmImportRequest.CardMapping("1234", 1L))
+        );
+        ConfirmImportResponse expectedResponse = new ConfirmImportResponse(
+            "Import confirmed successfully.", 1L, List.of(10L), 5
+        );
+        when(invoiceImportService.confirmImport(eq(1L), any(), any())).thenReturn(expectedResponse);
+
+        ResponseEntity<ConfirmImportResponse> response =
+            invoiceImportController.confirmImport(1L, request, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(expectedResponse);
+        verify(invoiceImportService).confirmImport(eq(1L), eq(request), eq(testUser));
+    }
+
+    @Test
+    void confirmImport_WithInvalidArgument_ShouldReturnBadRequest() {
+        ConfirmImportRequest request = new ConfirmImportRequest(
+            List.of(new ConfirmImportRequest.CardMapping("1234", 999L))
+        );
+        when(invoiceImportService.confirmImport(eq(1L), any(), any()))
+            .thenThrow(new IllegalArgumentException("Import not found"));
+
+        ResponseEntity<ConfirmImportResponse> response =
+            invoiceImportController.confirmImport(1L, request, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    void confirmImport_WithWrongStatus_ShouldReturnConflict() {
+        ConfirmImportRequest request = new ConfirmImportRequest(
+            List.of(new ConfirmImportRequest.CardMapping("1234", 1L))
+        );
+        when(invoiceImportService.confirmImport(eq(1L), any(), any()))
+            .thenThrow(new IllegalStateException("Import is not in PENDING_REVIEW status"));
+
+        ResponseEntity<ConfirmImportResponse> response =
+            invoiceImportController.confirmImport(1L, request, testUserDetails);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNull();
+    }
+
     private ImportProgressResponse createTestProgressResponse() {
         return new ImportProgressResponse(
             1L,
             ImportStatus.PENDING,
-            "Aguardando processamento",
+            "Pendente",
             LocalDateTime.now(),
             null,
             null,
@@ -283,6 +372,18 @@ class InvoiceImportControllerTest {
             "Test Bank",
             "1234",
             false
+        );
+    }
+
+    private ImportPreviewResponse createTestPreviewResponse() {
+        DetectedCardMapping mapping = new DetectedCardMapping(
+            "1234", "Test Card", 1L, "Test Card - ****1234",
+            true, false, List.of(), List.of(), BigDecimal.valueOf(1500.00)
+        );
+        return new ImportPreviewResponse(
+            1L, "Santander", null, null,
+            BigDecimal.valueOf(1500.00), 0.9,
+            List.of(mapping), true
         );
     }
 } 

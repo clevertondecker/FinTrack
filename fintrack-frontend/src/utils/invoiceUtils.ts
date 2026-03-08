@@ -1,6 +1,138 @@
+import { Invoice, InvoiceSummary, GroupedInvoices, ContactShareSummary } from '../types/invoice';
+
 /**
  * Utility functions for invoice-related operations
  */
+
+const STATUS_PRIORITY: Record<string, number> = {
+  OVERDUE: 1, OPEN: 2, PARTIAL: 3, PAID: 4, CLOSED: 5
+};
+
+export const sortInvoices = (invoices: Invoice[]): Invoice[] => {
+  return [...invoices].sort((a, b) => {
+    const statusDiff = (STATUS_PRIORITY[a.status] || 6) - (STATUS_PRIORITY[b.status] || 6);
+    if (statusDiff !== 0) return statusDiff;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  });
+};
+
+export const groupInvoices = (invoices: Invoice[]): GroupedInvoices => ({
+  overdue: invoices.filter(i => i.status === 'OVERDUE'),
+  open: invoices.filter(i => i.status === 'OPEN'),
+  partial: invoices.filter(i => i.status === 'PARTIAL'),
+  paid: invoices.filter(i => i.status === 'PAID'),
+  closed: invoices.filter(i => i.status === 'CLOSED'),
+});
+
+export const resolveGroupStatus = (group: Invoice[]): string => {
+  let worst = 'CLOSED';
+  group.forEach(inv => {
+    if ((STATUS_PRIORITY[inv.status] || 6) < (STATUS_PRIORITY[worst] || 6)) {
+      worst = inv.status;
+    }
+  });
+  return worst;
+};
+
+export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
+  const grouped = new Map<string, Invoice[]>();
+  const standalone: Invoice[] = [];
+
+  invoiceList.forEach(inv => {
+    if (inv.importGroupId) {
+      const list = grouped.get(inv.importGroupId) || [];
+      list.push(inv);
+      grouped.set(inv.importGroupId, list);
+    } else {
+      standalone.push(inv);
+    }
+  });
+
+  const consolidated: Invoice[] = [...standalone];
+
+  grouped.forEach((group, groupId) => {
+    if (group.length === 1) {
+      consolidated.push(group[0]);
+      return;
+    }
+
+    const totalAmount = group.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+    const paidAmount = group.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
+    const userShare = group.reduce((sum, inv) => sum + (inv.userShare ?? inv.totalAmount ?? 0), 0);
+    const worstStatus = resolveGroupStatus(group);
+    const cardNames = group.map(inv => inv.creditCardName).join(' + ');
+
+    const mergedShares: ContactShareSummary[] = [];
+    group.forEach(inv => {
+      (inv.contactShares || []).forEach(cs => {
+        const existing = mergedShares.find(s => s.contactEmail === cs.contactEmail);
+        if (existing) {
+          existing.totalAmount += cs.totalAmount;
+        } else {
+          mergedShares.push({ ...cs });
+        }
+      });
+    });
+
+    consolidated.push({
+      id: group[0].id,
+      creditCardId: group[0].creditCardId,
+      creditCardName: cardNames,
+      dueDate: group[0].dueDate,
+      totalAmount,
+      paidAmount,
+      status: worstStatus,
+      createdAt: group[0].createdAt,
+      updatedAt: group[0].updatedAt,
+      userShare: userShare !== totalAmount ? userShare : undefined,
+      contactShares: mergedShares.length > 0 ? mergedShares : undefined,
+      importGroupId: groupId,
+      _consolidatedCards: group,
+    });
+  });
+
+  return consolidated;
+};
+
+export const calculateSummary = (invoices: Invoice[]): InvoiceSummary => {
+  const summary: InvoiceSummary = {
+    totalInvoices: invoices.length,
+    totalAmount: 0, totalPaid: 0, totalRemaining: 0,
+    overdueCount: 0, overdueAmount: 0,
+    openCount: 0, openAmount: 0,
+    partialCount: 0, partialAmount: 0,
+    paidCount: 0, paidAmount: 0,
+  };
+
+  invoices.forEach(invoice => {
+    const userAmount = invoice.userShare !== null && invoice.userShare !== undefined
+      ? invoice.userShare
+      : (invoice.totalAmount || 0);
+    const totalInvoiceAmount = invoice.totalAmount || 0;
+    const totalPaid = invoice.paidAmount || 0;
+
+    let userPaid: number;
+    if (totalInvoiceAmount > 0 && userAmount !== totalInvoiceAmount) {
+      const paidPercentage = Math.min(totalPaid / totalInvoiceAmount, 1);
+      userPaid = userAmount * paidPercentage;
+    } else {
+      userPaid = Math.min(totalPaid, userAmount);
+    }
+
+    summary.totalAmount += userAmount;
+    summary.totalPaid += userPaid;
+    summary.totalRemaining += Math.max(0, userAmount - userPaid);
+
+    switch (invoice.status) {
+      case 'OVERDUE': summary.overdueCount++; summary.overdueAmount += userAmount; break;
+      case 'OPEN': summary.openCount++; summary.openAmount += userAmount; break;
+      case 'PARTIAL': summary.partialCount++; summary.partialAmount += userAmount; break;
+      case 'PAID': summary.paidCount++; summary.paidAmount += userAmount; break;
+    }
+  });
+
+  return summary;
+};
 
 export const getStatusColor = (status: string): string => {
   switch (status) {

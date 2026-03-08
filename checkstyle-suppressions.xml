@@ -9,5 +9,8 @@
     <suppress files=".*Tests\.java$" checks="AvoidStarImport"/>
     <!-- CreditCard factory needs 9 params for assignedUser -->
     <suppress files="CreditCard\.java" checks="ParameterNumber"/>
+    <!-- InvoiceImport has many fields/getters; InvoiceImportService orchestrates many collaborators -->
+    <suppress files="InvoiceImport\.java" checks="MethodCount"/>
+    <suppress files="InvoiceImportService\.java" checks="ClassFanOutComplexity"/>
 </suppressions>
 

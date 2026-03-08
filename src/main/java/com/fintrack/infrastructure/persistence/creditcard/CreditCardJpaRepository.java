@@ -41,8 +41,8 @@ public interface CreditCardJpaRepository extends JpaRepository<CreditCard, Long>
      * @param user the user. Cannot be null.
      * @return list of credit cards. Never null, may be empty.
      */
-    @Query("SELECT cc FROM CreditCard cc WHERE cc.owner = :user "
-            + "OR (cc.parentCard IS NOT NULL AND cc.parentCard.owner = :user)")
+    @Query("SELECT cc FROM CreditCard cc LEFT JOIN cc.parentCard pc "
+            + "WHERE cc.owner = :user OR (pc IS NOT NULL AND pc.owner = :user)")
     List<CreditCard> findByOwnerOrParentCardOwner(@Param("user") User user);
 
     /**
@@ -51,8 +51,8 @@ public interface CreditCardJpaRepository extends JpaRepository<CreditCard, Long>
      * @param user the user. Cannot be null.
      * @return list of active credit cards. Never null, may be empty.
      */
-    @Query("SELECT cc FROM CreditCard cc WHERE cc.active = true AND (cc.owner = :user "
-            + "OR (cc.parentCard IS NOT NULL AND cc.parentCard.owner = :user))")
+    @Query("SELECT cc FROM CreditCard cc LEFT JOIN cc.parentCard pc "
+            + "WHERE cc.active = true AND (cc.owner = :user OR (pc IS NOT NULL AND pc.owner = :user))")
     List<CreditCard> findByOwnerOrParentCardOwnerAndActiveTrue(@Param("user") User user);
 
     /**
@@ -96,6 +96,21 @@ public interface CreditCardJpaRepository extends JpaRepository<CreditCard, Long>
      * @return the number of credit cards owned by the user.
      */
     long countByOwner(User user);
+
+    /**
+     * Finds active credit cards owned by a user (or whose parent is owned by the user)
+     * matching specific last four digits.
+     *
+     * @param user the owner. Cannot be null.
+     * @param lastFourDigits the last four digits to match. Cannot be null.
+     * @return list of matching active cards. Never null, may be empty.
+     */
+    @Query("SELECT cc FROM CreditCard cc LEFT JOIN cc.parentCard pc "
+            + "WHERE cc.active = true AND cc.lastFourDigits = :lastFourDigits "
+            + "AND (cc.owner = :user OR (pc IS NOT NULL AND pc.owner = :user))")
+    List<CreditCard> findByOwnerAndLastFourDigitsAndActiveTrue(
+            @Param("user") User user,
+            @Param("lastFourDigits") String lastFourDigits);
 
     /**
      * Finds all credit cards assigned to a specific trusted contact.

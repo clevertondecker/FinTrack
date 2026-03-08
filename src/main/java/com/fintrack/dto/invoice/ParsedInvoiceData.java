@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -17,7 +18,7 @@ public record ParsedInvoiceData(
     String creditCardName,
     
     @JsonProperty("cardNumber")
-    String cardNumber, // last 4 digits
+    String cardNumber,
     
     @JsonProperty("dueDate")
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -37,9 +38,40 @@ public record ParsedInvoiceData(
     YearMonth invoiceMonth,
     
     @JsonProperty("confidence")
-    Double confidence // 0.0 to 1.0, indicating parsing confidence
+    Double confidence,
+
+    @JsonProperty("cardSections")
+    List<ParsedCardSection> cardSections
 ) {
-    
+
+    /**
+     * Backward-compatible constructor without cardSections.
+     */
+    public ParsedInvoiceData(
+            String creditCardName, String cardNumber, LocalDate dueDate,
+            BigDecimal totalAmount, List<ParsedInvoiceItem> items,
+            String bankName, YearMonth invoiceMonth, Double confidence) {
+        this(creditCardName, cardNumber, dueDate, totalAmount, items,
+             bankName, invoiceMonth, confidence, List.of());
+    }
+
+    /**
+     * Returns all items across all card sections as a flat list.
+     * Falls back to the direct items list when no sections exist.
+     */
+    public List<ParsedInvoiceItem> allItems() {
+        if (cardSections != null && !cardSections.isEmpty()) {
+            List<ParsedInvoiceItem> all = new ArrayList<>();
+            for (ParsedCardSection section : cardSections) {
+                if (section.items() != null) {
+                    all.addAll(section.items());
+                }
+            }
+            return all;
+        }
+        return items != null ? items : List.of();
+    }
+
     /**
      * DTO for individual invoice items extracted from the invoice.
      */
@@ -56,7 +88,7 @@ public record ParsedInvoiceData(
         LocalDate purchaseDate,
         
         @JsonProperty("category")
-        String category, // attempt at categorization
+        String category,
         
         @JsonProperty("installments")
         Integer installments,
@@ -65,6 +97,24 @@ public record ParsedInvoiceData(
         Integer totalInstallments,
         
         @JsonProperty("confidence")
-        Double confidence // 0.0 to 1.0, indicating item parsing confidence
+        Double confidence
+    ) {}
+
+    /**
+     * Represents a group of items belonging to a specific credit card detected in the PDF.
+     */
+    public record ParsedCardSection(
+
+        @JsonProperty("cardLastFourDigits")
+        String cardLastFourDigits,
+
+        @JsonProperty("cardDisplayName")
+        String cardDisplayName,
+
+        @JsonProperty("items")
+        List<ParsedInvoiceItem> items,
+
+        @JsonProperty("subtotal")
+        BigDecimal subtotal
     ) {}
 } 

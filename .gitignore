@@ -54,3 +54,7 @@ mysql_data/
 *.log
 .DS_Store
 uploads/
+
+#IA
+.claude/*
+.cursor/*

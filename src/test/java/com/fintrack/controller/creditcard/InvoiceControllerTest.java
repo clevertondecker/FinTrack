@@ -149,7 +149,8 @@ class InvoiceControllerTest {
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getUserInvoices(eq(testUser))).thenReturn(invoices);
-        when(invoiceService.toInvoiceResponseList(eq(invoices))).thenReturn(invoiceResponses);
+        when(invoiceService.toInvoiceResponse(any(Invoice.class), eq(testUser)))
+            .thenReturn(invoiceResponses.get(0));
 
         // When & Then
         mockMvc.perform(get("/api/invoices")
@@ -173,7 +174,8 @@ class InvoiceControllerTest {
             testInvoice.getCreatedAt(),
             testInvoice.getUpdatedAt(),
             testInvoice.getTotalAmount(),
-            List.of()
+            List.of(),
+            null
         );
       return List.of(invoiceResponse);
     }
@@ -189,7 +191,8 @@ class InvoiceControllerTest {
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
         when(invoiceService.getInvoicesByCreditCard(eq(creditCardId), eq(testUser))).thenReturn(invoices);
-        when(invoiceService.toInvoiceResponseList(eq(invoices))).thenReturn(invoiceResponses);
+        when(invoiceService.toInvoiceResponse(any(Invoice.class), eq(testUser)))
+            .thenReturn(invoiceResponses.get(0));
 
         // When & Then
         mockMvc.perform(get("/api/invoices/credit-card/{creditCardId}", creditCardId)
@@ -236,7 +239,8 @@ class InvoiceControllerTest {
             testInvoice.getCreatedAt(),
             testInvoice.getUpdatedAt(),
             testInvoice.getTotalAmount(),
-            List.of()
+            List.of(),
+            null
         );
 
         when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));

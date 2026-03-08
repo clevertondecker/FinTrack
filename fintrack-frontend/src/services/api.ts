@@ -34,7 +34,10 @@ import {
   InvoiceImportListResponse,
   InvoiceImportDetailResponse,
   ManualReviewRequest,
-  ManualReviewResponse
+  ManualReviewResponse,
+  ImportPreviewResponse,
+  ConfirmImportRequest,
+  ConfirmImportResponse
 } from '../types/invoiceImport';
 import {
   ExpenseReportResponse,
@@ -325,6 +328,23 @@ class ApiService {
 
   async manualReview(id: number, request: ManualReviewRequest): Promise<ManualReviewResponse> {
     const response = await this.api.post<ManualReviewResponse>(`/invoice-imports/${id}/manual-review`, request);
+    return response.data;
+  }
+
+  async previewImport(file: File): Promise<ImportPreviewResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.api.post<ImportPreviewResponse>('/invoice-imports/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async confirmImport(importId: number, request: ConfirmImportRequest): Promise<ConfirmImportResponse> {
+    const response = await this.api.post<ConfirmImportResponse>(
+      `/invoice-imports/${importId}/confirm`,
+      request
+    );
     return response.data;
   }
 

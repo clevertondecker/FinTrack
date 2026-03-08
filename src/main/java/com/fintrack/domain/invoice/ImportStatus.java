@@ -13,7 +13,9 @@ public enum ImportStatus {
     /** Import failed. */
     FAILED("Falhou"),
     /** Import requires manual review. */
-    MANUAL_REVIEW("Revisão Manual");
+    MANUAL_REVIEW("Revisão Manual"),
+    /** Import was parsed and awaits user confirmation of card mappings. */
+    PENDING_REVIEW("Aguardando Confirmação");
 
     /** The display name for the import status. */
     private final String displayName;

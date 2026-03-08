@@ -256,6 +256,11 @@
     "errorUpdatingCategory": "Error updating item category",
     "updatingCategory": "Updating category...",
     "noCategory": "No category",
+    "viewAllDetails": "View Full Invoice",
+    "consolidatedDetailsTitle": "Consolidated Invoice",
+    "allCards": "All",
+    "consolidatedBill": "Consolidated Invoice",
+    "cardBreakdown": "Cards in this invoice",
     "filters": {
       "title": "Filters",
       "status": "Status",
@@ -476,12 +481,25 @@
     "cardLastFourDigitsPlaceholder": "1234",
     "errorLoadingCreditCards": "Error loading credit cards",
     "errorLoadingImports": "Error loading imports",
+    "totalAmount": "Total Amount",
+    "dueDate": "Due Date",
+    "analyzeFile": "Analyze File",
+    "previewTitle": "Import Preview",
+    "invoiceMonth": "Invoice Month",
+    "detectedCards": "Detected Cards",
+    "autoMatched": "Auto-matched",
+    "ambiguous": "Multiple matches",
+    "unmatched": "Not found",
+    "mapToCard": "Map to card",
+    "viewItems": "View items",
+    "confirmImport": "Confirm Import",
     "status": {
       "pending": "Pending",
       "processing": "Processing",
       "completed": "Completed",
       "failed": "Failed",
-      "manualReview": "Manual Review"
+      "manualReview": "Manual Review",
+      "pendingReview": "Awaiting Confirmation"
     },
     "source": {
       "pdf": "PDF",

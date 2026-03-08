@@ -2,12 +2,16 @@ package com.fintrack.controller.invoice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.domain.invoice.ImportStatus;
+import com.fintrack.dto.invoice.ConfirmImportRequest;
+import com.fintrack.dto.invoice.ConfirmImportResponse;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
+import com.fintrack.dto.invoice.ImportPreviewResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
 import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.User;
+import jakarta.validation.Valid;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +47,6 @@ public class InvoiceImportController {
         this.invoiceImportService = invoiceImportService;
         this.userService = userService;
         this.objectMapper = objectMapper;
-    }
-
-    /**
-     * Test endpoint to verify the controller is working.
-     */
-    @GetMapping("/test")
-    public ResponseEntity<String> test() {
-        logger.info("Test endpoint called");
-        return ResponseEntity.ok("InvoiceImportController is working!");
     }
 
     /**
@@ -107,6 +102,56 @@ public class InvoiceImportController {
     }
 
     /**
+     * Uploads a file and returns a preview with detected cards and auto-match results.
+     * No credit card selection is required; cards are detected from the PDF.
+     */
+    @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ImportPreviewResponse> previewImport(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Validate.notNull(file, "File must not be null.");
+        requireAuthentication(userDetails);
+
+        try {
+            User user = userService.getCurrentUser(userDetails.getUsername());
+            ImportPreviewResponse response = invoiceImportService.previewImport(file, user);
+            return ResponseEntity.ok(response);
+        } catch (IOException e) {
+            logger.error("Error previewing import", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid preview request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * Confirms a previewed import with user-verified card mappings, creating invoices per card.
+     */
+    @PostMapping("/{importId}/confirm")
+    public ResponseEntity<ConfirmImportResponse> confirmImport(
+            @PathVariable Long importId,
+            @Valid @RequestBody ConfirmImportRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        requireAuthentication(userDetails);
+
+        try {
+            User user = userService.getCurrentUser(userDetails.getUsername());
+            ConfirmImportResponse response =
+                    invoiceImportService.confirmImport(importId, request, user);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid confirm request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IllegalStateException e) {
+            logger.warn("Invalid import state: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
+    /**
      * Gets the progress of an import.
      *
      * @param importId the import ID. Cannot be null.
@@ -141,7 +186,7 @@ public class InvoiceImportController {
     @GetMapping
     public ResponseEntity<List<ImportInvoiceResponse>> getUserImports(
             @AuthenticationPrincipal UserDetails userDetails) {
-        getUserDetail(userDetails);
+        requireAuthentication(userDetails);
         User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImports(user);
         return ResponseEntity.ok(imports);
@@ -158,13 +203,13 @@ public class InvoiceImportController {
     public ResponseEntity<List<ImportInvoiceResponse>> getUserImportsByStatus(
             @RequestParam ImportStatus status,
             @AuthenticationPrincipal UserDetails userDetails) {
-        getUserDetail(userDetails);
+        requireAuthentication(userDetails);
         User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports = invoiceImportService.getUserImportsByStatus(user, status);
         return ResponseEntity.ok(imports);
     }
 
-    private void getUserDetail(UserDetails userDetails) {
+    private void requireAuthentication(UserDetails userDetails) {
         if (userDetails == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
@@ -179,7 +224,7 @@ public class InvoiceImportController {
     @GetMapping("/failed")
     public ResponseEntity<List<ImportInvoiceResponse>> getFailedImports(
             @AuthenticationPrincipal UserDetails userDetails) {
-        getUserDetail(userDetails);
+        requireAuthentication(userDetails);
         User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> failedImports =
             invoiceImportService.getUserImportsByStatus(user, ImportStatus.FAILED);
@@ -195,7 +240,7 @@ public class InvoiceImportController {
     @GetMapping("/manual-review")
     public ResponseEntity<List<ImportInvoiceResponse>> getManualReviewImports(
             @AuthenticationPrincipal UserDetails userDetails) {
-        getUserDetail(userDetails);
+        requireAuthentication(userDetails);
         User user = userService.getCurrentUser(userDetails.getUsername());
         List<ImportInvoiceResponse> imports =
             invoiceImportService.getUserImportsByStatus(user, ImportStatus.MANUAL_REVIEW);

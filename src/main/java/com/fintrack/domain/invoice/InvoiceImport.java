@@ -99,6 +99,10 @@ public class InvoiceImport {
     @Column(length = 20)
     private String cardLastFourDigits;
 
+    /** JSON array of invoice IDs created during multi-card import. */
+    @Column(columnDefinition = "TEXT")
+    private String createdInvoiceIds;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -182,7 +186,14 @@ public class InvoiceImport {
     public void markAsCompletedWithoutInvoiceReference() {
         status = ImportStatus.COMPLETED;
         processedAt = LocalDateTime.now();
-        // Do not set createdInvoice to avoid unique constraint violation
+    }
+
+    /**
+     * Marks the import as pending review, awaiting user confirmation of card mappings.
+     */
+    public void markAsPendingReview() {
+        status = ImportStatus.PENDING_REVIEW;
+        processedAt = LocalDateTime.now();
     }
 
     /**
@@ -301,6 +312,14 @@ public class InvoiceImport {
 
     public String getCardLastFourDigits() {
         return cardLastFourDigits;
+    }
+
+    public String getCreatedInvoiceIds() {
+        return createdInvoiceIds;
+    }
+
+    public void setCreatedInvoiceIds(final String createdInvoiceIds) {
+        this.createdInvoiceIds = createdInvoiceIds;
     }
 
     @Override

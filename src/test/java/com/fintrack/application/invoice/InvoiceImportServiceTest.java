@@ -180,7 +180,7 @@ class InvoiceImportServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.importId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo(ImportStatus.PENDING);
-        assertThat(response.message()).isEqualTo("Aguardando processamento");
+        assertThat(response.message()).isEqualTo("Pendente");
 
         verify(invoiceImportRepository).findByIdAndUser(1L, testUser);
     }

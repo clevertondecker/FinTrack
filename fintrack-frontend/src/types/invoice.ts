@@ -16,6 +16,8 @@ export interface Invoice {
   updatedAt?: string;
   userShare?: number | null;
   contactShares?: ContactShareSummary[];
+  importGroupId?: string | null;
+  _consolidatedCards?: Invoice[];
 }
 
 export interface InvoiceItem {

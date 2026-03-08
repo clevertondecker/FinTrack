@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
-import { InvoiceImport as InvoiceImportType, ImportStatus, ImportSource } from '../types/invoiceImport';
+import {
+  InvoiceImport as InvoiceImportType,
+  ImportStatus,
+  ImportSource,
+  ImportPreviewResponse,
+  DetectedCardMapping,
+  CardMapping,
+} from '../types/invoiceImport';
 import { CreditCard } from '../types/creditCard';
 import { Category } from '../types/invoice';
 import styles from './InvoiceImport.module.css';
@@ -13,7 +20,6 @@ interface InvoiceImportProps {
 const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
-  const [selectedCreditCard, setSelectedCreditCard] = useState<number | ''>('');
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [imports, setImports] = useState<InvoiceImportType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +28,11 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedImport, setSelectedImport] = useState<InvoiceImportType | null>(null);
   const [showManualReview, setShowManualReview] = useState(false);
+
+  // Preview state
+  const [preview, setPreview] = useState<ImportPreviewResponse | null>(null);
+  const [cardMappings, setCardMappings] = useState<Map<string, number>>(new Map());
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     loadCreditCards();
@@ -33,8 +44,8 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
     try {
       const response = await apiService.getCreditCards();
       setCreditCards(response.creditCards);
-    } catch (error) {
-      console.error('Error loading credit cards:', error);
+    } catch (err) {
+      console.error('Error loading credit cards:', err);
       setError(t('invoiceImport.errorLoadingCreditCards'));
     }
   };
@@ -44,8 +55,8 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
       setLoading(true);
       const response = await apiService.getInvoiceImports();
       setImports(response.imports ?? []);
-    } catch (error) {
-      console.error('Error loading imports:', error);
+    } catch (err) {
+      console.error('Error loading imports:', err);
       setError(t('invoiceImport.errorLoadingImports'));
     } finally {
       setLoading(false);
@@ -57,23 +68,13 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
     if (selectedFile) {
       setFile(selectedFile);
       setError(null);
+      setPreview(null);
     }
   };
 
-  const handleCreditCardChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    setSelectedCreditCard(value === '' ? '' : Number(value));
-    setError(null);
-  };
-
-  const handleUpload = async () => {
+  const handleUploadPreview = async () => {
     if (!file) {
       setError(t('invoiceImport.selectFile'));
-      return;
-    }
-
-    if (!selectedCreditCard) {
-      setError(t('invoiceImport.selectCreditCard'));
       return;
     }
 
@@ -81,45 +82,96 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
       setUploading(true);
       setError(null);
       setSuccess(null);
+      setPreview(null);
 
-      await apiService.importInvoice(file, {
-        creditCardId: Number(selectedCreditCard)
+      const response = await apiService.previewImport(file);
+      setPreview(response);
+
+      const initialMappings = new Map<string, number>();
+      response.detectedCards.forEach((card: DetectedCardMapping) => {
+        if (card.matchedCreditCardId) {
+          initialMappings.set(card.detectedLastFourDigits, card.matchedCreditCardId);
+        }
       });
-
-      setSuccess(t('invoiceImport.uploadSuccess'));
-      setFile(null);
-      setSelectedCreditCard('');
-      if (document.getElementById('file-input')) {
-        (document.getElementById('file-input') as HTMLInputElement).value = '';
-      }
-      
-      // Reload imports
-      await loadImports();
-      
-      // Call success callback
-      if (onImportSuccess) {
-        onImportSuccess();
-      }
-    } catch (error: any) {
-      console.error('Error uploading file:', error);
-      setError(error.response?.data?.message || t('invoiceImport.uploadError'));
+      setCardMappings(initialMappings);
+    } catch (err: any) {
+      console.error('Error previewing import:', err);
+      setError(err.response?.data?.message || t('invoiceImport.uploadError'));
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDeleteImport = async (id: number) => {
-    if (!window.confirm(t('invoiceImport.confirmDelete'))) {
-      return;
+  const handleCardMappingChange = (detectedDigits: string, creditCardId: number) => {
+    setCardMappings((prev) => {
+      const next = new Map(prev);
+      if (creditCardId === 0) {
+        next.delete(detectedDigits);
+      } else {
+        next.set(detectedDigits, creditCardId);
+      }
+      return next;
+    });
+  };
+
+  const allCardsMapped = preview
+    ? preview.detectedCards.length > 0
+      && preview.detectedCards.every((c) => cardMappings.has(c.detectedLastFourDigits))
+    : false;
+
+  const handleConfirmImport = async () => {
+    if (!preview || !allCardsMapped) return;
+
+    try {
+      setConfirming(true);
+      setError(null);
+
+      const mappings: CardMapping[] = Array.from(cardMappings.entries()).map(
+        ([detectedLastFourDigits, creditCardId]) => ({
+          detectedLastFourDigits,
+          creditCardId,
+        })
+      );
+
+      const response = await apiService.confirmImport(preview.importId, {
+        cardMappings: mappings,
+      });
+
+      setSuccess(
+        `${response.message} ${response.createdInvoiceIds.length} fatura(s) criada(s), ${response.itemsImported} itens importados.`
+      );
+
+      setPreview(null);
+      setFile(null);
+      setCardMappings(new Map());
+      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      await loadImports();
+      if (onImportSuccess) onImportSuccess();
+    } catch (err: any) {
+      console.error('Error confirming import:', err);
+      setError(err.response?.data?.message || t('invoiceImport.uploadError'));
+    } finally {
+      setConfirming(false);
     }
+  };
+
+  const handleCancelPreview = () => {
+    setPreview(null);
+    setCardMappings(new Map());
+  };
+
+  const handleDeleteImport = async (id: number) => {
+    if (!window.confirm(t('invoiceImport.confirmDelete'))) return;
 
     try {
       await apiService.deleteInvoiceImport(id);
       setSuccess(t('invoiceImport.deleteSuccess'));
       await loadImports();
-    } catch (error: any) {
-      console.error('Error deleting import:', error);
-      setError(error.response?.data?.message || t('invoiceImport.deleteError'));
+    } catch (err: any) {
+      console.error('Error deleting import:', err);
+      setError(err.response?.data?.message || t('invoiceImport.deleteError'));
     }
   };
 
@@ -137,6 +189,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
       case ImportStatus.PROCESSING:
         return 'text-blue-600 bg-blue-100';
       case ImportStatus.MANUAL_REVIEW:
+      case ImportStatus.PENDING_REVIEW:
         return 'text-yellow-600 bg-yellow-100';
       case ImportStatus.PENDING:
         return 'text-gray-600 bg-gray-100';
@@ -155,6 +208,8 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
         return t('invoiceImport.status.processing');
       case ImportStatus.MANUAL_REVIEW:
         return t('invoiceImport.status.manualReview');
+      case ImportStatus.PENDING_REVIEW:
+        return t('invoiceImport.status.pendingReview', 'Awaiting Confirmation');
       case ImportStatus.PENDING:
         return t('invoiceImport.status.pending');
       default:
@@ -177,13 +232,10 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
+  const formatDateTime = (dateString: string) => new Date(dateString).toLocaleString();
+  const formatCurrency = (value: number) =>
+    `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className={styles.invoiceImportContainer}>
@@ -195,7 +247,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
       {/* Upload Section */}
       <div className={styles.uploadSection}>
         <h3>{t('invoiceImport.uploadTitle')}</h3>
-        
+
         <div className={styles.uploadForm}>
           <div className={styles.formGroup}>
             <label htmlFor="file-input">{t('invoiceImport.selectFile')}:</label>
@@ -214,35 +266,145 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
             )}
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="credit-card-select">{t('invoiceImport.selectCreditCard')}:</label>
-            <select
-              id="credit-card-select"
-              value={selectedCreditCard}
-              onChange={handleCreditCardChange}
-              className={styles.selectInput}
-            >
-              <option value="">{t('invoiceImport.selectCreditCardPlaceholder')}</option>
-              {creditCards.map((card) => (
-                <option key={card.id} value={card.id}>
-                  {card.name} - {card.lastFourDigits}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <button
-            onClick={handleUpload}
-            disabled={!file || !selectedCreditCard || uploading}
+            onClick={handleUploadPreview}
+            disabled={!file || uploading}
             className={styles.uploadButton}
           >
-            {uploading ? t('invoiceImport.uploading') : t('invoiceImport.upload')}
+            {uploading
+              ? t('invoiceImport.uploading', 'Analyzing...')
+              : t('invoiceImport.analyzeFile', 'Analyze File')}
           </button>
         </div>
 
         {error && <div className={styles.errorMessage}>{error}</div>}
         {success && <div className={styles.successMessage}>{success}</div>}
       </div>
+
+      {/* Preview Section */}
+      {preview && (
+        <div className={styles.uploadSection}>
+          <h3>{t('invoiceImport.previewTitle', 'Import Preview')}</h3>
+
+          <div className={styles.importDetails}>
+            {preview.bankName && (
+              <div className={styles.detailRow}>
+                <span>{t('invoiceImport.bankName')}:</span>
+                <span>{preview.bankName}</span>
+              </div>
+            )}
+            {preview.invoiceMonth && (
+              <div className={styles.detailRow}>
+                <span>{t('invoiceImport.invoiceMonth', 'Month')}:</span>
+                <span>{preview.invoiceMonth}</span>
+              </div>
+            )}
+            {preview.dueDate && (
+              <div className={styles.detailRow}>
+                <span>{t('invoiceImport.dueDate')}:</span>
+                <span>{formatDate(preview.dueDate)}</span>
+              </div>
+            )}
+            {preview.totalAmount != null && (
+              <div className={styles.detailRow}>
+                <span>{t('invoiceImport.totalAmount')}:</span>
+                <span>{formatCurrency(preview.totalAmount)}</span>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.cardSectionsContainer}>
+            <h4>{t('invoiceImport.detectedCards', 'Detected Cards')}</h4>
+
+            {preview.detectedCards.map((detected) => (
+              <div key={detected.detectedLastFourDigits} className={styles.cardSection}>
+                <div className={styles.cardSectionHeader}>
+                  <div className={styles.cardSectionTitle}>
+                    <span className={styles.cardDigits}>
+                      **** {detected.detectedLastFourDigits}
+                    </span>
+                    {detected.autoMatched && (
+                      <span className={styles.autoMatchBadge}>
+                        {t('invoiceImport.autoMatched', 'Auto-matched')}
+                      </span>
+                    )}
+                    {detected.ambiguous && (
+                      <span className={styles.ambiguousBadge}>
+                        {t('invoiceImport.ambiguous', 'Multiple matches')}
+                      </span>
+                    )}
+                    {!detected.autoMatched && !detected.ambiguous && (
+                      <span className={styles.unmatchedBadge}>
+                        {t('invoiceImport.unmatched', 'Not found')}
+                      </span>
+                    )}
+                  </div>
+                  <span className={styles.cardSubtotal}>
+                    {formatCurrency(detected.subtotal)}
+                    {' '}({detected.items.length} {t('invoiceImport.items', 'items')})
+                  </span>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>
+                    {t('invoiceImport.mapToCard', 'Map to card')}:
+                  </label>
+                  <select
+                    value={cardMappings.get(detected.detectedLastFourDigits) ?? ''}
+                    onChange={(e) =>
+                      handleCardMappingChange(
+                        detected.detectedLastFourDigits,
+                        Number(e.target.value)
+                      )
+                    }
+                    className={styles.selectInput}
+                  >
+                    <option value="">
+                      {t('invoiceImport.selectCreditCardPlaceholder')}
+                    </option>
+                    {creditCards.map((card) => (
+                      <option key={card.id} value={card.id}>
+                        {card.name} - **** {card.lastFourDigits}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <details className={styles.itemsPreview}>
+                  <summary>
+                    {t('invoiceImport.viewItems', 'View items')} ({detected.items.length})
+                  </summary>
+                  <div className={styles.previewItemsList}>
+                    {detected.items.map((item, idx) => (
+                      <div key={idx} className={styles.previewItem}>
+                        <span className={styles.previewItemDesc}>{item.description}</span>
+                        <span className={styles.previewItemAmount}>
+                          {formatCurrency(item.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.previewActions}>
+            <button onClick={handleCancelPreview} className={styles.cancelButton}>
+              {t('invoiceImport.cancel')}
+            </button>
+            <button
+              onClick={handleConfirmImport}
+              disabled={!allCardsMapped || confirming}
+              className={styles.submitButton}
+            >
+              {confirming
+                ? t('invoiceImport.submitting', 'Confirming...')
+                : t('invoiceImport.confirmImport', 'Confirm Import')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Imports List */}
       <div className={styles.importsSection}>
@@ -294,7 +456,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
                     <span>{t('invoiceImport.importedAt')}:</span>
                     <span>{formatDateTime(importItem.importedAt)}</span>
                   </div>
-                  
+
                   {importItem.processedAt && (
                     <div className={styles.detailRow}>
                       <span>{t('invoiceImport.processedAt')}:</span>
@@ -305,7 +467,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
                   {importItem.totalAmount && (
                     <div className={styles.detailRow}>
                       <span>{t('invoiceImport.totalAmount')}:</span>
-                      <span>R$ {importItem.totalAmount.toFixed(2)}</span>
+                      <span>{formatCurrency(importItem.totalAmount)}</span>
                     </div>
                   )}
 
@@ -320,13 +482,6 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
                     <div className={styles.errorDetail}>
                       <span>{t('invoiceImport.error')}:</span>
                       <span>{importItem.errorMessage}</span>
-                    </div>
-                  )}
-
-                  {importItem.extractedText && (
-                    <div className={styles.extractedText}>
-                      <span>{t('invoiceImport.extractedText')}:</span>
-                      <pre>{importItem.extractedText}</pre>
                     </div>
                   )}
                 </div>
@@ -382,8 +537,8 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
     totalInstallments?: number;
   }>>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -393,8 +548,8 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
     try {
       const response = await apiService.getCategories();
       setCategories(response.categories);
-    } catch (error) {
-      console.error('Error loading categories:', error);
+    } catch (err) {
+      console.error('Error loading categories:', err);
     }
   };
 
@@ -420,13 +575,13 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
 
   const handleSubmit = async () => {
     if (!totalAmount || !dueDate || items.length === 0) {
-      setError(t('invoiceImport.fillAllFields'));
+      setModalError(t('invoiceImport.fillAllFields'));
       return;
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      setModalLoading(true);
+      setModalError(null);
 
       await apiService.manualReview(importItem.id, {
         totalAmount,
@@ -437,11 +592,11 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
       });
 
       onSuccess();
-    } catch (error: any) {
-      console.error('Error submitting manual review:', error);
-      setError(error.response?.data?.message || t('invoiceImport.reviewError'));
+    } catch (err: any) {
+      console.error('Error submitting manual review:', err);
+      setModalError(err.response?.data?.message || t('invoiceImport.reviewError'));
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
 
@@ -569,7 +724,7 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
             ))}
           </div>
 
-          {error && <div className={styles.errorMessage}>{error}</div>}
+          {modalError && <div className={styles.errorMessage}>{modalError}</div>}
         </div>
 
         <div className={styles.modalFooter}>
@@ -578,10 +733,10 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={modalLoading}
             className={styles.submitButton}
           >
-            {loading ? t('invoiceImport.submitting') : t('invoiceImport.submit')}
+            {modalLoading ? t('invoiceImport.submitting') : t('invoiceImport.submit')}
           </button>
         </div>
       </div>
@@ -589,4 +744,4 @@ const ManualReviewModal: React.FC<ManualReviewModalProps> = ({
   );
 };
 
-export default InvoiceImport; 
+export default InvoiceImport;

@@ -79,6 +79,13 @@ public class Invoice {
     private LocalDateTime updatedAt;
 
     /**
+     * Groups invoices created from the same multi-card import.
+     * All invoices sharing the same groupId belong to the same consolidated bill.
+     */
+    @Column(name = "import_group_id", length = 36)
+    private String importGroupId;
+
+    /**
      * Protected constructor for JPA only.
      */
     protected Invoice() {}
@@ -312,6 +319,14 @@ public class Invoice {
      */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getImportGroupId() {
+        return importGroupId;
+    }
+
+    public void setImportGroupId(String importGroupId) {
+        this.importGroupId = importGroupId;
     }
 
     @Override

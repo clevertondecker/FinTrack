@@ -10,8 +10,12 @@ import com.fintrack.domain.invoice.InvoiceImport;
 import com.fintrack.domain.invoice.ImportSource;
 import com.fintrack.domain.invoice.ImportStatus;
 import com.fintrack.domain.user.User;
+import com.fintrack.dto.invoice.ConfirmImportRequest;
+import com.fintrack.dto.invoice.ConfirmImportResponse;
+import com.fintrack.dto.invoice.DetectedCardMapping;
 import com.fintrack.dto.invoice.ImportInvoiceRequest;
 import com.fintrack.dto.invoice.ImportInvoiceResponse;
+import com.fintrack.dto.invoice.ImportPreviewResponse;
 import com.fintrack.dto.invoice.ImportProgressResponse;
 import com.fintrack.dto.invoice.ParsedInvoiceData;
 import com.fintrack.infrastructure.persistence.creditcard.CreditCardJpaRepository;
@@ -38,8 +42,10 @@ import java.time.YearMonth;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -99,6 +105,8 @@ public class InvoiceImportService {
     private final ObjectMapper objectMapper;
     /** The merchant categorization service. */
     private final MerchantCategorizationService merchantCategorizationService;
+    /** The card auto-match service. */
+    private final CardAutoMatchService cardAutoMatchService;
 
     /** The upload directory path. */
     @Value("${app.upload.directory:uploads}")
@@ -109,13 +117,15 @@ public class InvoiceImportService {
                                InvoiceJpaRepository invoiceRepository,
                                PdfInvoiceParser pdfInvoiceParser,
                                ObjectMapper objectMapper,
-                               MerchantCategorizationService merchantCategorizationService) {
+                               MerchantCategorizationService merchantCategorizationService,
+                               CardAutoMatchService cardAutoMatchService) {
         this.invoiceImportRepository = invoiceImportRepository;
         this.creditCardRepository = creditCardRepository;
         this.invoiceRepository = invoiceRepository;
         this.pdfInvoiceParser = pdfInvoiceParser;
         this.objectMapper = objectMapper;
         this.merchantCategorizationService = merchantCategorizationService;
+        this.cardAutoMatchService = cardAutoMatchService;
     }
 
     /**
@@ -154,6 +164,143 @@ public class InvoiceImportService {
         processImportAsync(importRecord.getId());
 
         return createImportResponse(importRecord, "Import iniciado com sucesso. Processando em background.");
+    }
+
+    /**
+     * Uploads and parses a file, returning a preview with detected card sections
+     * and auto-matched credit cards for user confirmation.
+     *
+     * @param file the uploaded file. Cannot be null.
+     * @param user the user performing the import. Cannot be null.
+     * @return the preview response with detected cards. Never null.
+     * @throws IOException if there's an error processing the file.
+     */
+    public ImportPreviewResponse previewImport(MultipartFile file, User user) throws IOException {
+        Validate.notNull(file, "File must not be null.");
+
+        logger.info("Starting import preview for user: {}, file: {}",
+                user.getEmail(), file.getOriginalFilename());
+
+        ImportSource source = determineImportSource(file.getOriginalFilename());
+        String filePath = saveFileToDisk(file);
+
+        InvoiceImport importRecord = InvoiceImport.of(user, source, file.getOriginalFilename(), filePath);
+        importRecord = invoiceImportRepository.save(importRecord);
+
+        ParsedInvoiceData parsedData = parseFile(importRecord);
+        updateImportWithParsedData(importRecord, parsedData);
+
+        List<DetectedCardMapping> detectedCards = cardAutoMatchService.buildDetectedCardMappings(parsedData, user);
+        boolean allMatched = detectedCards.stream().allMatch(DetectedCardMapping::autoMatched);
+
+        importRecord.markAsPendingReview();
+        invoiceImportRepository.save(importRecord);
+
+        return new ImportPreviewResponse(
+                importRecord.getId(),
+                parsedData.bankName(),
+                parsedData.invoiceMonth(),
+                parsedData.dueDate(),
+                parsedData.totalAmount(),
+                parsedData.confidence(),
+                detectedCards,
+                allMatched
+        );
+    }
+
+    /**
+     * Confirms a previewed import by creating invoices for each mapped card.
+     *
+     * @param importId the import ID to confirm. Cannot be null.
+     * @param request  the confirmation request with card mappings. Cannot be null.
+     * @param user     the user confirming the import. Cannot be null.
+     * @return the confirmation response with created invoice IDs. Never null.
+     */
+    public ConfirmImportResponse confirmImport(Long importId, ConfirmImportRequest request, User user) {
+        Validate.notNull(importId, "Import ID must not be null.");
+        Validate.notNull(request, "Request must not be null.");
+
+        InvoiceImport importRecord = invoiceImportRepository.findByIdAndUser(importId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Import not found or access denied."));
+
+        if (importRecord.getStatus() != ImportStatus.PENDING_REVIEW) {
+            throw new IllegalStateException(
+                    "Import is not in PENDING_REVIEW status. Current: " + importRecord.getStatus());
+        }
+
+        ParsedInvoiceData parsedData = deserializeParsedData(importRecord);
+
+        Map<String, List<ParsedInvoiceData.ParsedInvoiceItem>> itemsByCard =
+                cardAutoMatchService.buildItemsByCardMap(parsedData);
+
+        LocalDate dueDate = parsedData.dueDate() != null
+                ? parsedData.dueDate()
+                : LocalDate.now().plusDays(DEFAULT_DUE_DATE_DAYS);
+        YearMonth invoiceMonth = parsedData.invoiceMonth() != null
+                ? parsedData.invoiceMonth()
+                : YearMonth.from(dueDate);
+
+        List<Long> createdInvoiceIds = new ArrayList<>();
+        int totalItems = 0;
+
+        String groupId = request.cardMappings().size() > 1
+                ? java.util.UUID.randomUUID().toString() : null;
+
+        for (ConfirmImportRequest.CardMapping mapping : request.cardMappings()) {
+            CreditCard creditCard = validateAndGetCreditCard(mapping.creditCardId(), user);
+            List<ParsedInvoiceData.ParsedInvoiceItem> cardItems =
+                    itemsByCard.getOrDefault(mapping.detectedLastFourDigits(), List.of());
+
+            if (cardItems.isEmpty()) {
+                logger.warn("No items found for card {} in import {}",
+                        mapping.detectedLastFourDigits(), importId);
+                continue;
+            }
+
+            Invoice invoice = findOrCreateInvoice(creditCard, invoiceMonth, dueDate);
+            if (groupId != null) {
+                invoice.setImportGroupId(groupId);
+            }
+            addItemsToInvoice(invoice, cardItems);
+
+            int categorized = merchantCategorizationService.applyRulesToItems(
+                    invoice.getItems(), creditCard.getOwner());
+            logger.info("Auto-categorized {} items for card {} in import {}",
+                    categorized, mapping.detectedLastFourDigits(), importId);
+
+            invoice = invoiceRepository.save(invoice);
+            createdInvoiceIds.add(invoice.getId());
+            totalItems += cardItems.size();
+        }
+
+        importRecord.markAsCompletedWithoutInvoiceReference();
+        importRecord.setCreatedInvoiceIds(createdInvoiceIds.toString());
+        invoiceImportRepository.save(importRecord);
+
+        logger.info("Import {} confirmed: {} invoices created, {} items imported",
+                importId, createdInvoiceIds.size(), totalItems);
+
+        return new ConfirmImportResponse(
+                "Import confirmed successfully.",
+                importId,
+                createdInvoiceIds,
+                totalItems
+        );
+    }
+
+    /**
+     * Deserializes parsed data JSON from an import record.
+     */
+    private ParsedInvoiceData deserializeParsedData(InvoiceImport importRecord) {
+        if (importRecord.getParsedData() == null) {
+            throw new IllegalStateException("No parsed data for import: " + importRecord.getId());
+        }
+        try {
+            return objectMapper.readValue(importRecord.getParsedData(), ParsedInvoiceData.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error deserializing parsed data for import: "
+                    + importRecord.getId(), e);
+        }
     }
 
     /**
@@ -503,11 +650,10 @@ public class InvoiceImportService {
             invoice.getId(), processingTime, result.added(), result.skipped(), 
             initialItemCount, finalItemCount);
         
-        // Log performance metrics for monitoring
         if (result.totalProcessed() > 0) {
-            double successRate = result.successRate() * 100;
-            logger.debug("Import performance - Success rate: {:.1f}%, Processing time: {}ms per item", 
-                successRate, processingTime / result.totalProcessed());
+            logger.debug("Import performance - Success rate: {}%, Processing time: {}ms per item", 
+                String.format("%.1f", result.successRate()),
+                processingTime / result.totalProcessed());
         }
     }
 
@@ -771,13 +917,13 @@ public class InvoiceImportService {
         }
 
         /**
-         * Success rate as a percentage (added / total * 100).
+         * Success rate as a percentage (0-100).
          */
         public double successRate() {
             if (totalProcessed() == 0) {
                 return 0.0;
             }
-            return (double) added / totalProcessed() * 100;
+            return (double) added / totalProcessed() * 100.0;
         }
     }
 
@@ -843,20 +989,13 @@ public class InvoiceImportService {
      */
     private String buildSignatureBase(String normalizedDescription, String normalizedAmount,
                                     String normalizedDate, int installment, int totalInstallments) {
-        // For special items like IOF, include date for more permissive deduplication
-        String join = String.join(SIGNATURE_DELIMITER,
+        return String.join(SIGNATURE_DELIMITER,
                 normalizedDescription,
                 normalizedAmount,
-                normalizedDate,  // Include date for special items
+                normalizedDate,
                 String.valueOf(installment),
                 String.valueOf(totalInstallments)
         );
-        if (isSpecialItemType(normalizedDescription)) {
-            return join;
-        }
-        
-        // For regular items, use strict deduplication
-        return join;
     }
 
     /**
@@ -1070,13 +1209,7 @@ public class InvoiceImportService {
      * @return the status message. Never null.
      */
     private String getStatusMessage(ImportStatus status) {
-        return switch (status) {
-            case PENDING -> "Aguardando processamento";
-            case PROCESSING -> "Processando arquivo";
-            case COMPLETED -> "Importação concluída com sucesso";
-            case FAILED -> "Falha na importação";
-            case MANUAL_REVIEW -> "Requer revisão manual";
-        };
+        return status.getDisplayName();
     }
 }
 

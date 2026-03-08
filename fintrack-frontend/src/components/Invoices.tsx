@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
-import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, GroupedInvoices, Category } from '../types/invoice';
+import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
-import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate } from '../utils/invoiceUtils';
+import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate, sortInvoices, groupInvoices, consolidateInvoices, calculateSummary } from '../utils/invoiceUtils';
 import ShareItemModal from './ShareItemModal';
+import InvoiceItemRow from './invoices/InvoiceItemRow';
+import ItemsTableHeader from './invoices/ItemsTableHeader';
 import './Invoices.css';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,6 +67,9 @@ const Invoices: React.FC = () => {
 
   const [showAddMore, setShowAddMore] = useState(false);
   const [quickAddMode, setQuickAddMode] = useState(false);
+  const [isConsolidatedView, setIsConsolidatedView] = useState(false);
+  const [cardItemGroups, setCardItemGroups] = useState<{invoice: Invoice, items: InvoiceItem[]}[]>([]);
+  const [activeCardTab, setActiveCardTab] = useState<number>(0);
 
   // Funções auxiliares para formatação de valores
   const formatInvoiceAmount = (invoice: Invoice): string => {
@@ -185,97 +190,6 @@ const Invoices: React.FC = () => {
     setError(null);
   };
 
-  const sortInvoices = (invoices: Invoice[]): Invoice[] => {
-    const priority: Record<string, number> = { 'OVERDUE': 1, 'OPEN': 2, 'PARTIAL': 3, 'PAID': 4, 'CLOSED': 5 };
-    
-    return invoices.sort((a, b) => {
-      // Primeiro por status
-      const statusDiff = (priority[a.status] || 6) - (priority[b.status] || 6);
-      if (statusDiff !== 0) return statusDiff;
-      
-      // Depois por data de vencimento (mais próxima primeiro)
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    });
-  };
-
-  const groupInvoices = (invoices: Invoice[]): GroupedInvoices => {
-    return {
-      overdue: invoices.filter(i => i.status === 'OVERDUE'),
-      open: invoices.filter(i => i.status === 'OPEN'),
-      partial: invoices.filter(i => i.status === 'PARTIAL'),
-      paid: invoices.filter(i => i.status === 'PAID'),
-      closed: invoices.filter(i => i.status === 'CLOSED')
-    };
-  };
-
-  const calculateSummary = (invoices: Invoice[]): InvoiceSummary => {
-    const summary: InvoiceSummary = {
-      totalInvoices: invoices.length,
-      totalAmount: 0,
-      totalPaid: 0,
-      totalRemaining: 0,
-      overdueCount: 0,
-      overdueAmount: 0,
-      openCount: 0,
-      openAmount: 0,
-      partialCount: 0,
-      partialAmount: 0,
-      paidCount: 0,
-      paidAmount: 0
-    };
-
-    invoices.forEach(invoice => {
-      // Use userShare if available, otherwise use totalAmount
-      const userAmount = invoice.userShare !== null && invoice.userShare !== undefined 
-        ? invoice.userShare 
-        : (invoice.totalAmount || 0);
-      const totalInvoiceAmount = invoice.totalAmount || 0;
-      const totalPaid = invoice.paidAmount || 0;
-      
-      // Calculate user's proportional paid amount
-      // If the invoice is shared, calculate what portion of the payment applies to the user
-      let userPaid: number;
-      if (totalInvoiceAmount > 0 && userAmount !== totalInvoiceAmount) {
-        // Shared invoice: calculate user's proportional share of the payment
-        const paidPercentage = Math.min(totalPaid / totalInvoiceAmount, 1);
-        userPaid = userAmount * paidPercentage;
-      } else {
-        // Not shared: user's paid amount is the invoice paid amount (capped at user amount)
-        userPaid = Math.min(totalPaid, userAmount);
-      }
-      
-      const userRemaining = Math.max(0, userAmount - userPaid);
-      
-      summary.totalAmount += userAmount;
-      summary.totalPaid += userPaid;
-      summary.totalRemaining += userRemaining;
-
-      switch (invoice.status) {
-        case 'OVERDUE':
-          summary.overdueCount++;
-          summary.overdueAmount += userAmount;
-          break;
-        case 'OPEN':
-          summary.openCount++;
-          summary.openAmount += userAmount;
-          break;
-        case 'PARTIAL':
-          summary.partialCount++;
-          summary.partialAmount += userAmount;
-          break;
-        case 'PAID':
-          summary.paidCount++;
-          summary.paidAmount += userAmount;
-          break;
-        case 'CLOSED':
-          // Faturas fechadas não são contabilizadas no resumo
-          break;
-      }
-    });
-
-    return summary;
-  };
-
   const applyFilters = () => {
     let filtered = [...invoices];
 
@@ -303,7 +217,8 @@ const Invoices: React.FC = () => {
       filtered = filtered.filter(invoice => (invoice.totalAmount || 0) <= filters.maxAmount!);
     }
 
-    const sorted = sortInvoices(filtered);
+    const consolidated = consolidateInvoices(filtered);
+    const sorted = sortInvoices(consolidated);
     setFilteredInvoices(sorted);
     setSummary(calculateSummary(sorted));
   };
@@ -323,6 +238,9 @@ const Invoices: React.FC = () => {
   };
 
   const handleViewDetails = async (invoice: Invoice) => {
+    setIsConsolidatedView(false);
+    setCardItemGroups([]);
+    setActiveCardTab(0);
     setSelectedInvoice(invoice);
     setShowDetailsModal(true);
     setLoadingItems(true);
@@ -336,10 +254,50 @@ const Invoices: React.FC = () => {
     }
   };
 
+  const handleViewConsolidatedDetails = async (invoice: Invoice) => {
+    const cards = getConsolidatedCards(invoice);
+    if (!cards || cards.length === 0) {
+      handleViewDetails(invoice);
+      return;
+    }
+
+    setIsConsolidatedView(true);
+    setActiveCardTab(0);
+    setSelectedInvoice(invoice);
+    setShowDetailsModal(true);
+    setLoadingItems(true);
+    setInvoiceItems([]);
+
+    try {
+      const results = await Promise.all(
+        cards.map(async (sub) => {
+          try {
+            const response = await apiService.getInvoiceItems(sub.id);
+            return { invoice: sub, items: response.items };
+          } catch {
+            return { invoice: sub, items: [] };
+          }
+        })
+      );
+      setCardItemGroups(results);
+
+      const allItems = results.flatMap(r => r.items);
+      setInvoiceItems(allItems);
+    } catch {
+      setCardItemGroups([]);
+      setInvoiceItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
   const handleCloseDetails = () => {
     setShowDetailsModal(false);
     setSelectedInvoice(null);
     setInvoiceItems([]);
+    setIsConsolidatedView(false);
+    setCardItemGroups([]);
+    setActiveCardTab(0);
   };
 
   const handleItemInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -498,6 +456,12 @@ const Invoices: React.FC = () => {
     return uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
+  const categoryLookup = useCallback((itemCategory: string | null): number | string => {
+    if (!itemCategory) return '';
+    const found = categories.find(c => c.name === itemCategory);
+    return found ? found.id : '';
+  }, [categories]);
+
   // Extract error message helper for better reusability
   const extractErrorMessage = useCallback((err: any, defaultMessage: string): string => {
     return err.response?.data?.error || err.message || defaultMessage;
@@ -586,13 +550,125 @@ const Invoices: React.FC = () => {
     }
   };
 
+  const getConsolidatedCards = (invoice: Invoice): Invoice[] | undefined => {
+    return invoice._consolidatedCards;
+  };
+
+  const isConsolidated = (invoice: Invoice): boolean => {
+    return !!invoice._consolidatedCards;
+  };
+
   const groupedInvoices = groupInvoices(filteredInvoices);
 
   if (loading) {
     return <div className="loading">{t('invoices.loading')}</div>;
   }
 
+  const renderInvoiceCard = (invoice: Invoice, statusClass: string) => {
+    const consolidated = isConsolidated(invoice);
+    const cards = getConsolidatedCards(invoice);
+    return (
+      <div key={invoice.importGroupId || invoice.id} className={`invoice-card ${statusClass}`}>
+        <div className="invoice-header">
+          <h3>{consolidated ? t('invoices.consolidatedBill', 'Fatura Consolidada') : invoice.creditCardName}</h3>
+          <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
+        </div>
 
+        <div className="invoice-details">
+          <div className="detail-item">
+            <span className="label">{t('invoices.dueDateLabel')}:</span>
+            <span className="value">{formatDate(invoice.dueDate)}</span>
+          </div>
+
+          <div className="detail-item">
+            <span className="label">{t('invoices.totalAmountLabel')}:</span>
+            <span className="value total">{formatInvoiceAmount(invoice)}</span>
+          </div>
+
+          <div className="detail-item">
+            <span className="label">{t('invoices.paidAmountLabel')}:</span>
+            <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
+          </div>
+
+          {getInvoiceUserRemaining(invoice) > 0 && (
+            <div className="detail-item">
+              <span className="label">{t('invoices.remainingAmountLabel')}:</span>
+              <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
+            </div>
+          )}
+
+          {(statusClass === 'overdue' || statusClass === 'open') && (
+            <div className="urgency-badge">
+              {getUrgencyText(invoice.dueDate, invoice.status, t)}
+            </div>
+          )}
+
+          {statusClass === 'partial' && (
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{
+                  width: `${((invoice.paidAmount || 0) / (invoice.totalAmount || 1)) * 100}%`
+                }}
+              ></div>
+            </div>
+          )}
+        </div>
+
+        {consolidated && cards && (
+          <div className="consolidated-breakdown">
+            <div className="breakdown-title">{t('invoices.cardBreakdown', 'Cartões nesta fatura')}:</div>
+            {cards.map(sub => (
+              <div key={sub.id} className="breakdown-row">
+                <span className="breakdown-card-name">{sub.creditCardName}</span>
+                <span className="breakdown-amount">{formatCurrency(sub.totalAmount || 0)}</span>
+                <button
+                  onClick={() => handleViewDetails(sub)}
+                  className="breakdown-detail-btn"
+                >
+                  {t('invoices.viewButton')}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="invoice-actions">
+          {consolidated ? (
+            <button
+              onClick={() => handleViewConsolidatedDetails(invoice)}
+              className="view-button"
+            >
+              {t('invoices.viewAllDetails', 'Ver Fatura Completa')}
+            </button>
+          ) : (
+            <button
+              onClick={() => handleViewDetails(invoice)}
+              className="view-button"
+            >
+              {t('invoices.viewButton')}
+            </button>
+          )}
+          {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && !consolidated && (
+            <button
+              onClick={() => handleOpenPayModal(invoice)}
+              className="pay-button"
+            >
+              {t('invoices.payButton')}
+            </button>
+          )}
+          {user?.roles?.includes('ADMIN') && !consolidated && (
+            <button
+              onClick={() => handleDeleteInvoice(invoice.id)}
+              className="delete-invoice-btn"
+            >
+              Excluir Fatura
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="invoices-container">
@@ -773,65 +849,7 @@ const Invoices: React.FC = () => {
               </div>
             </div>
             <div className="invoices-grid">
-              {groupedInvoices.overdue.map(invoice => (
-                <div key={invoice.id} className="invoice-card overdue">
-                  <div className="invoice-header">
-                    <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
-                  </div>
-                  
-                  <div className="invoice-details">
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.dueDateLabel')}:</span>
-                      <span className="value">{formatDate(invoice.dueDate)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
-                    </div>
-                    
-                    <div className="urgency-badge">
-                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
-                    </div>
-                  </div>
-
-                  <div className="invoice-actions">
-                    <button 
-                      onClick={() => handleViewDetails(invoice)}
-                      className="view-button"
-                    >
-                      {t('invoices.viewButton')}
-                    </button>
-                    {(invoice.status === 'OPEN' || invoice.status === 'PARTIAL' || invoice.status === 'OVERDUE') && (
-                      <button 
-                        onClick={() => handleOpenPayModal(invoice)}
-                        className="pay-button"
-                      >
-                        {t('invoices.payButton')}
-                      </button>
-                    )}
-                    {user?.roles?.includes('ADMIN') && (
-                      <button 
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="delete-invoice-btn"
-                      >
-                        Excluir Fatura
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {groupedInvoices.overdue.map(invoice => renderInvoiceCard(invoice, 'overdue'))}
             </div>
           </div>
         )}
@@ -846,63 +864,7 @@ const Invoices: React.FC = () => {
               </div>
             </div>
             <div className="invoices-grid">
-              {groupedInvoices.open.map(invoice => (
-                <div key={invoice.id} className="invoice-card open">
-                  <div className="invoice-header">
-                    <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
-                  </div>
-                  
-                  <div className="invoice-details">
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.dueDateLabel')}:</span>
-                      <span className="value">{formatDate(invoice.dueDate)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
-                    </div>
-                    
-                    <div className="urgency-badge">
-                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
-                    </div>
-                  </div>
-
-                  <div className="invoice-actions">
-                    <button 
-                      onClick={() => handleViewDetails(invoice)}
-                      className="view-button"
-                    >
-                      {t('invoices.viewButton')}
-                    </button>
-                    <button 
-                      onClick={() => handleOpenPayModal(invoice)}
-                      className="pay-button"
-                    >
-                      {t('invoices.payButton')}
-                    </button>
-                    {user?.roles?.includes('ADMIN') && (
-                      <button 
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="delete-invoice-btn"
-                      >
-                        Excluir Fatura
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {groupedInvoices.open.map(invoice => renderInvoiceCard(invoice, 'open'))}
             </div>
           </div>
         )}
@@ -917,68 +879,7 @@ const Invoices: React.FC = () => {
               </div>
             </div>
             <div className="invoices-grid">
-              {groupedInvoices.partial.map(invoice => (
-                <div key={invoice.id} className="invoice-card partial">
-                  <div className="invoice-header">
-                    <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
-                  </div>
-                  
-                  <div className="invoice-details">
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.dueDateLabel')}:</span>
-                      <span className="value">{formatDate(invoice.dueDate)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
-                    </div>
-                    
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ 
-                          width: `${((invoice.paidAmount || 0) / (invoice.totalAmount || 1)) * 100}%` 
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <div className="invoice-actions">
-                    <button 
-                      onClick={() => handleViewDetails(invoice)}
-                      className="view-button"
-                    >
-                      {t('invoices.viewButton')}
-                    </button>
-                    <button 
-                      onClick={() => handleOpenPayModal(invoice)}
-                      className="pay-button"
-                    >
-                      {t('invoices.payButton')}
-                    </button>
-                    {user?.roles?.includes('ADMIN') && (
-                      <button 
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="delete-invoice-btn"
-                      >
-                        Excluir Fatura
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {groupedInvoices.partial.map(invoice => renderInvoiceCard(invoice, 'partial'))}
             </div>
           </div>
         )}
@@ -993,53 +894,7 @@ const Invoices: React.FC = () => {
               </div>
             </div>
             <div className="invoices-grid">
-              {groupedInvoices.paid.map(invoice => (
-                <div key={invoice.id} className="invoice-card paid">
-                  <div className="invoice-header">
-                    <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
-                  </div>
-                  
-                  <div className="invoice-details">
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.dueDateLabel')}:</span>
-                      <span className="value">{formatDate(invoice.dueDate)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.createdAtLabel')}:</span>
-                      <span className="value">{formatDate(invoice.createdAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="invoice-actions">
-                    <button 
-                      onClick={() => handleViewDetails(invoice)}
-                      className="view-button"
-                    >
-                      {t('invoices.viewButton')}
-                    </button>
-                    {user?.roles?.includes('ADMIN') && (
-                      <button 
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="delete-invoice-btn"
-                      >
-                        Excluir Fatura
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {groupedInvoices.paid.map(invoice => renderInvoiceCard(invoice, 'paid'))}
             </div>
           </div>
         )}
@@ -1054,56 +909,7 @@ const Invoices: React.FC = () => {
               </div>
             </div>
             <div className="invoices-grid">
-              {groupedInvoices.closed.map(invoice => (
-                <div key={invoice.id} className="invoice-card closed">
-                  <div className="invoice-header">
-                    <h3>{invoice.creditCardName}</h3>
-                    <span className={`status ${getStatusColor(invoice.status)}`}>{getStatusText(invoice.status, t)}</span>
-                  </div>
-                  <div className="invoice-details">
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.dueDateLabel')}:</span>
-                      <span className="value">{formatDate(invoice.dueDate)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.totalAmountLabel')}:</span>
-                      <span className="value total">{formatInvoiceAmount(invoice)}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.paidAmountLabel')}:</span>
-                      <span className="value paid">{formatCurrency(getInvoiceUserPaid(invoice))}</span>
-                    </div>
-                    
-                    <div className="detail-item">
-                      <span className="label">{t('invoices.remainingAmountLabel')}:</span>
-                      <span className="value remaining">{formatCurrency(getInvoiceUserRemaining(invoice))}</span>
-                    </div>
-                    
-                    <div className="urgency-badge">
-                      {getUrgencyText(invoice.dueDate, invoice.status, t)}
-                    </div>
-                  </div>
-
-                  <div className="invoice-actions">
-                    <button 
-                      onClick={() => handleViewDetails(invoice)}
-                      className="view-button"
-                    >
-                      {t('invoices.viewButton')}
-                    </button>
-                    {user?.roles?.includes('ADMIN') && (
-                      <button 
-                        onClick={() => handleDeleteInvoice(invoice.id)}
-                        className="delete-invoice-btn"
-                      >
-                        Excluir Fatura
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {groupedInvoices.closed.map(invoice => renderInvoiceCard(invoice, 'closed'))}
             </div>
           </div>
         )}
@@ -1119,18 +925,20 @@ const Invoices: React.FC = () => {
       {/* Details Modal */}
       {showDetailsModal && selectedInvoice && (
         <div className="modal-overlay">
-          <div className="modal-container">
+          <div className="modal-container consolidated-modal">
             <div className="modal-header">
-              <h2>{t('invoices.detailsModalTitle')}</h2>
+              <h2>{isConsolidatedView ? t('invoices.consolidatedDetailsTitle', 'Fatura Consolidada') : t('invoices.detailsModalTitle')}</h2>
               <button onClick={handleCloseDetails} className="close-button">&times;</button>
             </div>
             
             <div className="modal-content">
               <div className="invoice-info">
-                <div className="info-row">
-                  <span className="label">{t('invoices.creditCardLabel')}:</span>
-                  <span className="value">{selectedInvoice.creditCardName}</span>
-                </div>
+                {!isConsolidatedView && (
+                  <div className="info-row">
+                    <span className="label">{t('invoices.creditCardLabel')}:</span>
+                    <span className="value">{selectedInvoice.creditCardName}</span>
+                  </div>
+                )}
                 <div className="info-row">
                   <span className="label">{t('invoices.dueDateLabel')}:</span>
                   <span className="value">{formatDate(selectedInvoice.dueDate)}</span>
@@ -1161,245 +969,259 @@ const Invoices: React.FC = () => {
                 </div>
               )}
 
-              <div className="invoice-items-section">
-                <div className="section-header">
-                  <h3>{t('invoices.itemsLabel')}</h3>
-                  {/* Botão sempre visível para todas as faturas, incluindo fechadas */}
-                  {!quickAddMode && selectedInvoice && (
-                    <button 
-                      className="quick-add-button"
-                      onClick={handleQuickAdd}
-                    >
-                      + {t('invoices.addItem')}
-                    </button>
+              {isConsolidatedView && cardItemGroups.length > 0 ? (
+                <div className="invoice-items-section">
+                  <div className="section-header">
+                    <h3>{t('invoices.itemsLabel')} ({invoiceItems.length})</h3>
+                  </div>
+
+                  {loadingItems ? (
+                    <div className="loading">{t('invoices.loadingItems')}</div>
+                  ) : (
+                    <>
+                      <div className="card-tabs">
+                        <button
+                          className={`card-tab ${activeCardTab === -1 ? 'active' : ''}`}
+                          onClick={() => setActiveCardTab(-1)}
+                        >
+                          {t('invoices.allCards', 'Todos')} ({invoiceItems.length})
+                        </button>
+                        {cardItemGroups.map((group, idx) => (
+                          <button
+                            key={group.invoice.id}
+                            className={`card-tab ${activeCardTab === idx ? 'active' : ''}`}
+                            onClick={() => setActiveCardTab(idx)}
+                          >
+                            {group.invoice.creditCardName} ({group.items.length})
+                          </button>
+                        ))}
+                      </div>
+
+                      {(activeCardTab === -1 ? cardItemGroups : [cardItemGroups[activeCardTab]].filter(Boolean))
+                        .map((group) => (
+                          <div key={group.invoice.id} className={`card-section ${activeCardTab !== -1 ? 'active-tab-section' : ''}`}>
+                            <div className="card-section-header">
+                              <span className="card-section-name">{group.invoice.creditCardName}</span>
+                              <span className="card-section-total">{formatCurrency(group.invoice.totalAmount)}</span>
+                              <span className={`card-section-status ${getStatusColor(group.invoice.status)}`}>
+                                {getStatusText(group.invoice.status, t)}
+                              </span>
+                            </div>
+                            {group.items.length === 0 ? (
+                              <p className="no-items">{t('invoices.noItems')}</p>
+                            ) : (
+                              <>
+                                <ItemsTableHeader />
+                                <div className="items-list">
+                                  {group.items.map(item => (
+                                    <InvoiceItemRow
+                                      key={item.id}
+                                      item={item}
+                                      sortedCategories={sortedCategories}
+                                      categoryLookup={categoryLookup}
+                                      onCategoryChange={handleUpdateItemCategory}
+                                      onShare={handleShareItem}
+                                      updatingCategoryItemId={updatingCategoryItemId}
+                                    />
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      }
+                    </>
                   )}
                 </div>
+              ) : (
+                <div className="invoice-items-section">
+                  <div className="section-header">
+                    <h3>{t('invoices.itemsLabel')}</h3>
+                    {!quickAddMode && selectedInvoice && !isConsolidatedView && (
+                      <button 
+                        className="quick-add-button"
+                        onClick={handleQuickAdd}
+                      >
+                        + {t('invoices.addItem')}
+                      </button>
+                    )}
+                  </div>
 
-                {loadingItems ? (
-                  <div className="loading">{t('invoices.loadingItems')}</div>
-                ) : (
-                  <>
-                    {invoiceItems.length === 0 ? (
-                      <p className="no-items">{t('invoices.noItems')}</p>
-                    ) : (
-                      <>
-                        <div className="items-header">
-                          <div className="header-description">{t('invoices.descriptionLabel')}</div>
-                          <div className="header-category">{t('invoices.categoryLabel')}</div>
-                          <div className="header-date">{t('invoices.purchaseDateLabel')}</div>
-                          <div className="header-amount">{t('invoices.amountLabel')}</div>
-                          <div className="header-installments">{t('invoiceItems.installments')}</div>
-                          <div className="header-actions">{t('invoices.actionsLabel')}</div>
-                        </div>
-                        <div className="items-list">
-                          {invoiceItems.map(item => (
-                            <div key={item.id} className="item-row">
-                              <div className="item-description">
-                                {item.description}
-                                {item.isShared && (
-                                  <span className="shared-indicator" title={t('invoices.itemShared')}>
-                                    👥
-                                  </span>
-                                )}
+                  {loadingItems ? (
+                    <div className="loading">{t('invoices.loadingItems')}</div>
+                  ) : (
+                    <>
+                      {invoiceItems.length === 0 ? (
+                        <p className="no-items">{t('invoices.noItems')}</p>
+                      ) : (
+                        <>
+                          <ItemsTableHeader />
+                          <div className="items-list">
+                            {invoiceItems.map(item => (
+                              <InvoiceItemRow
+                                key={item.id}
+                                item={item}
+                                sortedCategories={sortedCategories}
+                                categoryLookup={categoryLookup}
+                                onCategoryChange={handleUpdateItemCategory}
+                                onShare={handleShareItem}
+                                onRemove={handleRemoveItem}
+                                updatingCategoryItemId={updatingCategoryItemId}
+                                removingItemId={removingItemId}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {quickAddMode && (
+                        <div className="compact-item-form">
+                          <div className="form-header">
+                            <h4>{t('invoices.addItem')}</h4>
+                            <button 
+                              className="close-form-button"
+                              onClick={handleFinishAdding}
+                            >
+                              ×
+                            </button>
+                          </div>
+
+                          <div className="quick-shortcuts">
+                            <div className="shortcut-group">
+                              <label>Categorias:</label>
+                              <div className="shortcut-buttons">
+                                {categories.slice(0, 5).map(category => (
+                                  <button
+                                    key={category.id}
+                                    type="button"
+                                    className={`shortcut-btn ${itemForm.categoryId === category.id.toString() ? 'active' : ''}`}
+                                    onClick={() => handleQuickCategorySelect(category.id.toString())}
+                                  >
+                                    {category.name}
+                                  </button>
+                                ))}
                               </div>
-                              <div className="item-category">
-                                <select
-                                  value={categories.find(c => c.name === item.category)?.id || ''}
-                                  onChange={(e) => handleUpdateItemCategory(item.id, e.target.value ? Number(e.target.value) : null)}
-                                  disabled={updatingCategoryItemId === item.id}
-                                  className="category-select"
-                                  title={item.category || t('invoices.noCategory')}
+                            </div>
+
+                            <div className="shortcut-group">
+                              <label>Valores comuns:</label>
+                              <div className="shortcut-buttons">
+                                {['10', '20', '50', '100', '200'].map(amount => (
+                                  <button
+                                    key={amount}
+                                    type="button"
+                                    className={`shortcut-btn ${itemForm.amount === amount ? 'active' : ''}`}
+                                    onClick={() => handleQuickAmountSelect(amount)}
+                                  >
+                                    R$ {amount}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="shortcut-group">
+                              <label>Data:</label>
+                              <div className="shortcut-buttons">
+                                <button
+                                  type="button"
+                                  className={`shortcut-btn ${itemForm.purchaseDate === new Date().toISOString().split('T')[0] ? 'active' : ''}`}
+                                  onClick={() => handleQuickDateSelect(new Date().toISOString().split('T')[0])}
                                 >
-                                  <option value="">{t('invoices.noCategory')}</option>
-                                  {sortedCategories.map(category => (
+                                  Hoje
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`shortcut-btn ${itemForm.purchaseDate === new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0] ? 'active' : ''}`}
+                                  onClick={() => handleQuickDateSelect(new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0])}
+                                >
+                                  Ontem
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <form onSubmit={handleAddItem} className="compact-form">
+                            <div className="form-row-compact">
+                              <div className="form-group-compact">
+                                <input
+                                  type="text"
+                                  name="description"
+                                  value={itemForm.description}
+                                  onChange={handleItemInputChange}
+                                  placeholder={t('invoices.descriptionPlaceholder')}
+                                  required
+                                  className="description-input"
+                                />
+                              </div>
+                              <div className="form-group-compact">
+                                <input
+                                  type="number"
+                                  name="amount"
+                                  value={itemForm.amount}
+                                  onChange={handleItemInputChange}
+                                  placeholder="R$ 0,00"
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                  className="amount-input"
+                                />
+                              </div>
+                              <div className="form-group-compact">
+                                <select
+                                  name="categoryId"
+                                  value={itemForm.categoryId}
+                                  onChange={handleItemInputChange}
+                                  className="category-select"
+                                >
+                                  <option value="">{t('invoices.selectCategory')}</option>
+                                  {categories.map(category => (
                                     <option key={category.id} value={category.id}>
                                       {category.name}
                                     </option>
                                   ))}
                                 </select>
-                                {updatingCategoryItemId === item.id && (
-                                  <span className="updating-indicator" title={t('invoices.updatingCategory')}>⏳</span>
-                                )}
                               </div>
-                              <div className="item-date">{formatDate(item.purchaseDate)}</div>
-                              <div className="item-amount">{formatCurrency(item.amount)}</div>
-                              <div className="item-installments">
-                                {item.totalInstallments && item.totalInstallments > 1
-                                  ? `${item.installments}/${item.totalInstallments}`
-                                  : t('invoiceItems.singlePayment')}
+                              <div className="form-group-compact">
+                                <input
+                                  type="date"
+                                  name="purchaseDate"
+                                  value={itemForm.purchaseDate}
+                                  onChange={handleItemInputChange}
+                                  className="date-input"
+                                />
                               </div>
-                              <div className="item-actions">
-                                <button 
-                                  onClick={() => handleShareItem(item)}
-                                  className="share-button"
-                                  title={t('invoices.shareItemTooltip')}
-                                >
-                                  {t('invoices.shareButton')}
-                                </button>
-                                <button 
-                                  onClick={() => handleRemoveItem(item.id)}
-                                  className="remove-button"
-                                  title={t('invoices.removeItemTooltip')}
-                                  disabled={removingItemId === item.id}
-                                >
-                                  {removingItemId === item.id ? t('invoices.removing') : t('invoices.removeButton')}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {quickAddMode && (
-                      <div className="compact-item-form">
-                        <div className="form-header">
-                          <h4>{t('invoices.addItem')}</h4>
-                          <button 
-                            className="close-form-button"
-                            onClick={handleFinishAdding}
-                          >
-                            ×
-                          </button>
-                        </div>
-
-                        {/* Atalhos de Categorias */}
-                        <div className="quick-shortcuts">
-                          <div className="shortcut-group">
-                            <label>Categorias:</label>
-                            <div className="shortcut-buttons">
-                              {categories.slice(0, 5).map(category => (
-                                <button
-                                  key={category.id}
-                                  type="button"
-                                  className={`shortcut-btn ${itemForm.categoryId === category.id.toString() ? 'active' : ''}`}
-                                  onClick={() => handleQuickCategorySelect(category.id.toString())}
-                                >
-                                  {category.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="shortcut-group">
-                            <label>Valores comuns:</label>
-                            <div className="shortcut-buttons">
-                              {['10', '20', '50', '100', '200'].map(amount => (
-                                <button
-                                  key={amount}
-                                  type="button"
-                                  className={`shortcut-btn ${itemForm.amount === amount ? 'active' : ''}`}
-                                  onClick={() => handleQuickAmountSelect(amount)}
-                                >
-                                  R$ {amount}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="shortcut-group">
-                            <label>Data:</label>
-                            <div className="shortcut-buttons">
-                              <button
-                                type="button"
-                                className={`shortcut-btn ${itemForm.purchaseDate === new Date().toISOString().split('T')[0] ? 'active' : ''}`}
-                                onClick={() => handleQuickDateSelect(new Date().toISOString().split('T')[0])}
-                              >
-                                Hoje
-                              </button>
-                              <button
-                                type="button"
-                                className={`shortcut-btn ${itemForm.purchaseDate === new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0] ? 'active' : ''}`}
-                                onClick={() => handleQuickDateSelect(new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0])}
-                              >
-                                Ontem
+                              <button type="submit" className="add-button-compact" disabled={addingItem}>
+                                {addingItem ? '...' : '+'}
                               </button>
                             </div>
-                          </div>
+                            {itemError && <div className="error-message">{itemError}</div>}
+                          </form>
                         </div>
+                      )}
 
-                        {/* Formulário Compacto */}
-                        <form onSubmit={handleAddItem} className="compact-form">
-                          <div className="form-row-compact">
-                            <div className="form-group-compact">
-                              <input
-                                type="text"
-                                name="description"
-                                value={itemForm.description}
-                                onChange={handleItemInputChange}
-                                placeholder={t('invoices.descriptionPlaceholder')}
-                                required
-                                className="description-input"
-                              />
-                            </div>
-                            <div className="form-group-compact">
-                              <input
-                                type="number"
-                                name="amount"
-                                value={itemForm.amount}
-                                onChange={handleItemInputChange}
-                                placeholder="R$ 0,00"
-                                step="0.01"
-                                min="0"
-                                required
-                                className="amount-input"
-                              />
-                            </div>
-                            <div className="form-group-compact">
-                              <select
-                                name="categoryId"
-                                value={itemForm.categoryId}
-                                onChange={handleItemInputChange}
-                                className="category-select"
-                              >
-                                <option value="">{t('invoices.selectCategory')}</option>
-                                {categories.map(category => (
-                                  <option key={category.id} value={category.id}>
-                                    {category.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="form-group-compact">
-                              <input
-                                type="date"
-                                name="purchaseDate"
-                                value={itemForm.purchaseDate}
-                                onChange={handleItemInputChange}
-                                className="date-input"
-                              />
-                            </div>
-                            <button type="submit" className="add-button-compact" disabled={addingItem}>
-                              {addingItem ? '...' : '+'}
+                      {showAddMore && (
+                        <div className="add-more-section">
+                          <p>Item adicionado com sucesso!</p>
+                          <div className="add-more-buttons">
+                            <button 
+                              className="add-more-button"
+                              onClick={handleAddMore}
+                            >
+                              + Adicionar outro item
+                            </button>
+                            <button 
+                              className="finish-button"
+                              onClick={handleFinishAdding}
+                            >
+                              Finalizar
                             </button>
                           </div>
-                          {itemError && <div className="error-message">{itemError}</div>}
-                        </form>
-                      </div>
-                    )}
-
-                    {showAddMore && (
-                      <div className="add-more-section">
-                        <p>Item adicionado com sucesso!</p>
-                        <div className="add-more-buttons">
-                          <button 
-                            className="add-more-button"
-                            onClick={handleAddMore}
-                          >
-                            + Adicionar outro item
-                          </button>
-                          <button 
-                            className="finish-button"
-                            onClick={handleFinishAdding}
-                          >
-                            Finalizar
-                          </button>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
