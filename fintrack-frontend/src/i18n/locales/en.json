@@ -186,6 +186,8 @@
   },
   "invoices": {
     "title": "Invoices",
+    "tabInvoices": "Invoices",
+    "tabSubscriptions": "Subscriptions",
     "addInvoice": "Add Invoice",
     "editInvoice": "Edit Invoice",
     "addItem": "Add Item",
@@ -623,5 +625,56 @@
     "emptyStateTitle": "Search your expenses",
     "emptyStateDescription": "Search by name, filter by category, card, period or amount to find any expense in your history.",
     "errorLoading": "Error searching expenses"
+  },
+  "subscriptions": {
+    "loadError": "Error loading subscriptions",
+    "createError": "Error creating subscription",
+    "updateError": "Error updating subscription",
+    "cancelError": "Error cancelling subscription",
+    "confirmError": "Error confirming suggestion",
+    "addManual": "New Subscription",
+    "empty": "No subscriptions yet. Add manually or confirm an automatic suggestion.",
+    "detectedValue": "Charged",
+    "summary": {
+      "monthlyTotal": "Monthly Cost",
+      "active": "Active",
+      "detected": "Detected",
+      "missed": "Not Detected",
+      "priceChanged": "Price Changed"
+    },
+    "status": {
+      "detected": "Detected",
+      "missed": "Not Detected",
+      "priceChanged": "Price Changed",
+      "paused": "Paused",
+      "cancelled": "Cancelled",
+      "active": "Active"
+    },
+    "cycle": {
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "semiAnnual": "Semi-Annual",
+      "annual": "Annual"
+    },
+    "suggestions": {
+      "title": "Subscription Suggestions",
+      "description": "We detected recurring expenses in your invoices. Confirm to track them automatically.",
+      "occurrences": "{{count}} months",
+      "confirm": "Confirm"
+    },
+    "form": {
+      "createTitle": "New Subscription",
+      "editTitle": "Edit Subscription",
+      "name": "Name",
+      "namePlaceholder": "e.g. Netflix, Spotify...",
+      "merchantKey": "Merchant Key",
+      "merchantKeyPlaceholder": "Identifier on invoice",
+      "amount": "Expected Amount",
+      "cycle": "Frequency",
+      "category": "Category",
+      "noCategory": "No category",
+      "creditCard": "Credit Card",
+      "noCard": "No card"
+    }
   }
-} 
+}

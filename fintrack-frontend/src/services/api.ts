@@ -51,6 +51,12 @@ import {
 import { DashboardOverviewResponse } from '../types/dashboard';
 import { BudgetResponse, BudgetStatusResponse, CreateBudgetRequest, UpdateBudgetRequest } from '../types/budget';
 import { ExpenseSearchParams, ExpenseSearchResponse } from '../types/search';
+import {
+  SubscriptionResponse,
+  SubscriptionSuggestion,
+  CreateSubscriptionRequest,
+  UpdateSubscriptionRequest
+} from '../types/subscription';
 
 class ApiService {
   private api: AxiosInstance;
@@ -486,6 +492,40 @@ class ApiService {
     if (params.amountMax !== undefined) cleanParams.amountMax = params.amountMax;
 
     const response = await this.api.get<ExpenseSearchResponse>('/expenses/search', { params: cleanParams });
+    return response.data;
+  }
+
+  async getSubscriptions(month?: string): Promise<SubscriptionResponse[]> {
+    const params = month ? { month } : {};
+    const response = await this.api.get<SubscriptionResponse[]>('/subscriptions', { params });
+    return response.data;
+  }
+
+  async createSubscription(data: CreateSubscriptionRequest): Promise<SubscriptionResponse> {
+    const response = await this.api.post<SubscriptionResponse>('/subscriptions', data);
+    return response.data;
+  }
+
+  async updateSubscription(id: number, data: UpdateSubscriptionRequest): Promise<SubscriptionResponse> {
+    const response = await this.api.put<SubscriptionResponse>(`/subscriptions/${id}`, data);
+    return response.data;
+  }
+
+  async cancelSubscription(id: number): Promise<void> {
+    await this.api.delete(`/subscriptions/${id}`);
+  }
+
+  async getSubscriptionSuggestions(): Promise<SubscriptionSuggestion[]> {
+    const response = await this.api.get<SubscriptionSuggestion[]>('/subscriptions/suggestions');
+    return response.data;
+  }
+
+  async confirmSubscriptionSuggestion(merchantKey: string): Promise<SubscriptionResponse> {
+    const response = await this.api.post<SubscriptionResponse>(
+      '/subscriptions/suggestions/confirm',
+      null,
+      { params: { merchantKey } }
+    );
     return response.data;
   }
 }

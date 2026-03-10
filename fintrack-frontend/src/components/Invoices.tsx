@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileText, RefreshCw } from 'lucide-react';
 import apiService from '../services/api';
 import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, Category } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
@@ -7,12 +8,16 @@ import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDa
 import ShareItemModal from './ShareItemModal';
 import InvoiceItemRow from './invoices/InvoiceItemRow';
 import ItemsTableHeader from './invoices/ItemsTableHeader';
+import Subscriptions from './Subscriptions';
 import './Invoices.css';
 import { useAuth } from '../contexts/AuthContext';
+
+type InvoiceTab = 'invoices' | 'subscriptions';
 
 const Invoices: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<InvoiceTab>('invoices');
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
@@ -682,6 +687,28 @@ const Invoices: React.FC = () => {
 
   return (
     <div className="invoices-container">
+      {/* Tab Navigation */}
+      <div className="invoices-tabs">
+        <button
+          className={`invoices-tab ${activeTab === 'invoices' ? 'active' : ''}`}
+          onClick={() => setActiveTab('invoices')}
+        >
+          <FileText size={18} />
+          {t('invoices.tabInvoices')}
+        </button>
+        <button
+          className={`invoices-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('subscriptions')}
+        >
+          <RefreshCw size={18} />
+          {t('invoices.tabSubscriptions')}
+        </button>
+      </div>
+
+      {activeTab === 'subscriptions' && <Subscriptions />}
+
+      {activeTab === 'invoices' && (
+      <>
       <header className="invoices-header">
         <h1>{t('invoices.title')}</h1>
         <div className="header-actions">
@@ -1317,6 +1344,8 @@ const Invoices: React.FC = () => {
           itemAmount={selectedItemForSharing.amount}
           onSharesUpdated={handleSharesUpdated}
         />
+      )}
+      </>
       )}
     </div>
   );

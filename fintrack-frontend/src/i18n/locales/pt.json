@@ -186,6 +186,8 @@
   },
   "invoices": {
     "title": "Faturas",
+    "tabInvoices": "Faturas",
+    "tabSubscriptions": "Assinaturas",
     "addInvoice": "Adicionar Fatura",
     "editInvoice": "Editar Fatura",
     "addItem": "Adicionar Item",
@@ -624,5 +626,56 @@
     "emptyStateTitle": "Busque suas despesas",
     "emptyStateDescription": "Pesquise por nome, filtre por categoria, cartão, período ou valor para encontrar qualquer despesa no seu histórico.",
     "errorLoading": "Erro ao buscar despesas"
+  },
+  "subscriptions": {
+    "loadError": "Erro ao carregar assinaturas",
+    "createError": "Erro ao criar assinatura",
+    "updateError": "Erro ao atualizar assinatura",
+    "cancelError": "Erro ao cancelar assinatura",
+    "confirmError": "Erro ao confirmar sugestão",
+    "addManual": "Nova Assinatura",
+    "empty": "Nenhuma assinatura cadastrada. Adicione manualmente ou confirme uma sugestão automática.",
+    "detectedValue": "Cobrado",
+    "summary": {
+      "monthlyTotal": "Custo Mensal",
+      "active": "Ativas",
+      "detected": "Detectadas",
+      "missed": "Não Detectadas",
+      "priceChanged": "Preço Alterado"
+    },
+    "status": {
+      "detected": "Detectada",
+      "missed": "Não Detectada",
+      "priceChanged": "Preço Alterado",
+      "paused": "Pausada",
+      "cancelled": "Cancelada",
+      "active": "Ativa"
+    },
+    "cycle": {
+      "monthly": "Mensal",
+      "quarterly": "Trimestral",
+      "semiAnnual": "Semestral",
+      "annual": "Anual"
+    },
+    "suggestions": {
+      "title": "Sugestões de Assinaturas",
+      "description": "Identificamos despesas recorrentes nas suas faturas. Confirme para acompanhar automaticamente.",
+      "occurrences": "{{count}} meses",
+      "confirm": "Confirmar"
+    },
+    "form": {
+      "createTitle": "Nova Assinatura",
+      "editTitle": "Editar Assinatura",
+      "name": "Nome",
+      "namePlaceholder": "Ex: Netflix, Spotify...",
+      "merchantKey": "Chave do Comerciante",
+      "merchantKeyPlaceholder": "Identificador na fatura",
+      "amount": "Valor Esperado",
+      "cycle": "Frequência",
+      "category": "Categoria",
+      "noCategory": "Sem categoria",
+      "creditCard": "Cartão de Crédito",
+      "noCard": "Sem cartão"
+    }
   }
-} 
+}
