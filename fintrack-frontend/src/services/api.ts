@@ -50,6 +50,7 @@ import {
 } from '../types/expenseReport';
 import { DashboardOverviewResponse } from '../types/dashboard';
 import { BudgetResponse, BudgetStatusResponse, CreateBudgetRequest, UpdateBudgetRequest } from '../types/budget';
+import { ExpenseSearchParams, ExpenseSearchResponse } from '../types/search';
 
 class ApiService {
   private api: AxiosInstance;
@@ -469,6 +470,23 @@ class ApiService {
 
   async deleteBudget(id: number): Promise<void> {
     await this.api.delete(`/budgets/${id}`);
+  }
+
+  async searchExpenses(params: ExpenseSearchParams): Promise<ExpenseSearchResponse> {
+    const cleanParams: Record<string, string | number> = {
+      page: params.page,
+      size: params.size,
+    };
+    if (params.query) cleanParams.query = params.query;
+    if (params.categoryId) cleanParams.categoryId = params.categoryId;
+    if (params.cardId) cleanParams.cardId = params.cardId;
+    if (params.dateFrom) cleanParams.dateFrom = params.dateFrom;
+    if (params.dateTo) cleanParams.dateTo = params.dateTo;
+    if (params.amountMin !== undefined) cleanParams.amountMin = params.amountMin;
+    if (params.amountMax !== undefined) cleanParams.amountMax = params.amountMax;
+
+    const response = await this.api.get<ExpenseSearchResponse>('/expenses/search', { params: cleanParams });
+    return response.data;
   }
 }
 

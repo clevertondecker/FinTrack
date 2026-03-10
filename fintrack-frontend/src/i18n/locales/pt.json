@@ -524,6 +524,8 @@
   },
   "expenseReport": {
     "title": "Gastos por Categoria",
+    "tabAnalysis": "Análise",
+    "tabSearch": "Buscar Despesas",
     "loading": "Carregando relatório...",
     "errorLoadingReport": "Erro ao carregar relatório de gastos",
     "retry": "Tentar Novamente",
@@ -593,5 +595,34 @@
     "byCategory": "Comparação por Categoria",
     "details": "Detalhamento",
     "errorLoading": "Erro ao carregar comparativo"
+  },
+  "search": {
+    "title": "Buscar Despesas",
+    "placeholder": "Pesquisar por descrição (ex: iFood, Uber, Netflix...)",
+    "searchButton": "Buscar",
+    "category": "Categoria",
+    "card": "Cartão",
+    "dateFrom": "Data Inicial",
+    "dateTo": "Data Final",
+    "amountMin": "Valor Mínimo",
+    "amountMax": "Valor Máximo",
+    "allCategories": "Todas as categorias",
+    "allCards": "Todos os cartões",
+    "clearFilters": "Limpar filtros",
+    "applyFilters": "Aplicar filtros",
+    "resultsCount": "{{count}} resultado(s) encontrado(s)",
+    "totalAmount": "Total",
+    "noResults": "Nenhuma despesa encontrada com os filtros selecionados",
+    "description": "Descrição",
+    "amount": "Valor",
+    "date": "Data",
+    "categoryCol": "Categoria",
+    "cardCol": "Cartão",
+    "invoiceMonthCol": "Fatura",
+    "installmentsCol": "Parcelas",
+    "pageInfo": "Página {{current}} de {{total}}",
+    "emptyStateTitle": "Busque suas despesas",
+    "emptyStateDescription": "Pesquise por nome, filtre por categoria, cartão, período ou valor para encontrar qualquer despesa no seu histórico.",
+    "errorLoading": "Erro ao buscar despesas"
   }
 } 

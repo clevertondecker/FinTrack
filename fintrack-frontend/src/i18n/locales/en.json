@@ -523,6 +523,8 @@
   },
   "expenseReport": {
     "title": "Expenses by Category",
+    "tabAnalysis": "Analysis",
+    "tabSearch": "Search Expenses",
     "loading": "Loading report...",
     "errorLoadingReport": "Error loading expense report",
     "retry": "Retry",
@@ -592,5 +594,34 @@
     "byCategory": "Comparison by Category",
     "details": "Detailed Breakdown",
     "errorLoading": "Error loading comparison"
+  },
+  "search": {
+    "title": "Search Expenses",
+    "placeholder": "Search by description (e.g., iFood, Uber, Netflix...)",
+    "searchButton": "Search",
+    "category": "Category",
+    "card": "Card",
+    "dateFrom": "Start Date",
+    "dateTo": "End Date",
+    "amountMin": "Min Amount",
+    "amountMax": "Max Amount",
+    "allCategories": "All categories",
+    "allCards": "All cards",
+    "clearFilters": "Clear filters",
+    "applyFilters": "Apply filters",
+    "resultsCount": "{{count}} result(s) found",
+    "totalAmount": "Total",
+    "noResults": "No expenses found with the selected filters",
+    "description": "Description",
+    "amount": "Amount",
+    "date": "Date",
+    "categoryCol": "Category",
+    "cardCol": "Card",
+    "invoiceMonthCol": "Invoice",
+    "installmentsCol": "Installments",
+    "pageInfo": "Page {{current}} of {{total}}",
+    "emptyStateTitle": "Search your expenses",
+    "emptyStateDescription": "Search by name, filter by category, card, period or amount to find any expense in your history.",
+    "errorLoading": "Error searching expenses"
   }
 } 

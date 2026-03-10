@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus, BarChart2, Search } from 'lucide-react';
 import apiService from '../services/api';
 import {
   ExpenseReportResponse,
@@ -17,10 +17,14 @@ import MonthlyEvolutionChart from './charts/MonthlyEvolutionChart';
 import TopExpensesList from './charts/TopExpensesList';
 import ExpenseByCardChart from './charts/ExpenseByCardChart';
 import RecurrenceDonutChart from './charts/RecurrenceDonutChart';
+import ExpenseSearch from './ExpenseSearch';
 import './ExpenseReport.css';
+
+type ReportTab = 'analysis' | 'search';
 
 const ExpenseReport: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const [activeTab, setActiveTab] = useState<ReportTab>('analysis');
   const [report, setReport] = useState<ExpenseReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,49 +163,54 @@ const ExpenseReport: React.FC = () => {
     return 'trend-down';
   };
 
-  if (loading) {
-    return (
-      <div className="expense-report-container">
+  const totalAmount = report?.totalAmount ?? 0;
+  const totalCategories = report?.expensesByCategory?.length ?? 0;
+  const totalTransactions = getTotalTransactions();
+
+  return (
+    <div className="expense-report-container">
+      {/* Tab Navigation */}
+      <div className="report-tabs">
+        <button
+          className={`report-tab ${activeTab === 'analysis' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analysis')}
+        >
+          <BarChart2 size={18} />
+          {t('expenseReport.tabAnalysis')}
+        </button>
+        <button
+          className={`report-tab ${activeTab === 'search' ? 'active' : ''}`}
+          onClick={() => setActiveTab('search')}
+        >
+          <Search size={18} />
+          {t('expenseReport.tabSearch')}
+        </button>
+      </div>
+
+      {activeTab === 'search' && <ExpenseSearch />}
+
+      {activeTab === 'analysis' && (
+      <>
+      {loading ? (
         <div className="loading-container">
           <div className="spinner"></div>
           <p>{t('expenseReport.loading')}</p>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="expense-report-container">
+      ) : error ? (
         <div className="error-container">
           <p className="error-message">{error}</p>
           <button onClick={loadExpenseReport} className="retry-button">
             {t('expenseReport.retry')}
           </button>
         </div>
-      </div>
-    );
-  }
-
-  if (!report) {
-    return (
-      <div className="expense-report-container">
+      ) : !report ? (
         <div className="empty-state">
           <p>{t('expenseReport.noData')}</p>
         </div>
-      </div>
-    );
-  }
-
-  const totalAmount = report.totalAmount;
-  const totalCategories = report.expensesByCategory.length;
-  const totalTransactions = getTotalTransactions();
-
-  return (
-    <div className="expense-report-container">
+      ) : (
+      <>
       {/* Header with Filters */}
       <div className="report-header">
-        <h1 className="report-title">{t('expenseReport.title')}</h1>
         <div className="filters-container">
           <div className="filter-group">
             <label htmlFor="month-selector" className="filter-label">
@@ -479,6 +488,10 @@ const ExpenseReport: React.FC = () => {
             );
           })}
         </div>
+      )}
+      </>
+      )}
+      </>
       )}
     </div>
   );
