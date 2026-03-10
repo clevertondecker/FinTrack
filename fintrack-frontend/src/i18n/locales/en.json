@@ -632,6 +632,7 @@
     "updateError": "Error updating subscription",
     "cancelError": "Error cancelling subscription",
     "confirmError": "Error confirming suggestion",
+    "dismissError": "Error dismissing suggestion",
     "addManual": "New Subscription",
     "empty": "No subscriptions yet. Add manually or confirm an automatic suggestion.",
     "detectedValue": "Charged",
@@ -660,7 +661,8 @@
       "title": "Subscription Suggestions",
       "description": "We detected recurring expenses in your invoices. Confirm to track them automatically.",
       "occurrences": "{{count}} months",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "dismiss": "Dismiss"
     },
     "form": {
       "createTitle": "New Subscription",

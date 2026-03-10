@@ -16,4 +16,6 @@ public interface SubscriptionRepository {
     boolean existsByOwnerAndMerchantKeyAndActiveTrue(User owner, String merchantKey);
 
     Optional<Subscription> findByOwnerAndMerchantKeyAndActiveTrue(User owner, String merchantKey);
+
+    List<Subscription> findByOwner(User owner);
 }

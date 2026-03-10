@@ -528,6 +528,12 @@ class ApiService {
     );
     return response.data;
   }
+
+  async dismissSubscriptionSuggestion(merchantKey: string): Promise<void> {
+    await this.api.post('/subscriptions/suggestions/dismiss', null, {
+      params: { merchantKey },
+    });
+  }
 }
 
 export const apiService = new ApiService();

@@ -152,6 +152,15 @@ const Subscriptions: React.FC = () => {
     }
   }, [loadData, t]);
 
+  const handleDismissSuggestion = useCallback(async (merchantKey: string) => {
+    try {
+      await apiService.dismissSubscriptionSuggestion(merchantKey);
+      setSuggestions(prev => prev.filter(s => s.merchantKey !== merchantKey));
+    } catch {
+      setError(t('subscriptions.dismissError'));
+    }
+  }, [t]);
+
   const startEdit = useCallback((sub: SubscriptionResponse) => {
     setEditingId(sub.id);
     setFormName(sub.name);
@@ -296,13 +305,22 @@ const Subscriptions: React.FC = () => {
                     <span className="suggestion-card-name">{sug.cardName}</span>
                   )}
                 </div>
-                <button
-                  className="btn-confirm-suggestion"
-                  onClick={() => handleConfirmSuggestion(sug.merchantKey)}
-                >
-                  <Check size={14} />
-                  {t('subscriptions.suggestions.confirm')}
-                </button>
+                <div className="suggestion-actions">
+                  <button
+                    className="btn-confirm-suggestion"
+                    onClick={() => handleConfirmSuggestion(sug.merchantKey)}
+                  >
+                    <Check size={14} />
+                    {t('subscriptions.suggestions.confirm')}
+                  </button>
+                  <button
+                    className="btn-dismiss-suggestion"
+                    onClick={() => handleDismissSuggestion(sug.merchantKey)}
+                  >
+                    <X size={14} />
+                    {t('subscriptions.suggestions.dismiss')}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

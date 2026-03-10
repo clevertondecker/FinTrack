@@ -633,6 +633,7 @@
     "updateError": "Erro ao atualizar assinatura",
     "cancelError": "Erro ao cancelar assinatura",
     "confirmError": "Erro ao confirmar sugestão",
+    "dismissError": "Erro ao descartar sugestão",
     "addManual": "Nova Assinatura",
     "empty": "Nenhuma assinatura cadastrada. Adicione manualmente ou confirme uma sugestão automática.",
     "detectedValue": "Cobrado",
@@ -661,7 +662,8 @@
       "title": "Sugestões de Assinaturas",
       "description": "Identificamos despesas recorrentes nas suas faturas. Confirme para acompanhar automaticamente.",
       "occurrences": "{{count}} meses",
-      "confirm": "Confirmar"
+      "confirm": "Confirmar",
+      "dismiss": "Descartar"
     },
     "form": {
       "createTitle": "Nova Assinatura",

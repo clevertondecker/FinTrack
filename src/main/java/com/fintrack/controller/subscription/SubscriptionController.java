@@ -91,4 +91,13 @@ public class SubscriptionController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(subscriptionService.confirmSuggestion(user, merchantKey));
     }
+
+    @PostMapping("/suggestions/dismiss")
+    public ResponseEntity<Void> dismissSuggestion(
+            @RequestParam String merchantKey,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getCurrentUser(userDetails.getUsername());
+        subscriptionService.dismissSuggestion(user, merchantKey);
+        return ResponseEntity.noContent().build();
+    }
 }

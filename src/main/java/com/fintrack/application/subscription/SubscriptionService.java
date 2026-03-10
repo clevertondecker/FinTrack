@@ -129,7 +129,7 @@ public class SubscriptionService {
         YearMonth now = YearMonth.now();
         YearMonth from = now.minusMonths(MONTHS_TO_ANALYZE);
 
-        Set<String> existingKeys = subscriptionRepository.findByOwnerAndActiveTrue(user).stream()
+        Set<String> existingKeys = subscriptionRepository.findByOwner(user).stream()
                 .map(Subscription::getMerchantKey)
                 .collect(Collectors.toSet());
 
@@ -197,6 +197,23 @@ public class SubscriptionService {
         }
 
         return suggestions;
+    }
+
+    public void dismissSuggestion(final User user, final String merchantKey) {
+        if (subscriptionRepository.findByOwner(user).stream()
+                .anyMatch(s -> s.getMerchantKey().equals(merchantKey))) {
+            return;
+        }
+        MerchantDetails details = getMerchantDetails(user, merchantKey);
+        Subscription dismissed = Subscription.autoDetected(
+                user,
+                details.displayName() != null ? details.displayName() : merchantKey,
+                merchantKey,
+                BigDecimal.ONE,
+                LocalDate.now()
+        );
+        dismissed.cancel();
+        subscriptionRepository.save(dismissed);
     }
 
     public SubscriptionResponse confirmSuggestion(final User user, final String merchantKey) {

@@ -27,4 +27,7 @@ public interface SubscriptionJpaRepository extends JpaRepository<Subscription, L
 
     @Override
     Optional<Subscription> findByOwnerAndMerchantKeyAndActiveTrue(User owner, String merchantKey);
+
+    @Override
+    List<Subscription> findByOwner(User owner);
 }
