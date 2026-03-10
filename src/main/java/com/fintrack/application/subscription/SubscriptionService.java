@@ -62,18 +62,7 @@ public class SubscriptionService {
                 request.expectedAmount(), request.billingCycle()
         );
 
-        if (request.categoryId() != null) {
-            Category cat = categoryRepository.findById(request.categoryId())
-                    .orElseThrow(() -> new EntityNotFoundException("Category not found"));
-            sub.assignCategory(cat);
-        }
-
-        if (request.creditCardId() != null) {
-            CreditCard card = creditCardRepository.findByIdAndOwner(request.creditCardId(), user)
-                    .orElseThrow(() -> new EntityNotFoundException("Credit card not found"));
-            sub.assignCreditCard(card);
-        }
-
+        applyCategoryAndCard(sub, user, request.categoryId(), request.creditCardId());
         return SubscriptionResponse.from(subscriptionRepository.save(sub), "ACTIVE");
     }
 
@@ -82,23 +71,7 @@ public class SubscriptionService {
                 .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
 
         sub.updateDetails(request.name(), request.expectedAmount(), request.billingCycle());
-
-        if (request.categoryId() != null) {
-            Category cat = categoryRepository.findById(request.categoryId())
-                    .orElseThrow(() -> new EntityNotFoundException("Category not found"));
-            sub.assignCategory(cat);
-        } else {
-            sub.assignCategory(null);
-        }
-
-        if (request.creditCardId() != null) {
-            CreditCard card = creditCardRepository.findByIdAndOwner(request.creditCardId(), user)
-                    .orElseThrow(() -> new EntityNotFoundException("Credit card not found"));
-            sub.assignCreditCard(card);
-        } else {
-            sub.assignCreditCard(null);
-        }
-
+        applyCategoryAndCard(sub, user, request.categoryId(), request.creditCardId());
         return SubscriptionResponse.from(subscriptionRepository.save(sub), "ACTIVE");
     }
 
@@ -124,7 +97,6 @@ public class SubscriptionService {
     }
 
     @Transactional(readOnly = true)
-    @SuppressWarnings("unchecked")
     public List<SubscriptionSuggestion> getSuggestions(final User user) {
         YearMonth now = YearMonth.now();
         YearMonth from = now.minusMonths(MONTHS_TO_ANALYZE);
@@ -226,7 +198,6 @@ public class SubscriptionService {
         YearMonth now = YearMonth.now();
         YearMonth from = now.minusMonths(MONTHS_TO_ANALYZE);
 
-        @SuppressWarnings("unchecked")
         List<Tuple> stats = entityManager.createQuery(
                 "SELECT AVG(ii.amount) AS avgAmount, "
                 + "MIN(ii.purchaseDate) AS firstSeen, "
@@ -267,6 +238,24 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscriptionRepository.save(sub), "ACTIVE");
     }
 
+    private void applyCategoryAndCard(final Subscription sub, final User user,
+                                      final Long categoryId, final Long creditCardId) {
+        if (categoryId != null) {
+            Category cat = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new EntityNotFoundException("Category not found"));
+            sub.assignCategory(cat);
+        } else {
+            sub.assignCategory(null);
+        }
+        if (creditCardId != null) {
+            CreditCard card = creditCardRepository.findByIdAndOwner(creditCardId, user)
+                    .orElseThrow(() -> new EntityNotFoundException("Credit card not found"));
+            sub.assignCreditCard(card);
+        } else {
+            sub.assignCreditCard(null);
+        }
+    }
+
     private String resolveMonthStatus(final Subscription sub, final Map<String, List<InvoiceItem>> itemsByMerchant) {
         if (sub.getStatus() == SubscriptionStatus.CANCELLED) {
             return "CANCELLED";
@@ -292,7 +281,6 @@ public class SubscriptionService {
     }
 
     private Map<String, List<InvoiceItem>> getItemsByMerchantForMonth(final User user, final YearMonth month) {
-        @SuppressWarnings("unchecked")
         List<InvoiceItem> items = entityManager.createQuery(
                 "SELECT ii FROM InvoiceItem ii "
                 + "JOIN ii.invoice i "
@@ -300,7 +288,8 @@ public class SubscriptionService {
                 + "WHERE cc.owner = :owner "
                 + "AND i.month = :month "
                 + "AND ii.merchantKey IS NOT NULL "
-                + "AND ii.merchantKey <> ''")
+                + "AND ii.merchantKey <> ''",
+                InvoiceItem.class)
                 .setParameter("owner", user)
                 .setParameter("month", month)
                 .getResultList();
