@@ -39,7 +39,8 @@
     "people": "Pessoas",
     "shares": "Dívidas",
     "reports": "Relatórios",
-    "budgets": "Orçamentos"
+    "budgets": "Orçamentos",
+    "comparison": "Comparativo"
   },
   "people": {
     "title": "Pessoas",
@@ -583,5 +584,14 @@
     "statusNear": "Próximo do limite",
     "statusOver": "Acima do limite",
     "errorLoading": "Erro ao carregar orçamentos"
+  },
+  "comparison": {
+    "title": "Comparativo Mensal",
+    "monthA": "Mês Atual",
+    "monthB": "Comparar Com",
+    "difference": "Diferença",
+    "byCategory": "Comparação por Categoria",
+    "details": "Detalhamento",
+    "errorLoading": "Erro ao carregar comparativo"
   }
 } 

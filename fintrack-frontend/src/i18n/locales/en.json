@@ -39,7 +39,8 @@
     "people": "People",
     "shares": "Shares",
     "reports": "Reports",
-    "budgets": "Budgets"
+    "budgets": "Budgets",
+    "comparison": "Comparison"
   },
   "people": {
     "title": "People",
@@ -582,5 +583,14 @@
     "statusNear": "Near Limit",
     "statusOver": "Over Budget",
     "errorLoading": "Error loading budgets"
+  },
+  "comparison": {
+    "title": "Month Comparison",
+    "monthA": "Current Month",
+    "monthB": "Compare To",
+    "difference": "Difference",
+    "byCategory": "Comparison by Category",
+    "details": "Detailed Breakdown",
+    "errorLoading": "Error loading comparison"
   }
 } 
