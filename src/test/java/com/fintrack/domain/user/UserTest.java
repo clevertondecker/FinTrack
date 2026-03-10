@@ -257,9 +257,103 @@ public class UserTest {
         void shouldHaveSameCreatedAndUpdatedTimeInitially() {
             User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
 
-            // Allow for small time differences due to execution time
             long timeDifference = Math.abs(Duration.between(user.getCreatedAt(), user.getUpdatedAt()).toMillis());
-            assertThat(timeDifference).isLessThan(1000); // Less than 1 second
+            assertThat(timeDifference).isLessThan(1000);
+        }
+    }
+
+    @Nested
+    @DisplayName("Change Password Tests")
+    class ChangePasswordTests {
+
+        @Test
+        @DisplayName("Should change password for local user")
+        void shouldChangePasswordForLocalUser() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            LocalDateTime originalUpdatedAt = user.getUpdatedAt();
+
+            user.changePassword("newEncodedPassword");
+
+            assertThat(user.getPassword()).isEqualTo("newEncodedPassword");
+            assertThat(user.getUpdatedAt()).isAfterOrEqualTo(originalUpdatedAt);
+        }
+
+        @Test
+        @DisplayName("Should throw for OAuth2 user")
+        void shouldThrowForOAuth2User() {
+            User oauthUser = User.createOAuth2User(VALID_NAME, VALID_EMAIL,
+                VALID_ROLES, AuthProvider.GOOGLE);
+
+            assertThatThrownBy(() -> oauthUser.changePassword("newPass"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot change password for OAuth2 users");
+        }
+
+        @Test
+        @DisplayName("Should throw for blank password")
+        void shouldThrowForBlankPassword() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+
+            assertThatThrownBy(() -> user.changePassword(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Password must not be blank");
+        }
+
+        @Test
+        @DisplayName("Should throw for null password")
+        void shouldThrowForNullPassword() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+
+            assertThatThrownBy(() -> user.changePassword(null))
+                .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @DisplayName("Should update timestamp on password change")
+        void shouldUpdateTimestampOnChange() throws InterruptedException {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+            LocalDateTime beforeChange = user.getUpdatedAt();
+
+            Thread.sleep(10);
+            user.changePassword("newEncodedPassword");
+
+            assertThat(user.getUpdatedAt()).isAfter(beforeChange);
+            assertThat(user.getCreatedAt()).isBefore(user.getUpdatedAt());
+        }
+    }
+
+    @Nested
+    @DisplayName("Provider Tests")
+    class ProviderTests {
+
+        @Test
+        @DisplayName("Local user should have LOCAL provider")
+        void localUserShouldHaveLocalProvider() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_ROLES);
+
+            assertThat(user.getProvider()).isEqualTo(AuthProvider.LOCAL);
+            assertThat(user.isLocalUser()).isTrue();
+            assertThat(user.isOAuth2User()).isFalse();
+        }
+
+        @Test
+        @DisplayName("OAuth2 user should have GOOGLE provider")
+        void oauth2UserShouldHaveGoogleProvider() {
+            User user = User.createOAuth2User(VALID_NAME, VALID_EMAIL,
+                VALID_ROLES, AuthProvider.GOOGLE);
+
+            assertThat(user.getProvider()).isEqualTo(AuthProvider.GOOGLE);
+            assertThat(user.isOAuth2User()).isTrue();
+            assertThat(user.isLocalUser()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Should reject LOCAL as OAuth2 provider")
+        void shouldRejectLocalAsOAuth2Provider() {
+            assertThatThrownBy(() ->
+                User.createOAuth2User(VALID_NAME, VALID_EMAIL, VALID_ROLES, AuthProvider.LOCAL))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Provider must be an OAuth2 provider");
         }
     }
 

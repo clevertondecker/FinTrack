@@ -124,6 +124,10 @@ class ApiService {
     return response.data;
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.api.post('/users/change-password', { currentPassword, newPassword });
+  }
+
   async getUsers(): Promise<{ message: string; users: User[]; count: number }> {
     const response = await this.api.get<{ message: string; users: User[]; count: number }>('/users');
     return response.data;

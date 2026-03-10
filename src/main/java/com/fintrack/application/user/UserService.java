@@ -35,6 +35,7 @@ public class UserService {
     private static final String MSG_CURRENT_USER_NOT_FOUND = "User not found";
     private static final String MSG_CANNOT_CONNECT_SELF = "You cannot connect to yourself";
     private static final String MSG_ALREADY_CONNECTED = "Users are already connected";
+    private static final String MSG_INCORRECT_PASSWORD = "Current password is incorrect";
 
     private final UserRepository userRepository;
     private final PasswordService passwordService;
@@ -140,6 +141,26 @@ public class UserService {
         migrateContactAssignments(savedUser);
 
         return savedUser;
+    }
+
+    /**
+     * Changes the password for a LOCAL user after verifying the current password.
+     *
+     * @param user the authenticated user
+     * @param currentPassword the current raw password for verification
+     * @param newPassword the new raw password to set
+     * @throws IllegalStateException if user is not a LOCAL user
+     * @throws IllegalArgumentException if current password does not match
+     */
+    @Transactional
+    public void changePassword(User user, String currentPassword, String newPassword) {
+        if (!passwordService.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException(MSG_INCORRECT_PASSWORD);
+        }
+        String encoded = passwordService.encodePassword(newPassword);
+        user.changePassword(encoded);
+        userRepository.save(user);
+        logger.info("Password changed for user {}", user.getId());
     }
 
     /**

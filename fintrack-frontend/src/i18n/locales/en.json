@@ -678,5 +678,25 @@
       "creditCard": "Credit Card",
       "noCard": "No card"
     }
+  },
+  "profile": {
+    "title": "Profile",
+    "name": "Name",
+    "email": "Email",
+    "provider": "Authentication",
+    "providerLocal": "Email & Password",
+    "providerGoogle": "Google",
+    "memberSince": "Member since",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "passwordMismatch": "Passwords do not match",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "passwordChanged": "Password changed successfully!",
+    "passwordChangeError": "Failed to change password. Check your current password.",
+    "oauthCannotChange": "OAuth2 users cannot change password here",
+    "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to logout?"
   }
 }

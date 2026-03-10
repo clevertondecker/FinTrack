@@ -679,5 +679,25 @@
       "creditCard": "Cartão de Crédito",
       "noCard": "Sem cartão"
     }
+  },
+  "profile": {
+    "title": "Perfil",
+    "name": "Nome",
+    "email": "E-mail",
+    "provider": "Autenticação",
+    "providerLocal": "E-mail e Senha",
+    "providerGoogle": "Google",
+    "memberSince": "Membro desde",
+    "changePassword": "Alterar Senha",
+    "currentPassword": "Senha Atual",
+    "newPassword": "Nova Senha",
+    "confirmNewPassword": "Confirmar Nova Senha",
+    "passwordMismatch": "As senhas não coincidem",
+    "passwordMinLength": "A senha deve ter no mínimo 6 caracteres",
+    "passwordChanged": "Senha alterada com sucesso!",
+    "passwordChangeError": "Erro ao alterar senha. Verifique a senha atual.",
+    "oauthCannotChange": "Usuários OAuth2 não podem alterar a senha aqui",
+    "logout": "Sair",
+    "logoutConfirm": "Tem certeza que deseja sair?"
   }
 }

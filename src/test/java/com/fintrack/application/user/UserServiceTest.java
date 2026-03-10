@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.fintrack.domain.user.AuthProvider;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.Email;
@@ -375,6 +377,70 @@ public class UserServiceTest {
             assertThatThrownBy(() -> userService.connectUsers(alice, "bob@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already connected");
+        }
+    }
+
+    @Nested
+    @DisplayName("Change Password Tests")
+    class ChangePasswordTests {
+
+        @Test
+        @DisplayName("Should change password successfully for local user")
+        void shouldChangePasswordSuccessfully() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
+            ReflectionTestUtils.setField(user, "id", 1L);
+            String newEncoded = "$2a$10$newEncodedHash";
+
+            when(passwordService.matches("oldPass", ENCODED_PASSWORD)).thenReturn(true);
+            when(passwordService.encodePassword("newPass123")).thenReturn(newEncoded);
+            when(userRepository.save(user)).thenReturn(user);
+
+            userService.changePassword(user, "oldPass", "newPass123");
+
+            assertThat(user.getPassword()).isEqualTo(newEncoded);
+            verify(passwordService).matches("oldPass", ENCODED_PASSWORD);
+            verify(passwordService).encodePassword("newPass123");
+            verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("Should throw when current password is incorrect")
+        void shouldThrowWhenCurrentPasswordIncorrect() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
+            when(passwordService.matches("wrongPass", ENCODED_PASSWORD)).thenReturn(false);
+
+            assertThatThrownBy(() -> userService.changePassword(user, "wrongPass", "newPass123"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Current password is incorrect");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw for OAuth2 user via domain validation")
+        void shouldThrowForOAuth2UserViaDomain() {
+            User oauthUser = User.createOAuth2User("OAuth User", "oauth@example.com",
+                VALID_ROLES, AuthProvider.GOOGLE);
+            when(passwordService.matches("pass", "")).thenReturn(true);
+            when(passwordService.encodePassword("newPass")).thenReturn("encoded");
+
+            assertThatThrownBy(() -> userService.changePassword(oauthUser, "pass", "newPass"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot change password for OAuth2 users");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should not encode new password if current is wrong")
+        void shouldNotEncodeIfCurrentPasswordWrong() {
+            User user = User.createLocalUser(VALID_NAME, VALID_EMAIL, ENCODED_PASSWORD, VALID_ROLES);
+            when(passwordService.matches("wrong", ENCODED_PASSWORD)).thenReturn(false);
+
+            assertThatThrownBy(() -> userService.changePassword(user, "wrong", "newPass123"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+            verify(passwordService, never()).encodePassword(any());
         }
     }
 }

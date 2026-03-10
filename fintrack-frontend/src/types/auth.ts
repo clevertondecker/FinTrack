@@ -23,6 +23,7 @@ export interface User {
   name: string;
   email: string;
   roles: string[];
+  provider?: string;
   createdAt: string;
   updatedAt: string;
 }

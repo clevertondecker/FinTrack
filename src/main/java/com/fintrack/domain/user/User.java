@@ -203,6 +203,21 @@ public class User {
     }
 
     /**
+     * Changes the user's password. Only allowed for LOCAL users.
+     *
+     * @param encodedPassword the new encoded password. Must not be blank.
+     * @throws IllegalStateException if user is not a LOCAL user.
+     */
+    public void changePassword(String encodedPassword) {
+        if (!isLocalUser()) {
+            throw new IllegalStateException("Cannot change password for OAuth2 users");
+        }
+        Validate.notBlank(encodedPassword, "Password must not be blank.");
+        this.password = encodedPassword;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * Gets the user's roles.
      *
      * @return the user's roles. Never null, may be empty.
@@ -216,8 +231,8 @@ public class User {
      *
      * @return the authentication provider. Never null.
      */
-    public AuthProvider getProvider() { 
-        return provider; 
+    public AuthProvider getProvider() {
+        return provider;
     }
 
     /**
