@@ -38,7 +38,8 @@
     "importInvoices": "Importar Faturas",
     "people": "Pessoas",
     "shares": "Dívidas",
-    "reports": "Relatórios"
+    "reports": "Relatórios",
+    "budgets": "Orçamentos"
   },
   "people": {
     "title": "Pessoas",
@@ -99,7 +100,18 @@
     "mySharesDescription": "Visualize itens divididos com você por outros usuários",
     "viewCreditCards": "Ver Cartões",
     "viewInvoices": "Ver Faturas",
-    "viewShares": "Ver Divisões"
+    "viewShares": "Ver Divisões",
+    "totalExpenses": "Total de Gastos",
+    "transactions": "Transações",
+    "activeCards": "Cartões Ativos",
+    "creditCardsOverview": "Visão Geral dos Cartões",
+    "card": "Cartão",
+    "dueDate": "Vencimento",
+    "invoiceAmount": "Valor da Fatura",
+    "dailyExpenses": "Gastos Diários",
+    "categoryRanking": "Ranking de Categorias",
+    "day": "Dia",
+    "errorLoading": "Erro ao carregar dashboard"
   },
   "creditCards": {
     "title": "Cartões de Crédito",
@@ -531,15 +543,45 @@
     "showingMine": "Meus gastos",
     "showingTotal": "Gastos totais",
     "uncategorized": "Sem categoria",
+    "installment": "Parcelado",
+    "singlePurchase": "À vista",
     "charts": {
       "categoryBreakdown": "Distribuição por Categoria",
       "monthComparison": "Comparativo Mensal",
       "monthlyEvolution": "Evolução de Gastos",
       "topExpenses": "Top 5 Maiores Gastos",
+      "byCard": "Gastos por Cartão",
+      "byRecurrence": "Parcelado vs À Vista",
       "noChartData": "Sem dados para o gráfico",
       "currentMonth": "Mês Atual",
       "previousMonth": "Mês Anterior",
       "percentOfTotal": "{{percent}}% do total"
+    },
+    "trends": {
+      "monthlyAverage": "Média Mensal",
+      "vsPreviousMonth": "vs Mês Anterior",
+      "highestMonth": "Maior Mês",
+      "lowestMonth": "Menor Mês"
     }
+  },
+  "budgets": {
+    "title": "Orçamentos",
+    "addBudget": "Adicionar Orçamento",
+    "editBudget": "Editar Orçamento",
+    "noBudgets": "Nenhum orçamento cadastrado",
+    "addFirst": "Criar Primeiro Orçamento",
+    "confirmDelete": "Tem certeza que deseja excluir este orçamento?",
+    "categoryColumn": "Categoria",
+    "limitColumn": "Limite",
+    "spentColumn": "Gasto",
+    "remainingColumn": "Restante",
+    "utilizationColumn": "Utilização",
+    "general": "Geral (todos os gastos)",
+    "recurring": "Orçamento recorrente",
+    "recurringHint": "Aplica automaticamente em todos os meses",
+    "statusUnder": "Dentro do limite",
+    "statusNear": "Próximo do limite",
+    "statusOver": "Acima do limite",
+    "errorLoading": "Erro ao carregar orçamentos"
   }
 } 

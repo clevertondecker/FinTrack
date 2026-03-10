@@ -1,6 +1,7 @@
 package com.fintrack.application.creditcard;
 
 import com.fintrack.domain.creditcard.Category;
+import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.ExpenseReportService;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceCalculationService;
@@ -376,6 +377,108 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         }
         // Otherwise compare by name
         return category1.getName().equals(category2.getName());
+    }
+
+    @Override
+    public List<CardExpenseEntry> getExpensesByCard(final User user, final YearMonth month) {
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        Map<Long, CardAggregation> cardMap = new HashMap<>();
+
+        for (Invoice invoice : invoices) {
+            CreditCard card = invoice.getCreditCard();
+            for (InvoiceItem item : invoice.getItems()) {
+                BigDecimal userShare = calculateUserShareForItem(item, user);
+                if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+                CardAggregation agg = cardMap.computeIfAbsent(
+                        card.getId(), k -> new CardAggregation(card));
+                agg.add(userShare, resolveCategory(item));
+            }
+        }
+
+        return cardMap.values().stream()
+                .sorted(Comparator.comparing(CardAggregation::getTotal).reversed())
+                .map(agg -> new CardExpenseEntry(
+                        agg.getCard().getId(),
+                        agg.getCard().getName(),
+                        agg.getCard().getLastFourDigits(),
+                        agg.getCard().getBank().getName(),
+                        agg.getTotal(),
+                        agg.getCount(),
+                        agg.getCategoryBreakdown()
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<RecurrenceExpenseEntry> getExpensesByRecurrence(
+            final User user, final YearMonth month) {
+        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        BigDecimal installmentTotal = BigDecimal.ZERO;
+        BigDecimal singleTotal = BigDecimal.ZERO;
+        int installmentCount = 0;
+        int singleCount = 0;
+
+        for (Invoice invoice : invoices) {
+            for (InvoiceItem item : invoice.getItems()) {
+                BigDecimal userShare = calculateUserShareForItem(item, user);
+                if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+                if (item.getTotalInstallments() > 1) {
+                    installmentTotal = installmentTotal.add(userShare);
+                    installmentCount++;
+                } else {
+                    singleTotal = singleTotal.add(userShare);
+                    singleCount++;
+                }
+            }
+        }
+
+        List<RecurrenceExpenseEntry> entries = new ArrayList<>();
+        if (singleCount > 0) {
+            entries.add(new RecurrenceExpenseEntry("SINGLE", singleTotal, singleCount));
+        }
+        if (installmentCount > 0) {
+            entries.add(new RecurrenceExpenseEntry(
+                    "INSTALLMENT", installmentTotal, installmentCount));
+        }
+        entries.sort(Comparator.comparing(RecurrenceExpenseEntry::amount).reversed());
+        return entries;
+    }
+
+    private static final class CardAggregation {
+        private final CreditCard card;
+        private BigDecimal total = BigDecimal.ZERO;
+        private int count;
+        private final Map<Category, BigDecimal> categoryBreakdown = new HashMap<>();
+
+        CardAggregation(final CreditCard card) {
+            this.card = card;
+        }
+
+        void add(final BigDecimal amount, final Category category) {
+            total = total.add(amount);
+            count++;
+            categoryBreakdown.merge(category, amount, BigDecimal::add);
+        }
+
+        CreditCard getCard() {
+            return card;
+        }
+
+        BigDecimal getTotal() {
+            return total;
+        }
+
+        int getCount() {
+            return count;
+        }
+
+        Map<Category, BigDecimal> getCategoryBreakdown() {
+            return categoryBreakdown;
+        }
     }
 }
 

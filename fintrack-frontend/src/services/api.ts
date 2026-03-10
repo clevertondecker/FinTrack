@@ -43,8 +43,13 @@ import {
   ExpenseReportResponse,
   CategoryExpenseSummary,
   ExpenseTrendsResponse,
-  TopExpensesResponse
+  TopExpensesResponse,
+  ExpenseByCardResponse,
+  ExpenseByRecurrenceResponse,
+  PeriodComparisonResponse
 } from '../types/expenseReport';
+import { DashboardOverviewResponse } from '../types/dashboard';
+import { BudgetResponse, BudgetStatusResponse, CreateBudgetRequest, UpdateBudgetRequest } from '../types/budget';
 
 class ApiService {
   private api: AxiosInstance;
@@ -413,6 +418,57 @@ class ApiService {
     const url = `/expenses/top${queryString ? `?${queryString}` : ''}`;
     const response = await this.api.get<TopExpensesResponse>(url);
     return response.data;
+  }
+  // Dashboard endpoints
+  async getDashboardOverview(month?: string): Promise<DashboardOverviewResponse> {
+    const params = month ? { month } : {};
+    const response = await this.api.get<DashboardOverviewResponse>('/dashboard/overview', { params });
+    return response.data;
+  }
+
+  // Extended Expense Report endpoints
+  async getExpensesByCard(month?: string): Promise<ExpenseByCardResponse[]> {
+    const params = month ? { month } : {};
+    const response = await this.api.get<ExpenseByCardResponse[]>('/expenses/by-card', { params });
+    return response.data;
+  }
+
+  async getExpensesByRecurrence(month?: string): Promise<ExpenseByRecurrenceResponse[]> {
+    const params = month ? { month } : {};
+    const response = await this.api.get<ExpenseByRecurrenceResponse[]>('/expenses/by-recurrence', { params });
+    return response.data;
+  }
+
+  async compareExpenses(
+    month: string,
+    compareTo: string,
+    showTotal?: boolean
+  ): Promise<PeriodComparisonResponse> {
+    const params: Record<string, string> = { month, compareTo };
+    if (showTotal) params.showTotal = 'true';
+    const response = await this.api.get<PeriodComparisonResponse>('/expenses/comparison', { params });
+    return response.data;
+  }
+
+  // Budget endpoints
+  async getBudgets(month?: string): Promise<BudgetStatusResponse[]> {
+    const params = month ? { month } : {};
+    const response = await this.api.get<BudgetStatusResponse[]>('/budgets', { params });
+    return response.data;
+  }
+
+  async createBudget(data: CreateBudgetRequest): Promise<BudgetResponse> {
+    const response = await this.api.post<BudgetResponse>('/budgets', data);
+    return response.data;
+  }
+
+  async updateBudget(id: number, data: UpdateBudgetRequest): Promise<BudgetResponse> {
+    const response = await this.api.put<BudgetResponse>(`/budgets/${id}`, data);
+    return response.data;
+  }
+
+  async deleteBudget(id: number): Promise<void> {
+    await this.api.delete(`/budgets/${id}`);
   }
 }
 

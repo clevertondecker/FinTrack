@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Calendar, Filter } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import apiService from '../services/api';
-import { ExpenseReportResponse, ExpenseTrendsResponse, TopExpensesResponse } from '../types/expenseReport';
+import {
+  ExpenseReportResponse,
+  ExpenseTrendsResponse,
+  TopExpensesResponse,
+  ExpenseByCardResponse,
+  ExpenseByRecurrenceResponse,
+} from '../types/expenseReport';
 import { Category } from '../types/invoice';
 import { formatCurrency, formatDate, formatMonthLabel } from '../utils/invoiceUtils';
 import CategoryDonutChart from './charts/CategoryDonutChart';
 import MonthComparisonChart from './charts/MonthComparisonChart';
 import MonthlyEvolutionChart from './charts/MonthlyEvolutionChart';
 import TopExpensesList from './charts/TopExpensesList';
+import ExpenseByCardChart from './charts/ExpenseByCardChart';
+import RecurrenceDonutChart from './charts/RecurrenceDonutChart';
 import './ExpenseReport.css';
 
 const ExpenseReport: React.FC = () => {
@@ -29,6 +37,10 @@ const ExpenseReport: React.FC = () => {
   const [topExpenses, setTopExpenses] = useState<TopExpensesResponse | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [topLoading, setTopLoading] = useState(false);
+  const [byCardData, setByCardData] = useState<ExpenseByCardResponse[]>([]);
+  const [byCardLoading, setByCardLoading] = useState(false);
+  const [byRecurrenceData, setByRecurrenceData] = useState<ExpenseByRecurrenceResponse[]>([]);
+  const [byRecurrenceLoading, setByRecurrenceLoading] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -78,6 +90,8 @@ const ExpenseReport: React.FC = () => {
   const loadChartsData = async () => {
     setTrendsLoading(true);
     setTopLoading(true);
+    setByCardLoading(true);
+    setByRecurrenceLoading(true);
 
     const trendsPromise = apiService.getExpenseTrends(6, showTotal)
       .then(data => setTrendsData(data))
@@ -89,7 +103,17 @@ const ExpenseReport: React.FC = () => {
       .catch(err => console.error('Error loading top expenses:', err))
       .finally(() => setTopLoading(false));
 
-    await Promise.all([trendsPromise, topPromise]);
+    const byCardPromise = apiService.getExpensesByCard(selectedMonth)
+      .then(data => setByCardData(data))
+      .catch(err => console.error('Error loading by-card data:', err))
+      .finally(() => setByCardLoading(false));
+
+    const byRecurrencePromise = apiService.getExpensesByRecurrence(selectedMonth)
+      .then(data => setByRecurrenceData(data))
+      .catch(err => console.error('Error loading by-recurrence data:', err))
+      .finally(() => setByRecurrenceLoading(false));
+
+    await Promise.all([trendsPromise, topPromise, byCardPromise, byRecurrencePromise]);
   };
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +126,6 @@ const ExpenseReport: React.FC = () => {
   };
 
   const toggleCategoryExpansion = (categoryId: number | null) => {
-    // Use a string key to handle null categories (uncategorized)
     const key = categoryId !== null ? categoryId : -1;
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(key)) {
@@ -121,6 +144,19 @@ const ExpenseReport: React.FC = () => {
   const getTotalTransactions = () => {
     if (!report) return 0;
     return report.expensesByCategory.reduce((sum, cat) => sum + cat.transactionCount, 0);
+  };
+
+  const renderTrendIcon = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return <Minus size={16} />;
+    if (value > 0) return <TrendingUp size={16} />;
+    if (value < 0) return <TrendingDown size={16} />;
+    return <Minus size={16} />;
+  };
+
+  const trendColor = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'trend-neutral';
+    if (value > 0) return 'trend-up';
+    return 'trend-down';
   };
 
   if (loading) {
@@ -260,6 +296,42 @@ const ExpenseReport: React.FC = () => {
         </div>
       </div>
 
+      {/* Trend Statistics Banner */}
+      {trendsData && (
+        <div className="trend-stats-banner">
+          <div className="trend-stat-item">
+            <span className="trend-stat-label">{t('expenseReport.trends.monthlyAverage')}</span>
+            <span className="trend-stat-value">
+              {trendsData.averageMonthly !== null ? formatCurrency(trendsData.averageMonthly) : '-'}
+            </span>
+          </div>
+
+          <div className={`trend-stat-item ${trendColor(trendsData.currentVsPreviousMonthPercent)}`}>
+            <span className="trend-stat-label">{t('expenseReport.trends.vsPreviousMonth')}</span>
+            <span className="trend-stat-value trend-stat-with-icon">
+              {renderTrendIcon(trendsData.currentVsPreviousMonthPercent)}
+              {trendsData.currentVsPreviousMonthPercent !== null
+                ? `${trendsData.currentVsPreviousMonthPercent > 0 ? '+' : ''}${trendsData.currentVsPreviousMonthPercent.toFixed(1)}%`
+                : '-'}
+            </span>
+          </div>
+
+          <div className="trend-stat-item">
+            <span className="trend-stat-label">{t('expenseReport.trends.highestMonth')}</span>
+            <span className="trend-stat-value">
+              {trendsData.highestMonthAmount !== null ? formatCurrency(trendsData.highestMonthAmount) : '-'}
+            </span>
+          </div>
+
+          <div className="trend-stat-item">
+            <span className="trend-stat-label">{t('expenseReport.trends.lowestMonth')}</span>
+            <span className="trend-stat-value">
+              {trendsData.lowestMonthAmount !== null ? formatCurrency(trendsData.lowestMonthAmount) : '-'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Charts Section */}
       <div className="charts-section">
         <div className="chart-card">
@@ -278,7 +350,19 @@ const ExpenseReport: React.FC = () => {
           />
         </div>
 
+        {/* By Card Chart */}
         <div className="chart-card chart-full-width">
+          <h3 className="chart-card-title">{t('expenseReport.charts.byCard')}</h3>
+          <ExpenseByCardChart data={byCardData} loading={byCardLoading} />
+        </div>
+
+        {/* Recurrence Donut + Month Comparison side by side */}
+        <div className="chart-card">
+          <h3 className="chart-card-title">{t('expenseReport.charts.byRecurrence')}</h3>
+          <RecurrenceDonutChart data={byRecurrenceData} loading={byRecurrenceLoading} />
+        </div>
+
+        <div className="chart-card">
           <h3 className="chart-card-title">{t('expenseReport.charts.monthComparison')}</h3>
           <MonthComparisonChart
             currentMonth={trendsData?.months?.[trendsData.months.length - 1] || null}
@@ -401,4 +485,3 @@ const ExpenseReport: React.FC = () => {
 };
 
 export default ExpenseReport;
-

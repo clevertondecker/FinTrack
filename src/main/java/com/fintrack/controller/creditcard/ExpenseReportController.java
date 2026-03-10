@@ -6,13 +6,17 @@ import com.fintrack.domain.creditcard.ExpenseReportService;
 import com.fintrack.domain.user.User;
 import com.fintrack.dto.creditcard.CategoryExpenseSummary;
 import com.fintrack.dto.creditcard.CategoryResponse;
+import com.fintrack.dto.creditcard.ExpenseByCardResponse;
+import com.fintrack.dto.creditcard.ExpenseByRecurrenceResponse;
 import com.fintrack.dto.creditcard.ExpenseByCategoryResponse;
+import com.fintrack.dto.creditcard.PeriodComparisonResponse;
 import com.fintrack.dto.creditcard.ExpenseDetailResponse;
 import com.fintrack.dto.creditcard.ExpenseReportResponse;
 import com.fintrack.dto.creditcard.ExpenseTrendsResponse;
 import com.fintrack.dto.creditcard.MonthlyExpenseResponse;
 import com.fintrack.dto.creditcard.TopExpenseItemResponse;
 import com.fintrack.dto.creditcard.TopExpensesResponse;
+import com.fintrack.dto.dashboard.DailyExpenseResponse;
 import com.fintrack.dto.user.UserResponse;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +28,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * REST controller for expense reports by category.
@@ -95,32 +102,45 @@ public class ExpenseReportController {
             expensesByCategory = Map.of(category, expensesByCategory.get(category));
         }
 
-        // Convert to response DTOs with details
+        BigDecimal totalAmount = showTotal
+            ? expenseReportService.getGrandTotalExpenses(user, month)
+            : expenseReportService.getTotalExpenses(user, month);
+
         List<ExpenseByCategoryResponse> categoryExpenses = new ArrayList<>();
         for (Map.Entry<Category, BigDecimal> entry : expensesByCategory.entrySet()) {
             Category category = entry.getKey();
             BigDecimal amount = entry.getValue();
 
-            // Get detailed expense information for this category
             List<ExpenseDetailResponse> details = showTotal
                 ? expenseReportService.getTotalExpenseDetails(user, month, category)
                 : expenseReportService.getExpenseDetails(user, month, category);
-            
-            ExpenseByCategoryResponse expenseResponse = new ExpenseByCategoryResponse(
+
+            BigDecimal percentage = totalAmount.compareTo(BigDecimal.ZERO) > 0
+                ? amount.multiply(BigDecimal.valueOf(100))
+                    .divide(totalAmount, 1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+            Map<java.time.LocalDate, BigDecimal> dailyMap = new TreeMap<>();
+            for (ExpenseDetailResponse detail : details) {
+                if (detail.purchaseDate() != null) {
+                    dailyMap.merge(detail.purchaseDate(), detail.amount(), BigDecimal::add);
+                }
+            }
+            List<DailyExpenseResponse> dailyBreakdown = dailyMap.entrySet().stream()
+                .map(e -> new DailyExpenseResponse(e.getKey(), e.getValue()))
+                .toList();
+
+            categoryExpenses.add(new ExpenseByCategoryResponse(
                     CategoryResponse.from(category),
                     amount,
+                    percentage,
                     details.size(),
-                    details
-            );
-            categoryExpenses.add(expenseResponse);
+                    details,
+                    dailyBreakdown
+            ));
         }
 
-        // Sort by total amount descending
         categoryExpenses.sort((a, b) -> b.totalAmount().compareTo(a.totalAmount()));
-
-        BigDecimal totalAmount = showTotal
-            ? expenseReportService.getGrandTotalExpenses(user, month)
-            : expenseReportService.getTotalExpenses(user, month);
 
         ExpenseReportResponse response = new ExpenseReportResponse(
                 toUserResponse(user),
@@ -230,7 +250,8 @@ public class ExpenseReportController {
             monthlyResponses.add(new MonthlyExpenseResponse(month, monthTotal, categories));
         }
 
-        return ResponseEntity.ok(new ExpenseTrendsResponse(toUserResponse(user), monthlyResponses));
+        return ResponseEntity.ok(
+                buildTrendsResponse(toUserResponse(user), monthlyResponses));
     }
 
     /**
@@ -288,13 +309,214 @@ public class ExpenseReportController {
             toUserResponse(user), month, totalAmount, topItems));
     }
 
-    /**
-     * Resolves the authenticated user from the security context.
-     *
-     * @param userDetails the authenticated user details. Must not be null.
-     * @return the resolved User entity. Never null.
-     * @throws IllegalArgumentException if the user is not found.
-     */
+    @GetMapping("/by-card")
+    public ResponseEntity<List<ExpenseByCardResponse>> getExpensesByCard(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = resolveUser(userDetails);
+        if (month == null) {
+            month = YearMonth.now();
+        }
+
+        List<ExpenseReportService.CardExpenseEntry> entries =
+                expenseReportService.getExpensesByCard(user, month);
+
+        BigDecimal grandTotal = entries.stream()
+                .map(ExpenseReportService.CardExpenseEntry::totalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<ExpenseByCardResponse> response = entries.stream()
+                .map(entry -> {
+                    BigDecimal pct = grandTotal.compareTo(BigDecimal.ZERO) > 0
+                        ? entry.totalAmount().multiply(BigDecimal.valueOf(100))
+                            .divide(grandTotal, 1, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
+
+                    List<CategoryExpenseSummary> categories = entry.categoryBreakdown()
+                            .entrySet().stream()
+                            .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                            .map(e -> new CategoryExpenseSummary(
+                                    e.getKey().getId(),
+                                    e.getKey().getName(),
+                                    e.getKey().getColor(),
+                                    e.getValue(),
+                                    0
+                            ))
+                            .toList();
+
+                    return new ExpenseByCardResponse(
+                            entry.cardId(), entry.cardName(), entry.lastFourDigits(),
+                            entry.bankName(), entry.totalAmount(), pct,
+                            entry.transactionCount(), categories
+                    );
+                })
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/by-recurrence")
+    public ResponseEntity<List<ExpenseByRecurrenceResponse>> getExpensesByRecurrence(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = resolveUser(userDetails);
+        if (month == null) {
+            month = YearMonth.now();
+        }
+
+        List<ExpenseReportService.RecurrenceExpenseEntry> entries =
+                expenseReportService.getExpensesByRecurrence(user, month);
+
+        BigDecimal grandTotal = entries.stream()
+                .map(ExpenseReportService.RecurrenceExpenseEntry::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<ExpenseByRecurrenceResponse> response = entries.stream()
+                .map(entry -> {
+                    BigDecimal pct = grandTotal.compareTo(BigDecimal.ZERO) > 0
+                        ? entry.amount().multiply(BigDecimal.valueOf(100))
+                            .divide(grandTotal, 1, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
+                    return new ExpenseByRecurrenceResponse(
+                            entry.type(), entry.amount(), pct, entry.transactionCount());
+                })
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/comparison")
+    public ResponseEntity<PeriodComparisonResponse> compareExpenses(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth compareTo,
+            @RequestParam(required = false, defaultValue = "false") boolean showTotal,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = resolveUser(userDetails);
+
+        Map<Category, BigDecimal> currentCats = showTotal
+                ? expenseReportService.getTotalExpensesByCategory(user, month)
+                : expenseReportService.getExpensesByCategory(user, month);
+        Map<Category, BigDecimal> compareCats = showTotal
+                ? expenseReportService.getTotalExpensesByCategory(user, compareTo)
+                : expenseReportService.getExpensesByCategory(user, compareTo);
+
+        BigDecimal currentTotal = currentCats.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal compareTotal = compareCats.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int currentCount = showTotal
+                ? countTotalItems(user, month)
+                : countUserItems(user, month);
+        int compareCount = showTotal
+                ? countTotalItems(user, compareTo)
+                : countUserItems(user, compareTo);
+
+        BigDecimal diffAmount = currentTotal.subtract(compareTotal);
+        BigDecimal diffPct = compareTotal.compareTo(BigDecimal.ZERO) > 0
+                ? diffAmount.multiply(BigDecimal.valueOf(100))
+                    .divide(compareTotal, 1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        Set<Category> allCategories = new LinkedHashSet<>();
+        allCategories.addAll(currentCats.keySet());
+        allCategories.addAll(compareCats.keySet());
+
+        List<PeriodComparisonResponse.CategoryComparison> catComps = allCategories.stream()
+                .map(cat -> {
+                    BigDecimal cur = currentCats.getOrDefault(cat, BigDecimal.ZERO);
+                    BigDecimal cmp = compareCats.getOrDefault(cat, BigDecimal.ZERO);
+                    BigDecimal catDiff = cur.subtract(cmp);
+                    BigDecimal catDiffPct = cmp.compareTo(BigDecimal.ZERO) > 0
+                            ? catDiff.multiply(BigDecimal.valueOf(100))
+                                .divide(cmp, 1, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO;
+                    return new PeriodComparisonResponse.CategoryComparison(
+                            CategoryResponse.from(cat), cur, cmp, catDiff, catDiffPct);
+                })
+                .sorted((a, b) -> b.currentAmount().compareTo(a.currentAmount()))
+                .toList();
+
+        return ResponseEntity.ok(new PeriodComparisonResponse(
+                new PeriodComparisonResponse.MonthSummary(month, currentTotal, currentCount),
+                new PeriodComparisonResponse.MonthSummary(compareTo, compareTotal, compareCount),
+                diffAmount, diffPct, catComps
+        ));
+    }
+
+    private ExpenseTrendsResponse buildTrendsResponse(
+            final UserResponse userResp,
+            final List<MonthlyExpenseResponse> monthlyResponses) {
+
+        if (monthlyResponses.isEmpty()) {
+            return new ExpenseTrendsResponse(userResp, monthlyResponses,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO);
+        }
+
+        BigDecimal sum = BigDecimal.ZERO;
+        BigDecimal highest = BigDecimal.ZERO;
+        BigDecimal lowest = monthlyResponses.get(0).totalAmount();
+
+        for (MonthlyExpenseResponse mr : monthlyResponses) {
+            sum = sum.add(mr.totalAmount());
+            if (mr.totalAmount().compareTo(highest) > 0) {
+                highest = mr.totalAmount();
+            }
+            if (mr.totalAmount().compareTo(lowest) < 0) {
+                lowest = mr.totalAmount();
+            }
+        }
+
+        BigDecimal avg = sum.divide(
+                BigDecimal.valueOf(monthlyResponses.size()), 2, RoundingMode.HALF_UP);
+
+        BigDecimal currentTotal =
+                monthlyResponses.get(monthlyResponses.size() - 1).totalAmount();
+
+        BigDecimal currentVsAvg = percentChange(currentTotal, avg);
+
+        BigDecimal previousTotal = monthlyResponses.size() >= 2
+                ? monthlyResponses.get(monthlyResponses.size() - 2).totalAmount()
+                : BigDecimal.ZERO;
+
+        BigDecimal currentVsPrev = percentChange(currentTotal, previousTotal);
+
+        return new ExpenseTrendsResponse(userResp, monthlyResponses,
+                avg, currentVsAvg, currentVsPrev, highest, lowest);
+    }
+
+    private BigDecimal percentChange(final BigDecimal current, final BigDecimal base) {
+        if (base.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return current.subtract(base)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(base, 1, RoundingMode.HALF_UP);
+    }
+
+    private int countUserItems(final User user, final YearMonth month) {
+        Map<Category, BigDecimal> cats = expenseReportService.getExpensesByCategory(user, month);
+        int count = 0;
+        for (Category cat : cats.keySet()) {
+            count += expenseReportService.getExpenseDetails(user, month, cat).size();
+        }
+        return count;
+    }
+
+    private int countTotalItems(final User user, final YearMonth month) {
+        Map<Category, BigDecimal> cats =
+                expenseReportService.getTotalExpensesByCategory(user, month);
+        int count = 0;
+        for (Category cat : cats.keySet()) {
+            count += expenseReportService.getTotalExpenseDetails(user, month, cat).size();
+        }
+        return count;
+    }
+
     private User resolveUser(final UserDetails userDetails) {
         return invoiceService.findUserByUsername(userDetails.getUsername())
             .orElseThrow(() -> new IllegalArgumentException("User not found"));

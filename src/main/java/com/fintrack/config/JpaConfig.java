@@ -14,14 +14,16 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
     "com.fintrack.domain.creditcard",
     "com.fintrack.domain.user",
     "com.fintrack.domain.contact",
-    "com.fintrack.domain.invoice"
+    "com.fintrack.domain.invoice",
+    "com.fintrack.domain.budget"
 })
 @EnableJpaRepositories(basePackages = {
     "com.fintrack.domain.creditcard",
     "com.fintrack.infrastructure.persistence.creditcard",
     "com.fintrack.infrastructure.persistence.user",
     "com.fintrack.infrastructure.persistence.contact",
-    "com.fintrack.infrastructure.persistence.invoice"
+    "com.fintrack.infrastructure.persistence.invoice",
+    "com.fintrack.infrastructure.persistence.budget"
 })
 public class JpaConfig {
 }

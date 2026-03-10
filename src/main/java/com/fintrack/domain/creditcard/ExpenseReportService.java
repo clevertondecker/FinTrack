@@ -126,15 +126,24 @@ public interface ExpenseReportService {
     List<TopExpenseEntry> getTotalTopExpenses(User user, YearMonth month, int limit);
 
     /**
-     * Represents a top expense entry with item details and user share amount.
+     * Gets expenses grouped by credit card for the user in a given month.
      *
-     * @param itemId the invoice item ID
-     * @param description the item description
-     * @param amount the user's share amount
-     * @param purchaseDate the purchase date
-     * @param invoiceId the invoice ID
-     * @param category the item category (null if uncategorized)
+     * @param user the user. Must not be null.
+     * @param month the month. Must not be null.
+     * @return a map of credit card to category-level aggregations. Never null.
      */
+    List<CardExpenseEntry> getExpensesByCard(User user, YearMonth month);
+
+    /**
+     * Gets expenses grouped by recurrence type for the user in a given month.
+     * Types: INSTALLMENT (totalInstallments > 1), SINGLE (totalInstallments == 1).
+     *
+     * @param user the user. Must not be null.
+     * @param month the month. Must not be null.
+     * @return a list of recurrence-type aggregations. Never null.
+     */
+    List<RecurrenceExpenseEntry> getExpensesByRecurrence(User user, YearMonth month);
+
     record TopExpenseEntry(
         Long itemId,
         String description,
@@ -142,6 +151,22 @@ public interface ExpenseReportService {
         LocalDate purchaseDate,
         Long invoiceId,
         Category category
+    ) {}
+
+    record CardExpenseEntry(
+        Long cardId,
+        String cardName,
+        String lastFourDigits,
+        String bankName,
+        BigDecimal totalAmount,
+        int transactionCount,
+        Map<Category, BigDecimal> categoryBreakdown
+    ) {}
+
+    record RecurrenceExpenseEntry(
+        String type,
+        BigDecimal amount,
+        int transactionCount
     ) {}
 }
 

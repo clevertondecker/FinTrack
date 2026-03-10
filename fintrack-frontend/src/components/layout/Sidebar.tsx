@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, FileText, Users, BarChart2, Home, Upload, X, UserCircle } from 'lucide-react';
+import { CreditCard, FileText, Users, BarChart2, Home, Upload, X, UserCircle, Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { icon: <UserCircle size={22} />, label: t('sidebar.people'), view: 'people' },
     { icon: <Users size={22} />, label: t('sidebar.shares'), view: 'myShares' },
     { icon: <BarChart2 size={22} />, label: t('sidebar.reports'), view: 'expenseReport', disabled: false },
+    { icon: <Target size={22} />, label: t('sidebar.budgets'), view: 'budgets', disabled: false },
   ];
 
   const handleMenuClick = (view: string) => {
@@ -48,6 +49,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         break;
       case 'expenseReport':
         navigate('/dashboard/expense-report');
+        break;
+      case 'budgets':
+        navigate('/dashboard/budgets');
         break;
       default:
         navigate('/dashboard');

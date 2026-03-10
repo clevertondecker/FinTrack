@@ -38,7 +38,8 @@
     "importInvoices": "Import Invoices",
     "people": "People",
     "shares": "Shares",
-    "reports": "Reports"
+    "reports": "Reports",
+    "budgets": "Budgets"
   },
   "people": {
     "title": "People",
@@ -99,7 +100,18 @@
     "mySharesDescription": "View items shared with you by other users",
     "viewCreditCards": "View Cards",
     "viewInvoices": "View Invoices",
-    "viewShares": "View Shares"
+    "viewShares": "View Shares",
+    "totalExpenses": "Total Expenses",
+    "transactions": "Transactions",
+    "activeCards": "Active Cards",
+    "creditCardsOverview": "Credit Cards Overview",
+    "card": "Card",
+    "dueDate": "Due Date",
+    "invoiceAmount": "Invoice Amount",
+    "dailyExpenses": "Daily Expenses",
+    "categoryRanking": "Category Ranking",
+    "day": "Day",
+    "errorLoading": "Error loading dashboard"
   },
   "creditCards": {
     "title": "Credit Cards",
@@ -530,15 +542,45 @@
     "showingMine": "My expenses",
     "showingTotal": "Total expenses",
     "uncategorized": "Uncategorized",
+    "installment": "Installment",
+    "singlePurchase": "Single Purchase",
     "charts": {
       "categoryBreakdown": "Category Breakdown",
       "monthComparison": "Month Comparison",
       "monthlyEvolution": "Spending Evolution",
       "topExpenses": "Top 5 Expenses",
+      "byCard": "Expenses by Card",
+      "byRecurrence": "Installment vs Single",
       "noChartData": "No chart data",
       "currentMonth": "Current Month",
       "previousMonth": "Previous Month",
       "percentOfTotal": "{{percent}}% of total"
+    },
+    "trends": {
+      "monthlyAverage": "Monthly Average",
+      "vsPreviousMonth": "vs Previous Month",
+      "highestMonth": "Highest Month",
+      "lowestMonth": "Lowest Month"
     }
+  },
+  "budgets": {
+    "title": "Budgets",
+    "addBudget": "Add Budget",
+    "editBudget": "Edit Budget",
+    "noBudgets": "No budgets found",
+    "addFirst": "Create First Budget",
+    "confirmDelete": "Are you sure you want to delete this budget?",
+    "categoryColumn": "Category",
+    "limitColumn": "Limit",
+    "spentColumn": "Spent",
+    "remainingColumn": "Remaining",
+    "utilizationColumn": "Utilization",
+    "general": "General (all expenses)",
+    "recurring": "Recurring budget",
+    "recurringHint": "Applies automatically to all months",
+    "statusUnder": "Under Budget",
+    "statusNear": "Near Limit",
+    "statusOver": "Over Budget",
+    "errorLoading": "Error loading budgets"
   }
 } 

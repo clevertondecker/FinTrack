@@ -1,0 +1,26 @@
+.daily-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-tooltip {
+  background: white;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e5e5;
+}
+
+.daily-tooltip-date {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.125rem;
+}
+
+.daily-tooltip-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #6366f1;
+  margin: 0;
+}
