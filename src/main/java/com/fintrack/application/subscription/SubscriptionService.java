@@ -33,8 +33,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class SubscriptionService {
 
-    private static final int MIN_OCCURRENCES_FOR_SUGGESTION = 2;
+    private static final int MIN_OCCURRENCES_FOR_SUGGESTION = 3;
     private static final int MONTHS_TO_ANALYZE = 6;
+    private static final double MAX_AMOUNT_VARIANCE_RATIO = 0.20;
 
     private final SubscriptionRepository subscriptionRepository;
     private final CategoryJpaRepository categoryRepository;
@@ -136,6 +137,8 @@ public class SubscriptionService {
                 "SELECT ii.merchantKey AS mk, "
                 + "COUNT(DISTINCT i.month) AS monthCount, "
                 + "AVG(ii.amount) AS avgAmount, "
+                + "MIN(ii.amount) AS minAmount, "
+                + "MAX(ii.amount) AS maxAmount, "
                 + "MIN(ii.purchaseDate) AS firstSeen, "
                 + "MAX(ii.purchaseDate) AS lastSeen "
                 + "FROM InvoiceItem ii "
@@ -162,8 +165,19 @@ public class SubscriptionService {
                 continue;
             }
 
-            Long monthCount = row.get("monthCount", Long.class);
             Double avgAmount = row.get("avgAmount", Double.class);
+            BigDecimal minAmount = row.get("minAmount", BigDecimal.class);
+            BigDecimal maxAmount = row.get("maxAmount", BigDecimal.class);
+
+            if (avgAmount == null || avgAmount <= 0) {
+                continue;
+            }
+            double varianceRatio = maxAmount.subtract(minAmount).doubleValue() / avgAmount;
+            if (varianceRatio > MAX_AMOUNT_VARIANCE_RATIO) {
+                continue;
+            }
+
+            Long monthCount = row.get("monthCount", Long.class);
             LocalDate firstSeen = row.get("firstSeen", LocalDate.class);
             LocalDate lastSeen = row.get("lastSeen", LocalDate.class);
 
