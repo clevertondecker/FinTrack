@@ -352,6 +352,7 @@ public class ItemShareController {
             share.getPaidAt(),
             creditCard.getName(),
             creditCard.getOwner().getName(),
+            creditCard.getOwner().getEmail().getEmail(),
             invoice.getDueDate(),
             invoice.getStatus().name(),
             share.getCreatedAt(),

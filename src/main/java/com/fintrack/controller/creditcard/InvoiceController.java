@@ -15,7 +15,6 @@ import com.fintrack.domain.user.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -180,25 +179,52 @@ public class InvoiceController {
     }
 
     /**
-     * Deletes an invoice by ID. Only accessible to ADMIN users.
-     *
-     * @param id the invoice ID.
-     * @return 204 No Content if deleted.
+     * Returns a summary of shared items for a given invoice,
+     * so the frontend can show a confirmation dialog before deleting.
+     */
+    @GetMapping("/{id}/delete-info")
+    public ResponseEntity<java.util.Map<String, Object>> getDeleteInfo(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = requireUser(userDetails);
+        Invoice invoice = invoiceService.getInvoice(id, user);
+
+        int totalItems = invoice.getItems().size();
+        long sharedItems = invoice.getItems().stream()
+                .filter(item -> !item.getShares().isEmpty())
+                .count();
+        long totalShares = invoice.getItems().stream()
+                .mapToLong(item -> item.getShares().size())
+                .sum();
+        long paidShares = invoice.getItems().stream()
+                .flatMap(item -> item.getShares().stream())
+                .filter(com.fintrack.domain.creditcard.ItemShare::isPaid)
+                .count();
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "invoiceId", id,
+                "totalItems", totalItems,
+                "sharedItems", sharedItems,
+                "totalShares", totalShares,
+                "paidShares", paidShares
+        ));
+    }
+
+    /**
+     * Deletes an invoice by ID. Accessible to the card owner.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
-        try {
-            // Delete the invoice using the service
-            // If there are foreign key constraints, they will be handled by the service
-            invoiceService.deleteInvoice(id);
-            
-        } catch (Exception e) {
-            // If there are still foreign key constraints, provide a helpful error message
-            throw new RuntimeException(
-                "Cannot delete invoice. It may be referenced by other data. Error: "
-                    + e.getMessage());
-        }
+    public ResponseEntity<Void> deleteInvoice(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = requireUser(userDetails);
+        invoiceService.getInvoice(id, user);
+        invoiceService.deleteInvoice(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private User requireUser(UserDetails userDetails) {
+        return invoiceService.findUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 }

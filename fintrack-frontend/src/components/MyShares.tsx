@@ -16,6 +16,7 @@ interface GroupedShares {
   [key: string]: {
     creditCardName: string;
     creditCardOwnerName: string;
+    creditCardOwnerEmail: string;
     invoices: InvoiceGroup[];
   };
 }
@@ -94,7 +95,7 @@ const MyShares: React.FC = () => {
     if (!shares) return {};
 
     const filteredShares = filterShares(shares.shares);
-    const temp: { [cardKey: string]: { creditCardName: string; creditCardOwnerName: string; invoiceMap: { [invoiceId: number]: InvoiceGroup } } } = {};
+    const temp: { [cardKey: string]: { creditCardName: string; creditCardOwnerName: string; creditCardOwnerEmail: string; invoiceMap: { [invoiceId: number]: InvoiceGroup } } } = {};
 
     filteredShares.forEach(share => {
       const cardKey = `${share.creditCardName}-${share.creditCardOwnerName}`;
@@ -102,6 +103,7 @@ const MyShares: React.FC = () => {
         temp[cardKey] = {
           creditCardName: share.creditCardName,
           creditCardOwnerName: share.creditCardOwnerName,
+          creditCardOwnerEmail: share.creditCardOwnerEmail,
           invoiceMap: {}
         };
       }
@@ -123,6 +125,7 @@ const MyShares: React.FC = () => {
       grouped[cardKey] = {
         creditCardName: card.creditCardName,
         creditCardOwnerName: card.creditCardOwnerName,
+        creditCardOwnerEmail: card.creditCardOwnerEmail,
         invoices
       };
     });
@@ -440,6 +443,9 @@ const MyShares: React.FC = () => {
                       {group.creditCardName}
                     </h3>
                     <p className="card-owner">{cardTitle}</p>
+                    <p className="card-owner-email" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>
+                      {group.creditCardOwnerEmail}
+                    </p>
                   </div>
                   <div className="group-summary">
                     <span className="group-count">

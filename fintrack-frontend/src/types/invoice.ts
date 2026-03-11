@@ -158,4 +158,12 @@ export interface InvoicePaymentResponse {
   status: string;
   updatedAt: string;
   message: string;
-} 
+}
+
+export interface InvoiceDeleteInfo {
+  invoiceId: number;
+  totalItems: number;
+  sharedItems: number;
+  totalShares: number;
+  paidShares: number;
+}

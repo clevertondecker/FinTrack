@@ -2,7 +2,11 @@ package com.fintrack.controller.creditcard;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,8 +34,11 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 import com.fintrack.application.creditcard.InvoiceService;
 import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
 import com.fintrack.config.TestSecurityConfig;
@@ -269,6 +276,149 @@ class InvoiceControllerTest {
         // When & Then
         mockMvc.perform(get("/api/invoices/{id}", invoiceId)
                 .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invoice not found"));
+    }
+
+    // --- Delete Invoice Tests ---
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should delete invoice successfully as owner")
+    void shouldDeleteInvoiceSuccessfully() throws Exception {
+        Long invoiceId = 1L;
+
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
+        doNothing().when(invoiceService).deleteInvoice(eq(invoiceId));
+
+        mockMvc.perform(delete("/api/invoices/{id}", invoiceId))
+                .andExpect(status().isNoContent());
+
+        verify(invoiceService).deleteInvoice(invoiceId);
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when deleting invoice not owned by user")
+    void shouldReturn400WhenDeletingInvoiceNotOwned() throws Exception {
+        Long invoiceId = 999L;
+
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(invoiceId), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Invoice not found"));
+
+        mockMvc.perform(delete("/api/invoices/{id}", invoiceId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invoice not found"));
+
+        verify(invoiceService, never()).deleteInvoice(any());
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when user not found for delete")
+    void shouldReturn400WhenUserNotFoundForDelete() throws Exception {
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(delete("/api/invoices/{id}", 1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("User not found"));
+    }
+
+    // --- Delete Info Tests ---
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return delete info with no shared items")
+    void shouldReturnDeleteInfoNoShares() throws Exception {
+        Long invoiceId = 1L;
+
+        Category cat = Category.of("Food", "#FF0000");
+        InvoiceItem item = InvoiceItem.of(testInvoice, "Simple Item",
+            new BigDecimal("50.00"), cat, LocalDate.of(2024, 1, 10));
+        testInvoice.addItem(item);
+
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
+
+        mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceId").value(invoiceId))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.sharedItems").value(0))
+                .andExpect(jsonPath("$.totalShares").value(0))
+                .andExpect(jsonPath("$.paidShares").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return delete info with shared items")
+    void shouldReturnDeleteInfoWithShares() throws Exception {
+        Long invoiceId = 1L;
+
+        User otherUser = User.createLocalUser("Jane Doe", "jane@example.com", "pass123", Set.of(Role.USER));
+        Category cat = Category.of("Food", "#FF0000");
+        InvoiceItem itemWithShares = InvoiceItem.of(testInvoice, "Shared Dinner",
+            new BigDecimal("200.00"), cat, LocalDate.of(2024, 1, 20));
+
+        ItemShare share = ItemShare.of(otherUser, itemWithShares,
+            new BigDecimal("0.50"), new BigDecimal("100.00"), false);
+        itemWithShares.addShare(share);
+
+        Invoice invoiceWithShares = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
+        setInvoiceId(invoiceWithShares, 1L);
+        invoiceWithShares.addItem(itemWithShares);
+
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(invoiceWithShares);
+
+        mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceId").value(invoiceId))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.sharedItems").value(1))
+                .andExpect(jsonPath("$.totalShares").value(1))
+                .andExpect(jsonPath("$.paidShares").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return delete info with paid shares")
+    void shouldReturnDeleteInfoWithPaidShares() throws Exception {
+        Long invoiceId = 1L;
+
+        User otherUser = User.createLocalUser("Jane Doe", "jane@example.com", "pass123", Set.of(Role.USER));
+        Category cat = Category.of("Food", "#FF0000");
+        InvoiceItem itemWithShares = InvoiceItem.of(testInvoice, "Shared Dinner",
+            new BigDecimal("200.00"), cat, LocalDate.of(2024, 1, 20));
+
+        ItemShare share = ItemShare.of(otherUser, itemWithShares,
+            new BigDecimal("0.50"), new BigDecimal("100.00"), false);
+        share.markAsPaid("PIX", java.time.LocalDateTime.now());
+        itemWithShares.addShare(share);
+
+        Invoice invoiceWithShares = Invoice.of(testCreditCard, YearMonth.of(2024, 2), LocalDate.of(2024, 2, 10));
+        setInvoiceId(invoiceWithShares, 1L);
+        invoiceWithShares.addItem(itemWithShares);
+
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(invoiceWithShares);
+
+        mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paidShares").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "john@example.com")
+    @DisplayName("Should return 400 when invoice not found for delete info")
+    void shouldReturn400WhenInvoiceNotFoundForDeleteInfo() throws Exception {
+        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(invoiceService.getInvoice(eq(999L), eq(testUser)))
+            .thenThrow(new IllegalArgumentException("Invoice not found"));
+
+        mockMvc.perform(get("/api/invoices/{id}/delete-info", 999L))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invoice not found"));
     }

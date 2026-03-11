@@ -65,6 +65,7 @@ export interface MyShareResponse {
   paidAt: string | null;
   creditCardName: string;
   creditCardOwnerName: string;
+  creditCardOwnerEmail: string;
   invoiceDueDate: string;
   invoiceStatus: string;
   shareCreatedAt: string;

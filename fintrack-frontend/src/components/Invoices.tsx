@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, RefreshCw } from 'lucide-react';
 import apiService from '../services/api';
-import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, Category } from '../types/invoice';
+import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, Category, InvoiceDeleteInfo } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
 import { getStatusColor, getStatusText, getUrgencyText, formatCurrency, formatDate, sortInvoices, groupInvoices, consolidateInvoices, calculateSummary } from '../utils/invoiceUtils';
 import ShareItemModal from './ShareItemModal';
@@ -69,6 +69,12 @@ const Invoices: React.FC = () => {
     categoryId: '',
     purchaseDate: ''
   });
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const [deleteInfo, setDeleteInfo] = useState<InvoiceDeleteInfo | null>(null);
+  const [loadingDeleteInfo, setLoadingDeleteInfo] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [showAddMore, setShowAddMore] = useState(false);
   const [quickAddMode, setQuickAddMode] = useState(false);
@@ -555,14 +561,41 @@ const Invoices: React.FC = () => {
     }
   };
 
-  const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!window.confirm(t('invoices.confirmDeleteInvoice') || 'Tem certeza que deseja excluir esta fatura?')) return;
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    setInvoiceToDelete(invoice);
+    setShowDeleteModal(true);
+    setLoadingDeleteInfo(true);
+    setDeleteInfo(null);
     try {
-      await apiService.deleteInvoice(invoiceId);
-      await loadInvoices();
-    } catch (err) {
-      alert(t('invoices.failedToDeleteInvoice') || 'Erro ao excluir fatura');
+      const info = await apiService.getInvoiceDeleteInfo(invoice.id);
+      setDeleteInfo(info);
+    } catch {
+      setDeleteInfo(null);
+    } finally {
+      setLoadingDeleteInfo(false);
     }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    setDeleting(true);
+    try {
+      await apiService.deleteInvoice(invoiceToDelete.id);
+      setShowDeleteModal(false);
+      setInvoiceToDelete(null);
+      setDeleteInfo(null);
+      await loadInvoices();
+    } catch {
+      setError(t('invoices.failedToDeleteInvoice') || 'Erro ao excluir fatura');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setInvoiceToDelete(null);
+    setDeleteInfo(null);
   };
 
   const getConsolidatedCards = (invoice: Invoice): Invoice[] | undefined => {
@@ -672,12 +705,12 @@ const Invoices: React.FC = () => {
               {t('invoices.payButton')}
             </button>
           )}
-          {user?.roles?.includes('ADMIN') && !consolidated && (
+          {!consolidated && (
             <button
-              onClick={() => handleDeleteInvoice(invoice.id)}
+              onClick={() => handleDeleteInvoice(invoice)}
               className="delete-invoice-btn"
             >
-              Excluir Fatura
+              {t('invoices.deleteButton', 'Excluir')}
             </button>
           )}
         </div>
@@ -1328,6 +1361,107 @@ const Invoices: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && invoiceToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h2>{t('invoices.deleteModalTitle', 'Excluir Fatura')}</h2>
+              <button onClick={handleCloseDeleteModal} className="close-button">&times;</button>
+            </div>
+            <div className="modal-content">
+              <div className="invoice-info" style={{ marginBottom: '1rem' }}>
+                <div className="info-row">
+                  <span className="label">{t('invoices.creditCardLabel')}:</span>
+                  <span className="value">{invoiceToDelete.creditCardName}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">{t('invoices.dueDateLabel')}:</span>
+                  <span className="value">{formatDate(invoiceToDelete.dueDate)}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">{t('invoices.totalAmountLabel')}:</span>
+                  <span className="value">{formatCurrency(invoiceToDelete.totalAmount)}</span>
+                </div>
+              </div>
+
+              {loadingDeleteInfo ? (
+                <div className="loading" style={{ padding: '1rem 0' }}>{t('common.loading', 'Carregando...')}</div>
+              ) : deleteInfo && deleteInfo.sharedItems > 0 ? (
+                <div style={{
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <p style={{ fontWeight: 600, color: '#92400e', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                    {t('invoices.deleteWarningShared', 'Esta fatura contém itens compartilhados!')}
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#78350f', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                    <li>
+                      {t('invoices.deleteSharedItemsCount', {
+                        count: deleteInfo.sharedItems,
+                        total: deleteInfo.totalItems,
+                        defaultValue: `${deleteInfo.sharedItems} de ${deleteInfo.totalItems} itens possuem compartilhamentos`
+                      })}
+                    </li>
+                    <li>
+                      {t('invoices.deleteSharesCount', {
+                        count: deleteInfo.totalShares,
+                        defaultValue: `${deleteInfo.totalShares} compartilhamento(s) serão removidos`
+                      })}
+                    </li>
+                    {deleteInfo.paidShares > 0 && (
+                      <li style={{ fontWeight: 600 }}>
+                        {t('invoices.deletePaidSharesWarning', {
+                          count: deleteInfo.paidShares,
+                          defaultValue: `${deleteInfo.paidShares} compartilhamento(s) já foram marcados como pagos`
+                        })}
+                      </li>
+                    )}
+                  </ul>
+                  <p style={{ color: '#92400e', fontSize: '0.85rem', marginTop: '0.75rem', marginBottom: 0 }}>
+                    {t('invoices.deleteSharedConsequence', 'Os outros usuários perderão o acesso a esses itens e seu histórico de compartilhamento.')}
+                  </p>
+                </div>
+              ) : deleteInfo ? (
+                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  {t('invoices.deleteNoShares', {
+                    count: deleteInfo.totalItems,
+                    defaultValue: `Esta fatura possui ${deleteInfo.totalItems} item(ns) e nenhum compartilhamento.`
+                  })}
+                </p>
+              ) : null}
+
+              <p style={{ color: '#dc2626', fontWeight: 500, fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+                {t('invoices.deleteConfirmQuestion', 'Tem certeza que deseja excluir esta fatura? Esta ação não pode ser desfeita.')}
+              </p>
+
+              <div className="form-actions">
+                <button
+                  onClick={handleConfirmDelete}
+                  className="submit-button"
+                  disabled={deleting}
+                  style={{ background: '#dc2626' }}
+                >
+                  {deleting
+                    ? t('common.deleting', 'Excluindo...')
+                    : t('invoices.confirmDelete', 'Sim, excluir fatura')}
+                </button>
+                <button
+                  onClick={handleCloseDeleteModal}
+                  className="cancel-button"
+                  disabled={deleting}
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

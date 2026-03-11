@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -459,6 +462,71 @@ class InvoiceServiceTest {
 
             assertThrows(IllegalArgumentException.class, () ->
                 invoiceService.deleteInvoiceItem(999L, 1L, testUser));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteInvoice Tests")
+    class DeleteInvoiceTests {
+
+        @Test
+        @DisplayName("Should delete invoice successfully")
+        void shouldDeleteInvoiceSuccessfully() {
+            when(invoiceRepository.findById(1L)).thenReturn(Optional.of(testInvoice));
+            when(invoiceItemRepository.findByInvoice(testInvoice)).thenReturn(List.of(testInvoiceItem));
+
+            invoiceService.deleteInvoice(1L);
+
+            verify(jdbcTemplate).update(
+                eq("UPDATE invoice_imports SET created_invoice_id = NULL WHERE created_invoice_id = ?"),
+                eq(1L));
+            verify(invoiceItemRepository).delete(testInvoiceItem);
+            verify(invoiceRepository).deleteById(1L);
+        }
+
+        @Test
+        @DisplayName("Should throw exception when invoice not found")
+        void shouldThrowWhenInvoiceNotFound() {
+            when(invoiceRepository.findById(999L)).thenReturn(Optional.empty());
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> invoiceService.deleteInvoice(999L));
+
+            assertTrue(ex.getMessage().contains("Invoice not found"));
+            verify(invoiceRepository, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("Should clear shares before deleting items")
+        void shouldClearSharesBeforeDeletingItems() {
+            when(invoiceRepository.findById(1L)).thenReturn(Optional.of(testInvoice));
+            when(invoiceItemRepository.findByInvoice(testInvoice)).thenReturn(List.of(testInvoiceItem));
+
+            invoiceService.deleteInvoice(1L);
+
+            assertTrue(testInvoiceItem.getShares().isEmpty());
+            verify(invoiceItemRepository).delete(testInvoiceItem);
+        }
+
+        @Test
+        @DisplayName("Should handle invoice with no items")
+        void shouldHandleInvoiceWithNoItems() {
+            Invoice emptyInvoice = Invoice.of(testCreditCard, YearMonth.of(2024, 3), LocalDate.of(2024, 3, 10));
+            try {
+                java.lang.reflect.Field idField = Invoice.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(emptyInvoice, 2L);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            when(invoiceRepository.findById(2L)).thenReturn(Optional.of(emptyInvoice));
+            when(invoiceItemRepository.findByInvoice(emptyInvoice)).thenReturn(List.of());
+
+            invoiceService.deleteInvoice(2L);
+
+            verify(invoiceItemRepository, never()).delete(any());
+            verify(invoiceRepository).deleteById(2L);
         }
     }
 

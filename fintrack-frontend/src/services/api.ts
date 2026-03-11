@@ -17,6 +17,7 @@ import {
   CreateInvoiceResponse,
   CreateInvoiceItemResponse,
   InvoiceItemDetailResponse,
+  InvoiceDeleteInfo,
   Category
 } from '../types/invoice';
 import {
@@ -364,7 +365,11 @@ class ApiService {
     return response.data;
   }
 
-  // Deleta uma fatura (apenas para admin)
+  async getInvoiceDeleteInfo(invoiceId: number): Promise<InvoiceDeleteInfo> {
+    const response = await this.api.get<InvoiceDeleteInfo>(`/invoices/${invoiceId}/delete-info`);
+    return response.data;
+  }
+
   async deleteInvoice(invoiceId: number): Promise<void> {
     await this.api.delete(`/invoices/${invoiceId}`);
   }
