@@ -726,6 +726,8 @@
     "pendingShares": "Pending shares",
     "pendingSharesDesc": "You have {{count}} pending share(s) (${{amount}})",
     "subscriptionSuggestions": "Subscription suggestions",
-    "subscriptionSuggestionsDesc": "{{count}} possible subscription(s) detected"
+    "subscriptionSuggestionsDesc": "{{count}} possible subscription(s) detected",
+    "dismiss": "Dismiss",
+    "dismissAll": "Dismiss all"
   }
 }

@@ -727,6 +727,8 @@
     "pendingShares": "Divisões pendentes",
     "pendingSharesDesc": "Você tem {{count}} divisão(ões) pendente(s) (R$ {{amount}})",
     "subscriptionSuggestions": "Sugestões de assinatura",
-    "subscriptionSuggestionsDesc": "{{count}} possível(eis) assinatura(s) detectada(s)"
+    "subscriptionSuggestionsDesc": "{{count}} possível(eis) assinatura(s) detectada(s)",
+    "dismiss": "Dispensar",
+    "dismissAll": "Dispensar todas"
   }
 }
