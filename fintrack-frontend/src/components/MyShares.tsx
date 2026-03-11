@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MySharesResponse, MyShareResponse } from '../types/itemShare';
+import HelpTooltip from './common/HelpTooltip';
 import apiService from '../services/api';
 import { getStatusColor, getStatusText, formatCurrency, formatDate } from '../utils/invoiceUtils';
 import MarkShareAsPaidModal from './MarkShareAsPaidModal';
@@ -292,7 +293,9 @@ const MyShares: React.FC = () => {
   return (
     <div className="my-shares-container">
       <div className="my-shares-header">
-        <h2>{t('shares.title')}</h2>
+        <HelpTooltip textKey="help.shares.overview" position="bottom">
+          <h2>{t('shares.title')}</h2>
+        </HelpTooltip>
         <div className="header-actions">
           <button
             className="filter-button"

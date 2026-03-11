@@ -730,5 +730,43 @@
     "subscriptionSuggestionsDesc": "{{count}} possível(eis) assinatura(s) detectada(s)",
     "dismiss": "Dispensar",
     "dismissAll": "Dispensar todas"
+  },
+  "help": {
+    "tooltip": "Ajuda",
+    "activate": "Ativar dicas de ajuda",
+    "deactivate": "Desativar dicas de ajuda",
+    "toggle": "Alternar ajuda",
+    "dashboard": {
+      "monthSelector": "Use o seletor de mês para navegar entre períodos e ver o resumo financeiro de cada mês.",
+      "totalExpenses": "Total de gastos no mês selecionado. Clique para ver o relatório detalhado de despesas.",
+      "dailyChart": "Gráfico com a evolução diária dos seus gastos na fatura do mês selecionado.",
+      "categoryRanking": "Ranking das categorias com maior gasto. Clique para acessar o relatório completo.",
+      "creditCards": "Visão geral dos seus cartões com valor da fatura e status. Clique em uma linha para ver as faturas."
+    },
+    "invoices": {
+      "tabs": "Alterne entre suas faturas e a detecção automática de assinaturas recorrentes.",
+      "share": "Divida um item da fatura com outros usuários ou contatos de confiança."
+    },
+    "budgets": {
+      "overview": "Defina limites de gastos por categoria para controlar seu orçamento. O sistema alerta quando você se aproxima ou ultrapassa o limite."
+    },
+    "shares": {
+      "overview": "Veja todos os itens de fatura compartilhados com você. Marque como pago quando realizar o pagamento."
+    },
+    "people": {
+      "overview": "Cadastre contatos de confiança para facilitar o compartilhamento de despesas e a atribuição de cartões."
+    },
+    "reports": {
+      "overview": "Relatórios detalhados dos seus gastos: por categoria, tendências, maiores despesas, por cartão e por recorrência."
+    },
+    "notifications": {
+      "bell": "Alertas sobre faturas vencidas, orçamentos estourados, divisões pendentes e sugestões de assinaturas."
+    },
+    "header": {
+      "profile": "Acesse seu perfil, altere sua senha ou faça logout do sistema."
+    },
+    "sidebar": {
+      "navigation": "Menu principal de navegação. Acesse todas as funcionalidades do FinTrack por aqui."
+    }
   }
 }

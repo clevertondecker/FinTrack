@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus, BarChart2, Search } from 'lucide-react';
+import HelpTooltip from './common/HelpTooltip';
 import apiService from '../services/api';
 import {
   ExpenseReportResponse,
@@ -170,6 +171,7 @@ const ExpenseReport: React.FC = () => {
   return (
     <div className="expense-report-container">
       {/* Tab Navigation */}
+      <HelpTooltip textKey="help.reports.overview" position="bottom">
       <div className="report-tabs">
         <button
           className={`report-tab ${activeTab === 'analysis' ? 'active' : ''}`}
@@ -186,6 +188,7 @@ const ExpenseReport: React.FC = () => {
           {t('expenseReport.tabSearch')}
         </button>
       </div>
+      </HelpTooltip>
 
       {activeTab === 'search' && <ExpenseSearch />}
 

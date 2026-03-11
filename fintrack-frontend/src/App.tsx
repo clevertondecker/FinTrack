@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { HelpProvider } from './contexts/HelpContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
@@ -12,6 +13,7 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
+      <HelpProvider>
       <Router basename="/app">
         <div className="App">
           <Routes>
@@ -94,6 +96,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+      </HelpProvider>
     </AuthProvider>
   );
 }

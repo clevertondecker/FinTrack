@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Calendar, CreditCard as CreditCardIcon, ShoppingCart, Receipt } from 'lucide-react';
+import HelpTooltip from './common/HelpTooltip';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/api';
 import { DashboardOverviewResponse } from '../types/dashboard';
@@ -84,19 +85,21 @@ const Dashboard: React.FC = () => {
       {activeView === 'main' && (
         <div className="dashboard-main">
           {/* Month Selector */}
-          <div className="dashboard-month-selector">
-            <label htmlFor="dashboard-month" className="dashboard-month-label">
-              <Calendar size={18} />
-              {t('expenseReport.month')}
-            </label>
-            <input
-              id="dashboard-month"
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="month-input"
-            />
-          </div>
+          <HelpTooltip textKey="help.dashboard.monthSelector" position="bottom">
+            <div className="dashboard-month-selector">
+              <label htmlFor="dashboard-month" className="dashboard-month-label">
+                <Calendar size={18} />
+                {t('expenseReport.month')}
+              </label>
+              <input
+                id="dashboard-month"
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="month-input"
+              />
+            </div>
+          </HelpTooltip>
 
           {loading ? (
             <div className="loading-container">
@@ -111,6 +114,7 @@ const Dashboard: React.FC = () => {
           ) : overview ? (
             <>
               {/* Summary Cards */}
+              <HelpTooltip textKey="help.dashboard.totalExpenses" position="bottom">
               <div className="dashboard-stat-cards">
                 <div
                   className="dashboard-stat-card stat-expenses dashboard-clickable"
@@ -157,6 +161,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
+              </HelpTooltip>
 
               {/* Main Grid: Left (wide) + Right (narrow) */}
               <div className="dashboard-grid-layout">
@@ -164,6 +169,7 @@ const Dashboard: React.FC = () => {
                 <div className="dashboard-left-col">
                   {/* Credit Cards Table */}
                   {overview.creditCards.length > 0 && (
+                    <HelpTooltip textKey="help.dashboard.creditCards" position="right">
                     <div className="dashboard-section-card">
                       <h3 className="dashboard-section-title">{t('dashboard.creditCardsOverview')}</h3>
                       <div className="dashboard-table-wrapper">
@@ -202,17 +208,21 @@ const Dashboard: React.FC = () => {
                         </table>
                       </div>
                     </div>
+                    </HelpTooltip>
                   )}
 
                   {/* Daily Expenses Chart */}
+                  <HelpTooltip textKey="help.dashboard.dailyChart" position="right">
                   <div className="dashboard-section-card">
                     <h3 className="dashboard-section-title">{t('dashboard.dailyExpenses')}</h3>
                     <DailyExpenseChart data={overview.dailyExpenses} loading={false} />
                   </div>
+                  </HelpTooltip>
                 </div>
 
                 {/* Right Column */}
                 <div className="dashboard-right-col">
+                  <HelpTooltip textKey="help.dashboard.categoryRanking" position="left">
                   <div
                     className="dashboard-section-card dashboard-clickable"
                     onClick={() => navigate('/dashboard/expense-report')}
@@ -222,6 +232,7 @@ const Dashboard: React.FC = () => {
                     <h3 className="dashboard-section-title">{t('dashboard.categoryRanking')}</h3>
                     <CategoryRankingBars data={overview.categoryRanking} loading={false} />
                   </div>
+                  </HelpTooltip>
                 </div>
               </div>
             </>

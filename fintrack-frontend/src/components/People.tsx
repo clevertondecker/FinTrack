@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
+import HelpTooltip from './common/HelpTooltip';
 import { TrustedContact, CreateTrustedContactRequest } from '../types/trustedContact';
 import './People.css';
 
@@ -110,7 +111,9 @@ const People: React.FC = () => {
   return (
     <div className="people-container">
       <header className="people-header">
-        <h1>{t('people.trustedCircle')}</h1>
+        <HelpTooltip textKey="help.people.overview" position="bottom">
+          <h1>{t('people.trustedCircle')}</h1>
+        </HelpTooltip>
         <div className="people-header-actions">
           <input
             type="text"

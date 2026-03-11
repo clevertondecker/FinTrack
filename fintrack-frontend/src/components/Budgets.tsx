@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calendar, Plus, Pencil, Trash2, X } from 'lucide-react';
+import HelpTooltip from './common/HelpTooltip';
 import apiService from '../services/api';
 import { BudgetStatusResponse } from '../types/budget';
 import { Category } from '../types/invoice';
@@ -131,7 +132,9 @@ const Budgets: React.FC = () => {
   return (
     <div className="budgets-container">
       <div className="budgets-header">
-        <h1 className="budgets-title">{t('budgets.title')}</h1>
+        <HelpTooltip textKey="help.budgets.overview" position="bottom">
+          <h1 className="budgets-title">{t('budgets.title')}</h1>
+        </HelpTooltip>
         <div className="budgets-header-actions">
           <div className="budgets-month-selector">
             <Calendar size={18} />

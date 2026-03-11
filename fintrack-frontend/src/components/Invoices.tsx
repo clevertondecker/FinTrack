@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, RefreshCw } from 'lucide-react';
+import HelpTooltip from './common/HelpTooltip';
 import apiService from '../services/api';
 import { Invoice, InvoiceItem, CreateInvoiceRequest, InvoiceFilters, InvoiceSummary, Category, InvoiceDeleteInfo } from '../types/invoice';
 import { CreditCard } from '../types/creditCard';
@@ -718,6 +719,7 @@ const Invoices: React.FC = () => {
   return (
     <div className="invoices-container">
       {/* Tab Navigation */}
+      <HelpTooltip textKey="help.invoices.tabs" position="bottom">
       <div className="invoices-tabs">
         <button
           className={`invoices-tab ${activeTab === 'invoices' ? 'active' : ''}`}
@@ -734,6 +736,7 @@ const Invoices: React.FC = () => {
           {t('invoices.tabSubscriptions')}
         </button>
       </div>
+      </HelpTooltip>
 
       {activeTab === 'subscriptions' && <Subscriptions />}
 

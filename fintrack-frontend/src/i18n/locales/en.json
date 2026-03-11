@@ -729,5 +729,43 @@
     "subscriptionSuggestionsDesc": "{{count}} possible subscription(s) detected",
     "dismiss": "Dismiss",
     "dismissAll": "Dismiss all"
+  },
+  "help": {
+    "tooltip": "Help",
+    "activate": "Activate help tips",
+    "deactivate": "Deactivate help tips",
+    "toggle": "Toggle help",
+    "dashboard": {
+      "monthSelector": "Use the month selector to navigate between periods and see the financial summary for each month.",
+      "totalExpenses": "Total expenses for the selected month. Click to view the detailed expense report.",
+      "dailyChart": "Chart showing the daily evolution of your expenses for the selected month's invoice.",
+      "categoryRanking": "Ranking of categories with the highest spending. Click to access the full report.",
+      "creditCards": "Overview of your cards with invoice amounts and status. Click a row to view invoices."
+    },
+    "invoices": {
+      "tabs": "Switch between your invoices and the automatic detection of recurring subscriptions.",
+      "share": "Split an invoice item with other users or trusted contacts."
+    },
+    "budgets": {
+      "overview": "Set spending limits by category to control your budget. The system alerts you when you approach or exceed the limit."
+    },
+    "shares": {
+      "overview": "View all invoice items shared with you. Mark as paid when you make the payment."
+    },
+    "people": {
+      "overview": "Register trusted contacts to simplify expense sharing and card assignment."
+    },
+    "reports": {
+      "overview": "Detailed reports of your spending: by category, trends, top expenses, by card, and by recurrence."
+    },
+    "notifications": {
+      "bell": "Alerts about overdue invoices, exceeded budgets, pending shares, and subscription suggestions."
+    },
+    "header": {
+      "profile": "Access your profile, change your password, or log out of the system."
+    },
+    "sidebar": {
+      "navigation": "Main navigation menu. Access all FinTrack features from here."
+    }
   }
 }
