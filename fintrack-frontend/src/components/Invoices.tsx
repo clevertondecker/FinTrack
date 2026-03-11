@@ -10,13 +10,10 @@ import InvoiceItemRow from './invoices/InvoiceItemRow';
 import ItemsTableHeader from './invoices/ItemsTableHeader';
 import Subscriptions from './Subscriptions';
 import './Invoices.css';
-import { useAuth } from '../contexts/AuthContext';
-
 type InvoiceTab = 'invoices' | 'subscriptions';
 
 const Invoices: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<InvoiceTab>('invoices');
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
