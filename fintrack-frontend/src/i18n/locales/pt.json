@@ -711,5 +711,22 @@
     "oauthCannotChange": "Usuários OAuth2 não podem alterar a senha aqui",
     "logout": "Sair",
     "logoutConfirm": "Tem certeza que deseja sair?"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "empty": "Nenhuma notificação no momento",
+    "count": "{{count}} alerta(s)",
+    "overdueInvoice": "Fatura vencida",
+    "overdueInvoiceDesc": "A fatura do cartão {{card}} está vencida",
+    "upcomingInvoice": "Fatura próxima do vencimento",
+    "upcomingInvoiceDesc": "A fatura do cartão {{card}} vence em {{days}} dia(s)",
+    "budgetExceeded": "Orçamento estourado",
+    "budgetExceededDesc": "{{category}} ultrapassou o limite ({{percent}}% utilizado)",
+    "budgetNearLimit": "Orçamento próximo do limite",
+    "budgetNearLimitDesc": "{{category}} está em {{percent}}% do limite",
+    "pendingShares": "Divisões pendentes",
+    "pendingSharesDesc": "Você tem {{count}} divisão(ões) pendente(s) (R$ {{amount}})",
+    "subscriptionSuggestions": "Sugestões de assinatura",
+    "subscriptionSuggestionsDesc": "{{count}} possível(eis) assinatura(s) detectada(s)"
   }
 }

@@ -710,5 +710,22 @@
     "oauthCannotChange": "OAuth2 users cannot change password here",
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout?"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications at the moment",
+    "count": "{{count}} alert(s)",
+    "overdueInvoice": "Overdue invoice",
+    "overdueInvoiceDesc": "The {{card}} card invoice is overdue",
+    "upcomingInvoice": "Invoice due soon",
+    "upcomingInvoiceDesc": "The {{card}} card invoice is due in {{days}} day(s)",
+    "budgetExceeded": "Budget exceeded",
+    "budgetExceededDesc": "{{category}} exceeded the limit ({{percent}}% used)",
+    "budgetNearLimit": "Budget near limit",
+    "budgetNearLimitDesc": "{{category}} is at {{percent}}% of the limit",
+    "pendingShares": "Pending shares",
+    "pendingSharesDesc": "You have {{count}} pending share(s) (${{amount}})",
+    "subscriptionSuggestions": "Subscription suggestions",
+    "subscriptionSuggestionsDesc": "{{count}} possible subscription(s) detected"
   }
 }

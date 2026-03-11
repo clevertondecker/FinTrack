@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Calendar, CreditCard as CreditCardIcon, ShoppingCart, Receipt } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,7 @@ const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState<string>('main');
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +112,12 @@ const Dashboard: React.FC = () => {
             <>
               {/* Summary Cards */}
               <div className="dashboard-stat-cards">
-                <div className="dashboard-stat-card stat-expenses">
+                <div
+                  className="dashboard-stat-card stat-expenses dashboard-clickable"
+                  onClick={() => navigate('/dashboard/expense-report')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="stat-icon-wrapper stat-icon-expenses">
                     <ShoppingCart size={24} />
                   </div>
@@ -121,7 +127,12 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="dashboard-stat-card stat-transactions">
+                <div
+                  className="dashboard-stat-card stat-transactions dashboard-clickable"
+                  onClick={() => navigate('/dashboard/invoices')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="stat-icon-wrapper stat-icon-transactions">
                     <Receipt size={24} />
                   </div>
@@ -131,7 +142,12 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="dashboard-stat-card stat-cards">
+                <div
+                  className="dashboard-stat-card stat-cards dashboard-clickable"
+                  onClick={() => navigate('/dashboard/credit-cards')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="stat-icon-wrapper stat-icon-cards">
                     <CreditCardIcon size={24} />
                   </div>
@@ -162,7 +178,11 @@ const Dashboard: React.FC = () => {
                           </thead>
                           <tbody>
                             {overview.creditCards.map((card) => (
-                              <tr key={card.cardId}>
+                              <tr
+                                key={card.cardId}
+                                className="dashboard-clickable-row"
+                                onClick={() => navigate('/dashboard/invoices')}
+                              >
                                 <td>
                                   <div className="card-cell">
                                     <span className="card-cell-name">{card.cardName}</span>
@@ -193,7 +213,12 @@ const Dashboard: React.FC = () => {
 
                 {/* Right Column */}
                 <div className="dashboard-right-col">
-                  <div className="dashboard-section-card">
+                  <div
+                    className="dashboard-section-card dashboard-clickable"
+                    onClick={() => navigate('/dashboard/expense-report')}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <h3 className="dashboard-section-title">{t('dashboard.categoryRanking')}</h3>
                     <CategoryRankingBars data={overview.categoryRanking} loading={false} />
                   </div>

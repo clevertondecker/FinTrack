@@ -271,6 +271,30 @@
   }
 }
 
+/* Clickable elements */
+.dashboard-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-clickable:active {
+  transform: translateY(0);
+}
+
+.dashboard-clickable-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-clickable-row:hover {
+  background-color: #f0f4ff;
+}
+
 @media (max-width: 480px) {
   .dashboard-main {
     padding: 0.75rem;

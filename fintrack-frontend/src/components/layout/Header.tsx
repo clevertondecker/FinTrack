@@ -1,7 +1,8 @@
 import React from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import LanguageSelector from '../LanguageSelector';
 import UserProfileDropdown from './UserProfileDropdown';
+import NotificationPanel from './NotificationPanel';
 
 interface HeaderProps {
   title: string;
@@ -22,9 +23,7 @@ export default function Header({ title, userName, onMenuClick }: HeaderProps) {
         <span className="text-lg md:text-xl font-bold text-primary tracking-tight truncate">{title}</span>
       </div>
       <div className="flex items-center gap-2 md:gap-4">
-        <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
-          <Bell size={20} className="md:w-[22px] md:h-[22px]" />
-        </button>
+        <NotificationPanel />
         <span className="font-medium text-textSecondary hidden sm:inline">{userName}</span>
         <LanguageSelector />
         <UserProfileDropdown />
