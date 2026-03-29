@@ -395,23 +395,36 @@ const Invoices: React.FC = () => {
   };
 
   const handleRemoveItem = async (itemId: number) => {
-    if (!selectedInvoice) return;
+    const targetItem = invoiceItems.find(i => i.id === itemId);
+    const invoiceId = targetItem?.invoiceId ?? selectedInvoice?.id;
+    if (!invoiceId) return;
+
     setRemovingItemId(itemId);
     try {
-      await apiService.deleteInvoiceItem(selectedInvoice.id, itemId);
+      await apiService.deleteInvoiceItem(invoiceId, itemId);
       
-      // Atualiza lista de itens e dados da fatura
       const [itemsResponse, invoiceResponse] = await Promise.all([
-        apiService.getInvoiceItems(selectedInvoice.id),
-        apiService.getInvoice(selectedInvoice.id)
+        apiService.getInvoiceItems(invoiceId),
+        apiService.getInvoice(invoiceId)
       ]);
       
-      setInvoiceItems(itemsResponse.items);
-      setSelectedInvoice(invoiceResponse.invoice);
+      setInvoiceItems(prev => prev.filter(i => i.id !== itemId));
+      if (isConsolidatedView) {
+        setCardItemGroups(prevGroups =>
+          prevGroups.map(group =>
+            group.invoice.id === invoiceId
+              ? { invoice: invoiceResponse.invoice, items: itemsResponse.items }
+              : group
+          )
+        );
+      } else {
+        setInvoiceItems(itemsResponse.items);
+        setSelectedInvoice(invoiceResponse.invoice);
+      }
       updateInvoiceInList(invoiceResponse.invoice);
       
     } catch (err) {
-      // Pode exibir erro se quiser
+      // Error silently handled
     } finally {
       setRemovingItemId(null);
     }
@@ -428,17 +441,33 @@ const Invoices: React.FC = () => {
   };
 
   const handleSharesUpdated = async () => {
-    if (!selectedInvoice) return;
+    const invoiceId = selectedItemForSharing?.invoiceId ?? selectedInvoice?.id;
+    if (!invoiceId) return;
     
-    // Recarregar os itens da fatura para mostrar informações atualizadas
     try {
       const [itemsResponse, invoiceResponse] = await Promise.all([
-        apiService.getInvoiceItems(selectedInvoice.id),
-        apiService.getInvoice(selectedInvoice.id)
+        apiService.getInvoiceItems(invoiceId),
+        apiService.getInvoice(invoiceId)
       ]);
       
-      setInvoiceItems(itemsResponse.items);
-      setSelectedInvoice(invoiceResponse.invoice);
+      if (isConsolidatedView) {
+        setCardItemGroups(prevGroups =>
+          prevGroups.map(group =>
+            group.invoice.id === invoiceId
+              ? { invoice: invoiceResponse.invoice, items: itemsResponse.items }
+              : group
+          )
+        );
+        setInvoiceItems(prev =>
+          prev.map(item => {
+            const updated = itemsResponse.items.find(i => i.id === item.id);
+            return updated ?? item;
+          })
+        );
+      } else {
+        setInvoiceItems(itemsResponse.items);
+        setSelectedInvoice(invoiceResponse.invoice);
+      }
       updateInvoiceInList(invoiceResponse.invoice);
       
     } catch (err) {
@@ -1485,7 +1514,7 @@ const Invoices: React.FC = () => {
         <ShareItemModal
           isOpen={showShareModal}
           onClose={handleCloseShareModal}
-          invoiceId={selectedInvoice?.id || 0}
+          invoiceId={selectedItemForSharing.invoiceId || selectedInvoice?.id || 0}
           itemId={selectedItemForSharing.id}
           itemDescription={selectedItemForSharing.description}
           itemAmount={selectedItemForSharing.amount}
