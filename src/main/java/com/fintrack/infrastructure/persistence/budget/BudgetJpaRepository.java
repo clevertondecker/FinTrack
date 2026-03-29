@@ -1,6 +1,7 @@
 package com.fintrack.infrastructure.persistence.budget;
 
 import com.fintrack.domain.budget.Budget;
+import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,4 +24,8 @@ public interface BudgetJpaRepository extends JpaRepository<Budget, Long> {
             @Param("month") YearMonth month);
 
     List<Budget> findByOwnerAndActiveTrue(User owner);
+
+    long countByCategory(Category category);
+
+    List<Budget> findByCategory(Category category);
 }

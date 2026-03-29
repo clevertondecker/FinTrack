@@ -90,6 +90,8 @@ public interface InvoiceItemJpaRepository extends JpaRepository<InvoiceItem, Lon
      */
     long countByInvoice(Invoice invoice);
 
+    long countByCategory(Category category);
+
     // Implementações dos métodos da interface InvoiceItemRepository
 
     @Override

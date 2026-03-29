@@ -1,5 +1,6 @@
 package com.fintrack.infrastructure.persistence.subscription;
 
+import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.subscription.Subscription;
 import com.fintrack.domain.subscription.SubscriptionRepository;
 import com.fintrack.domain.user.User;
@@ -30,4 +31,8 @@ public interface SubscriptionJpaRepository extends JpaRepository<Subscription, L
 
     @Override
     List<Subscription> findByOwner(User owner);
+
+    long countByCategory(Category category);
+
+    List<Subscription> findByCategory(Category category);
 }

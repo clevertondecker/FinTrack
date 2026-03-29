@@ -111,8 +111,8 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should create category successfully")
         void shouldCreateCategorySuccessfully() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("Food", "#FF0000");
-            when(categoryService.create(any(), any())).thenReturn(testCategory);
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", "#FF0000", null);
+            when(categoryService.create(any(), any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -127,8 +127,8 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should create category without color")
         void shouldCreateCategoryWithoutColor() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("Food", null);
-            when(categoryService.create(any(), any())).thenReturn(testCategory);
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", null, null);
+            when(categoryService.create(any(), any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -142,7 +142,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is null")
         void shouldReturnErrorWhenNameIsNull() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest(null, "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest(null, "#FF0000", null);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -154,7 +154,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is empty")
         void shouldReturnErrorWhenNameIsEmpty() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("", "#FF0000", null);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -166,7 +166,7 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should return error when name is blank")
         void shouldReturnErrorWhenNameIsBlank() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("   ", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("   ", "#FF0000", null);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -179,7 +179,7 @@ public class CategoryControllerTest {
         @DisplayName("Should return error when color is too long")
         void shouldReturnErrorWhenColorIsTooLong() throws Exception {
             String longColor = "This color is way too long for the validation";
-            CategoryCreateRequest request = new CategoryCreateRequest("Food", longColor);
+            CategoryCreateRequest request = new CategoryCreateRequest("Food", longColor, null);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -191,8 +191,8 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should trim whitespace from name")
         void shouldTrimWhitespaceFromName() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("  Food  ", "#FF0000");
-            when(categoryService.create(any(), any())).thenReturn(testCategory);
+            CategoryCreateRequest request = new CategoryCreateRequest("  Food  ", "#FF0000", null);
+            when(categoryService.create(any(), any(), any())).thenReturn(testCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -205,9 +205,9 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should handle special characters in name")
         void shouldHandleSpecialCharactersInName() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("Food & Drinks", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("Food & Drinks", "#FF0000", null);
             Category specialCategory = Category.of("Food & Drinks", "#FF0000");
-            when(categoryService.create(any(), any())).thenReturn(specialCategory);
+            when(categoryService.create(any(), any(), any())).thenReturn(specialCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -222,9 +222,9 @@ public class CategoryControllerTest {
         void shouldHandleMaximumAllowedCategoryNameLength() throws Exception {
           String maxLengthName;
           maxLengthName = "A".repeat(50);
-          CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000");
+          CategoryCreateRequest request = new CategoryCreateRequest(maxLengthName, "#FF0000", null);
             Category longCategory = Category.of(maxLengthName, "#FF0000");
-            when(categoryService.create(any(), any())).thenReturn(longCategory);
+            when(categoryService.create(any(), any(), any())).thenReturn(longCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -237,9 +237,9 @@ public class CategoryControllerTest {
         @Test
         @DisplayName("Should handle minimum allowed category name length")
         void shouldHandleMinimumAllowedCategoryNameLength() throws Exception {
-            CategoryCreateRequest request = new CategoryCreateRequest("AB", "#FF0000");
+            CategoryCreateRequest request = new CategoryCreateRequest("AB", "#FF0000", null);
             Category minCategory = Category.of("AB", "#FF0000");
-            when(categoryService.create(any(), any())).thenReturn(minCategory);
+            when(categoryService.create(any(), any(), any())).thenReturn(minCategory);
 
             mockMvc.perform(post("/api/categories")
                 .contentType(MediaType.APPLICATION_JSON)

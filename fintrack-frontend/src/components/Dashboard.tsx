@@ -17,6 +17,7 @@ import ExpenseReport from './ExpenseReport';
 import People from './People';
 import Budgets from './Budgets';
 import MonthComparison from './MonthComparison';
+import CategoryManagement from './CategoryManagement';
 import Layout from './layout/Layout';
 import './Dashboard.css';
 
@@ -44,6 +45,7 @@ const Dashboard: React.FC = () => {
     else if (path.includes('/expense-report')) setActiveView('expenseReport');
     else if (path.includes('/budgets')) setActiveView('budgets');
     else if (path.includes('/comparison')) setActiveView('comparison');
+    else if (path.includes('/categories')) setActiveView('categories');
     else setActiveView('main');
   }, [location]);
 
@@ -77,6 +79,7 @@ const Dashboard: React.FC = () => {
     if (activeView === 'expenseReport') t_title = t('expenseReport.title');
     if (activeView === 'budgets') t_title = t('budgets.title');
     if (activeView === 'comparison') t_title = t('comparison.title');
+    if (activeView === 'categories') t_title = t('categories.title');
     return t_title;
   }, [activeView, user?.name, t]);
 
@@ -252,6 +255,7 @@ const Dashboard: React.FC = () => {
       {activeView === 'expenseReport' && <ExpenseReport />}
       {activeView === 'budgets' && <Budgets />}
       {activeView === 'comparison' && <MonthComparison />}
+      {activeView === 'categories' && <CategoryManagement />}
     </Layout>
   );
 };

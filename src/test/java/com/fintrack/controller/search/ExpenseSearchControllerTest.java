@@ -66,7 +66,7 @@ class ExpenseSearchControllerTest {
         @WithMockUser(username = "john@test.com")
         @DisplayName("Should return search results with query parameter")
         void shouldReturnSearchResults() throws Exception {
-            CategoryResponse cat = new CategoryResponse(1L, "Food", "#FF0000");
+            CategoryResponse cat = new CategoryResponse(1L, "Food", "#FF0000", null, null);
             ExpenseSearchResult result = new ExpenseSearchResult(
                     10L, 5L, "IFOOD CLUB", new BigDecimal("29.90"),
                     LocalDate.of(2026, 1, 15), cat,
@@ -156,7 +156,7 @@ class ExpenseSearchControllerTest {
         @WithMockUser(username = "john@test.com")
         @DisplayName("Should return paginated results with correct metadata")
         void shouldReturnPaginatedResults() throws Exception {
-            CategoryResponse cat = new CategoryResponse(1L, "Transport", "#0000FF");
+            CategoryResponse cat = new CategoryResponse(1L, "Transport", "#0000FF", null, null);
             List<ExpenseSearchResult> results = List.of(
                     new ExpenseSearchResult(1L, 1L, "UBER TRIP", new BigDecimal("15.00"),
                             LocalDate.of(2026, 2, 10), cat, "Card A", "9999",
@@ -188,7 +188,7 @@ class ExpenseSearchControllerTest {
         @WithMockUser(username = "john@test.com")
         @DisplayName("Should include installment info in results")
         void shouldIncludeInstallmentInfo() throws Exception {
-            CategoryResponse cat = new CategoryResponse(2L, "Shopping", "#00FF00");
+            CategoryResponse cat = new CategoryResponse(2L, "Shopping", "#00FF00", null, null);
             ExpenseSearchResult result = new ExpenseSearchResult(
                     20L, 8L, "AMAZON COMPRA", new BigDecimal("166.50"),
                     LocalDate.of(2026, 1, 5), cat,

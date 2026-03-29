@@ -73,7 +73,7 @@ class BudgetControllerTest {
         void shouldCreateBudgetSuccessfully() throws Exception {
             when(userService.getCurrentUser("john@test.com")).thenReturn(testUser);
 
-            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000");
+            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000", null, null);
             BudgetResponse response = new BudgetResponse(
                     10L, catResp, new BigDecimal("1000.00"),
                     YearMonth.of(2026, 3), false, true);
@@ -124,7 +124,7 @@ class BudgetControllerTest {
         void shouldReturnBudgetStatusesForMonth() throws Exception {
             when(userService.getCurrentUser("john@test.com")).thenReturn(testUser);
 
-            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000");
+            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000", null, null);
             BudgetStatusResponse statusResponse = new BudgetStatusResponse(
                     1L, catResp, new BigDecimal("1000.00"),
                     new BigDecimal("500.00"), new BigDecimal("500.00"),
@@ -170,7 +170,7 @@ class BudgetControllerTest {
         void shouldUpdateBudgetSuccessfully() throws Exception {
             when(userService.getCurrentUser("john@test.com")).thenReturn(testUser);
 
-            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000");
+            CategoryResponse catResp = new CategoryResponse(1L, "Food", "#FF0000", null, null);
             BudgetResponse response = new BudgetResponse(
                     10L, catResp, new BigDecimal("1500.00"),
                     YearMonth.of(2026, 3), false, true);

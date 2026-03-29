@@ -769,5 +769,40 @@
     "sidebar": {
       "navigation": "Main navigation menu. Access all FinTrack features from here."
     }
+  },
+  "categories": {
+    "title": "Manage Categories",
+    "manage": "Manage Categories",
+    "items": "categories",
+    "add": "New Category",
+    "newCategory": "New Category",
+    "namePlaceholder": "Category name",
+    "color": "Color",
+    "customColor": "Custom color",
+    "nameRequired": "Category name is required",
+    "created": "Category created successfully",
+    "updated": "Category updated successfully",
+    "deleted": "Category deleted successfully",
+    "merged": "Categories merged successfully",
+    "loadError": "Failed to load categories",
+    "saveError": "Failed to save category",
+    "deleteError": "Failed to delete category",
+    "mergeError": "Failed to merge categories",
+    "reorderError": "Failed to reorder categories",
+    "confirmDelete": "Delete Category",
+    "confirmDeleteMsg": "Are you sure you want to delete the category \"{{name}}\"?",
+    "usageWarning": "This category is in use:",
+    "usageItems": "invoice items",
+    "usageRules": "categorization rules",
+    "usageBudgets": "budgets",
+    "usageSubscriptions": "subscriptions",
+    "mergeSuggestion": "Merge this category with another one before deleting it.",
+    "merge": "Merge",
+    "mergeHint": "Select the target category (items from the marked category will be moved to the selected one)",
+    "mergeInto": "Merge here",
+    "confirmMerge": "Confirm Merge",
+    "confirmMergeMsg": "All items, rules, budgets, and subscriptions from \"{{source}}\" will be moved to \"{{target}}\". The category \"{{source}}\" will be deleted.",
+    "mergeConfirm": "Merge",
+    "empty": "No categories found. Create a new category to get started."
   }
 }

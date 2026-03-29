@@ -76,7 +76,7 @@ class SubscriptionControllerTest {
     void shouldListSubscriptions() throws Exception {
         SubscriptionResponse response = new SubscriptionResponse(
                 1L, "Netflix", "netflix", new BigDecimal("29.90"),
-                new CategoryResponse(1L, "Entertainment", "#8b5cf6"),
+                new CategoryResponse(1L, "Entertainment", "#8b5cf6", null, null),
                 "Nubank", 1L, BillingCycle.MONTHLY,
                 SubscriptionStatus.ACTIVE, SubscriptionSource.MANUAL,
                 LocalDate.of(2025, 1, 1), LocalDate.of(2025, 3, 1),

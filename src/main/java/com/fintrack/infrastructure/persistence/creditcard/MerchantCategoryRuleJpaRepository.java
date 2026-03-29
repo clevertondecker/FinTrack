@@ -6,6 +6,8 @@ import com.fintrack.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.fintrack.domain.creditcard.Category;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -45,4 +47,8 @@ public interface MerchantCategoryRuleJpaRepository
      */
     @Override
     List<MerchantCategoryRule> findByUserAndAutoApplyTrue(User user);
+
+    long countByCategory(Category category);
+
+    List<MerchantCategoryRule> findByCategory(Category category);
 }

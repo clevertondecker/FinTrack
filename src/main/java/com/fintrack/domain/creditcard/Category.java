@@ -18,39 +18,32 @@ import org.apache.commons.lang3.Validate;
 @Table(name = "categories")
 public class Category {
 
-    /** The category's unique identifier. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** The category's name. */
     @Column(nullable = false, unique = true)
     private String name;
 
-    /** The category's color in hex format. */
     @Column
     private String color;
 
-    /**
-     * Protected constructor for JPA only.
-     */
+    @Column
+    private String icon;
+
+    @Column(name = "display_order")
+    private Integer displayOrder;
+
     protected Category() {}
 
-    /**
-     * Private constructor for Category. Use the static factory method to create instances.
-     *
-     * @param theName the category's name. Must not be null or blank.
-     * @param theColor the category's color in hex format. Can be null.
-     */
     private Category(final String theName, final String theColor) {
         Validate.notBlank(theName, "Category name must not be null or blank.");
-
         name = theName;
         color = theColor;
     }
 
     /**
-     * Static factory method to create a new Category instance.
+     * Creates a new Category instance.
      *
      * @param name the category's name. Cannot be null or blank.
      * @param color the category's color in hex format. Can be null.
@@ -60,31 +53,41 @@ public class Category {
         return new Category(name, color);
     }
 
-    /**
-     * Gets the category's unique identifier.
-     *
-     * @return the category's ID. May be null if not persisted.
-     */
     public Long getId() {
         return id;
     }
 
-    /**
-     * Gets the category's name.
-     *
-     * @return the category's name. Never null or blank.
-     */
     public String getName() {
         return name;
     }
 
-    /**
-     * Gets the category's color.
-     *
-     * @return the category's color in hex format. May be null.
-     */
     public String getColor() {
         return color;
+    }
+
+    public String getIcon() {
+        return icon;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setName(final String name) {
+        Validate.notBlank(name, "Category name must not be null or blank.");
+        this.name = name;
+    }
+
+    public void setColor(final String color) {
+        this.color = color;
+    }
+
+    public void setIcon(final String icon) {
+        this.icon = icon;
+    }
+
+    public void setDisplayOrder(final Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
     @Override
@@ -109,6 +112,8 @@ public class Category {
             + "id=" + id
             + ", name='" + name + '\''
             + ", color='" + color + '\''
+            + ", icon='" + icon + '\''
+            + ", displayOrder=" + displayOrder
             + '}';
     }
 }

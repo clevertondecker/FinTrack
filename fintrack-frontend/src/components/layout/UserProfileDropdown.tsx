@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, KeyRound, Shield, Calendar, X, Check, ChevronDown } from 'lucide-react';
+import { LogOut, KeyRound, Shield, Calendar, X, Check, ChevronDown, Tag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
 
@@ -136,6 +137,7 @@ function formatMemberDate(dateStr?: string): string {
 export default function UserProfileDropdown() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -276,6 +278,17 @@ export default function UserProfileDropdown() {
                 success={passwordSuccess}
               />
             )}
+
+            <button
+              onClick={() => {
+                closeDropdown();
+                navigate('/dashboard/categories');
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <Tag size={16} className="text-gray-400" />
+              {t('categories.manage')}
+            </button>
           </div>
 
           {/* Logout */}

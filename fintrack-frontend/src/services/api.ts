@@ -18,7 +18,8 @@ import {
   CreateInvoiceItemResponse,
   InvoiceItemDetailResponse,
   InvoiceDeleteInfo,
-  Category
+  Category,
+  CategoryUsageResponse
 } from '../types/invoice';
 import {
   CreateItemShareRequest,
@@ -264,6 +265,36 @@ class ApiService {
 
   async getCategories(): Promise<{ message: string; categories: Category[]; count: number }> {
     const response = await this.api.get<{ message: string; categories: Category[]; count: number }>('/categories');
+    return response.data;
+  }
+
+  async createCategory(name: string, color?: string, icon?: string): Promise<Category> {
+    const response = await this.api.post<Category>('/categories', { name, color, icon });
+    return response.data;
+  }
+
+  async updateCategory(id: number, name: string, color?: string, icon?: string): Promise<Category> {
+    const response = await this.api.put<Category>(`/categories/${id}`, { name, color, icon });
+    return response.data;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await this.api.delete(`/categories/${id}`);
+  }
+
+  async mergeCategories(sourceCategoryId: number, targetCategoryId: number): Promise<Category> {
+    const response = await this.api.post<Category>('/categories/merge', {
+      sourceCategoryId, targetCategoryId
+    });
+    return response.data;
+  }
+
+  async reorderCategories(orderedIds: number[]): Promise<void> {
+    await this.api.put('/categories/reorder', { orderedIds });
+  }
+
+  async getCategoryUsage(id: number): Promise<CategoryUsageResponse> {
+    const response = await this.api.get<CategoryUsageResponse>(`/categories/${id}/usage`);
     return response.data;
   }
 

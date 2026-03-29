@@ -770,5 +770,40 @@
     "sidebar": {
       "navigation": "Menu principal de navegação. Acesse todas as funcionalidades do FinTrack por aqui."
     }
+  },
+  "categories": {
+    "title": "Gerenciar Categorias",
+    "manage": "Gerenciar Categorias",
+    "items": "categorias",
+    "add": "Nova Categoria",
+    "newCategory": "Nova Categoria",
+    "namePlaceholder": "Nome da categoria",
+    "color": "Cor",
+    "customColor": "Cor personalizada",
+    "nameRequired": "O nome da categoria é obrigatório",
+    "created": "Categoria criada com sucesso",
+    "updated": "Categoria atualizada com sucesso",
+    "deleted": "Categoria excluída com sucesso",
+    "merged": "Categorias mescladas com sucesso",
+    "loadError": "Erro ao carregar categorias",
+    "saveError": "Erro ao salvar categoria",
+    "deleteError": "Erro ao excluir categoria",
+    "mergeError": "Erro ao mesclar categorias",
+    "reorderError": "Erro ao reordenar categorias",
+    "confirmDelete": "Excluir Categoria",
+    "confirmDeleteMsg": "Tem certeza que deseja excluir a categoria \"{{name}}\"?",
+    "usageWarning": "Esta categoria está em uso:",
+    "usageItems": "itens de fatura",
+    "usageRules": "regras de categorização",
+    "usageBudgets": "orçamentos",
+    "usageSubscriptions": "assinaturas",
+    "mergeSuggestion": "Mescle esta categoria com outra antes de excluí-la.",
+    "merge": "Mesclar",
+    "mergeHint": "Selecione a categoria de destino (os itens da categoria marcada serão movidos para a selecionada)",
+    "mergeInto": "Mesclar aqui",
+    "confirmMerge": "Confirmar Mesclagem",
+    "confirmMergeMsg": "Todos os itens, regras, orçamentos e assinaturas de \"{{source}}\" serão movidos para \"{{target}}\". A categoria \"{{source}}\" será excluída.",
+    "mergeConfirm": "Mesclar",
+    "empty": "Nenhuma categoria cadastrada. Crie uma nova categoria para começar."
   }
 }

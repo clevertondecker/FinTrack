@@ -142,6 +142,18 @@ export interface Category {
   id: number;
   name: string;
   color?: string;
+  icon?: string;
+  displayOrder?: number;
+}
+
+export interface CategoryUsageResponse {
+  categoryId: number;
+  name: string;
+  itemCount: number;
+  ruleCount: number;
+  budgetCount: number;
+  subscriptionCount: number;
+  totalUsage: number;
 }
 
 export interface InvoicePaymentRequest {

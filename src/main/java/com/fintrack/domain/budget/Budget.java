@@ -88,6 +88,11 @@ public class Budget {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void assignCategory(final Category newCategory) {
+        this.category = newCategory;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void deactivate() {
         this.active = false;
         this.updatedAt = LocalDateTime.now();
