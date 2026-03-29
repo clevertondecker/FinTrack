@@ -558,6 +558,8 @@
     "unshared": "Unshared",
     "showingMine": "My expenses",
     "showingTotal": "Total expenses",
+    "toggleHintMine": "Showing only your share of expenses (excluding items shared with others). Click to see the full card total.",
+    "toggleHintTotal": "Showing the full card total (including all users' shares). Click to see only your expenses.",
     "uncategorized": "Uncategorized",
     "installment": "Installment",
     "singlePurchase": "Single Purchase",

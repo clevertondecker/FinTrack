@@ -559,6 +559,8 @@
     "unshared": "Não compartilhado",
     "showingMine": "Meus gastos",
     "showingTotal": "Gastos totais",
+    "toggleHintMine": "Exibindo apenas sua parte dos gastos (descontando itens compartilhados com outros). Clique para ver o total do cartão.",
+    "toggleHintTotal": "Exibindo o valor total do cartão (incluindo a parte de todos os usuários). Clique para ver apenas seus gastos.",
     "uncategorized": "Sem categoria",
     "installment": "Parcelado",
     "singlePurchase": "À vista",

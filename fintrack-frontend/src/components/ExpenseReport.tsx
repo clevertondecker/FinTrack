@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus, BarChart2, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Filter, TrendingUp, TrendingDown, Minus, BarChart2, Search, Users, User } from 'lucide-react';
 import HelpTooltip from './common/HelpTooltip';
 import apiService from '../services/api';
 import {
@@ -266,17 +266,14 @@ const ExpenseReport: React.FC = () => {
           </div>
 
           <div className="filter-group view-toggle">
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={showTotal}
-                onChange={(e) => setShowTotal(e.target.checked)}
-                className="toggle-checkbox"
-              />
-              <span className="toggle-text">
-                {showTotal ? t('expenseReport.showingTotal') : t('expenseReport.showingMine')}
-              </span>
-            </label>
+            <button
+              onClick={() => setShowTotal(!showTotal)}
+              className={`expense-toggle-btn ${showTotal ? 'active' : ''}`}
+              title={t(showTotal ? 'expenseReport.toggleHintTotal' : 'expenseReport.toggleHintMine')}
+            >
+              {showTotal ? <Users size={16} /> : <User size={16} />}
+              <span>{t(showTotal ? 'expenseReport.showingTotal' : 'expenseReport.showingMine')}</span>
+            </button>
           </div>
         </div>
       </div>

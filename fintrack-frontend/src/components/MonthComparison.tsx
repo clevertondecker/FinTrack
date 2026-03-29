@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, Minus, ArrowRight, Users, User } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -132,10 +132,14 @@ const MonthComparison: React.FC = () => {
           </div>
         </div>
         <div className="comparison-toggle">
-          <label className="toggle-label">
-            <input type="checkbox" checked={showTotal} onChange={e => setShowTotal(e.target.checked)} />
-            <span>{t('expenseReport.showingTotal')}</span>
-          </label>
+          <button
+            onClick={() => setShowTotal(!showTotal)}
+            className={`expense-toggle-btn ${showTotal ? 'active' : ''}`}
+            title={t(showTotal ? 'expenseReport.toggleHintTotal' : 'expenseReport.toggleHintMine')}
+          >
+            {showTotal ? <Users size={16} /> : <User size={16} />}
+            <span>{t(showTotal ? 'expenseReport.showingTotal' : 'expenseReport.showingMine')}</span>
+          </button>
         </div>
       </div>
 
