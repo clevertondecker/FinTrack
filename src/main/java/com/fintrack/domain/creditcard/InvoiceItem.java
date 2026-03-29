@@ -400,14 +400,14 @@ public class InvoiceItem {
     public String toString() {
         return "InvoiceItem{"
             + "id=" + id
-            + ", invoice=" + invoice
+            + ", invoiceId=" + (invoice != null ? invoice.getId() : null)
             + ", description='" + description + '\''
             + ", amount=" + amount
-            + ", category=" + category
+            + ", category=" + (category != null ? category.getName() : null)
             + ", purchaseDate=" + purchaseDate
             + ", installments=" + installments
             + ", totalInstallments=" + totalInstallments
-            + ", shares=" + shares
+            + ", sharesCount=" + (shares != null ? shares.size() : 0)
             + ", createdAt=" + createdAt
             + '}';
     }

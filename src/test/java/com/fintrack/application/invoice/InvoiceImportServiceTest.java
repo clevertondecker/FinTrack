@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -471,6 +472,121 @@ class InvoiceImportServiceTest {
     }
 
     @Test
+    void processImportAsync_WithLegitimateDuplicateItems_ShouldImportAll() throws IOException {
+        // Given — PDF contains two identical items (e.g., two "BASTARDS" purchases on the same date/amount)
+        InvoiceImport importRecord = createTestImportRecord();
+
+        Invoice emptyInvoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30));
+        ReflectionTestUtils.setField(emptyInvoice, "id", 1L);
+
+        LocalDate purchaseDate = LocalDate.of(2026, 2, 15);
+        List<ParsedInvoiceData.ParsedInvoiceItem> itemsWithLegitDuplicates = List.of(
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("Spotify Premium", BigDecimal.valueOf(19.90),
+                purchaseDate, null, 1, 1, 0.9)
+        );
+        ParsedInvoiceData parsedData = createParsedDataWithItems(itemsWithLegitDuplicates);
+
+        when(invoiceImportRepository.findById(1L)).thenReturn(Optional.of(importRecord));
+        when(pdfInvoiceParser.parsePdf(anyString())).thenReturn(parsedData);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(invoiceRepository.findByCreditCardAndMonth(any(), any())).thenReturn(List.of(emptyInvoice));
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(emptyInvoice);
+        when(invoiceImportRepository.findByCreatedInvoiceId(1L)).thenReturn(List.of());
+
+        // When
+        invoiceImportService.processImportAsync(1L);
+
+        // Then — all 3 items should be imported (both "BASTARDS" are legitimate purchases)
+        assertThat(emptyInvoice.getItems()).hasSize(3);
+        long bastardsCount = emptyInvoice.getItems().stream()
+            .filter(i -> "BASTARDS".equals(i.getDescription()))
+            .count();
+        assertThat(bastardsCount).isEqualTo(2);
+    }
+
+    @Test
+    void processImportAsync_WithLegitimateDuplicatesAndExistingItems_ShouldNotReimport() throws IOException {
+        // Given — invoice already has two identical "BASTARDS" items, re-importing same PDF should add nothing
+        InvoiceImport importRecord = createTestImportRecord();
+
+        Invoice existingInvoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30));
+        ReflectionTestUtils.setField(existingInvoice, "id", 1L);
+
+        LocalDate purchaseDate = LocalDate.of(2026, 2, 15);
+        InvoiceItem existing1 = InvoiceItem.of(existingInvoice, "BASTARDS", BigDecimal.valueOf(20.00),
+            null, purchaseDate, 1, 1);
+        InvoiceItem existing2 = InvoiceItem.of(existingInvoice, "BASTARDS", BigDecimal.valueOf(20.00),
+            null, purchaseDate, 1, 1);
+        ReflectionTestUtils.setField(existing1, "id", 10L);
+        ReflectionTestUtils.setField(existing2, "id", 11L);
+        existingInvoice.addItem(existing1);
+        existingInvoice.addItem(existing2);
+
+        List<ParsedInvoiceData.ParsedInvoiceItem> sameItems = List.of(
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9)
+        );
+        ParsedInvoiceData parsedData = createParsedDataWithItems(sameItems);
+
+        when(invoiceImportRepository.findById(1L)).thenReturn(Optional.of(importRecord));
+        when(pdfInvoiceParser.parsePdf(anyString())).thenReturn(parsedData);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(invoiceRepository.findByCreditCardAndMonth(any(), any())).thenReturn(List.of(existingInvoice));
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(existingInvoice);
+        when(invoiceImportRepository.findByCreatedInvoiceId(1L)).thenReturn(List.of());
+
+        // When
+        invoiceImportService.processImportAsync(1L);
+
+        // Then — no new items should be added (both already exist)
+        assertThat(existingInvoice.getItems()).hasSize(2);
+    }
+
+    @Test
+    void processImportAsync_WithMoreDuplicatesThanExisting_ShouldAddOnlyExtras() throws IOException {
+        // Given — invoice has 1 "BASTARDS", PDF has 3 "BASTARDS" => should add 2 more
+        InvoiceImport importRecord = createTestImportRecord();
+
+        Invoice existingInvoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30));
+        ReflectionTestUtils.setField(existingInvoice, "id", 1L);
+
+        LocalDate purchaseDate = LocalDate.of(2026, 2, 15);
+        InvoiceItem existing = InvoiceItem.of(existingInvoice, "BASTARDS", BigDecimal.valueOf(20.00),
+            null, purchaseDate, 1, 1);
+        ReflectionTestUtils.setField(existing, "id", 10L);
+        existingInvoice.addItem(existing);
+
+        List<ParsedInvoiceData.ParsedInvoiceItem> threeItems = List.of(
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9),
+            new ParsedInvoiceData.ParsedInvoiceItem("BASTARDS", BigDecimal.valueOf(20.00),
+                purchaseDate, null, 1, 1, 0.9)
+        );
+        ParsedInvoiceData parsedData = createParsedDataWithItems(threeItems);
+
+        when(invoiceImportRepository.findById(1L)).thenReturn(Optional.of(importRecord));
+        when(pdfInvoiceParser.parsePdf(anyString())).thenReturn(parsedData);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(invoiceRepository.findByCreditCardAndMonth(any(), any())).thenReturn(List.of(existingInvoice));
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(existingInvoice);
+        when(invoiceImportRepository.findByCreatedInvoiceId(1L)).thenReturn(List.of());
+
+        // When
+        invoiceImportService.processImportAsync(1L);
+
+        // Then — should have 3 total: 1 existing + 2 new
+        assertThat(existingInvoice.getItems()).hasSize(3);
+    }
+
+    @Test
     void processImportAsync_WithEmptyItemsList_ShouldHandleGracefully() throws IOException {
         // Given
         InvoiceImport importRecord = createTestImportRecord();
@@ -590,136 +706,6 @@ class InvoiceImportServiceTest {
     // ===== DEDUPLICATION TESTS =====
 
     @Test
-    void shouldIdentifyIOFItemsAsSpecialType() throws Exception {
-        // Given - Use descriptions that match the SPECIAL_ITEM_TYPES set exactly
-        String iofDescription = "iof"; // Exact match from the set
-        String taxaDescription = "taxa"; // Exact match from the set
-        String regularDescription = "amazon purchase"; // Not in special types
-
-        // When
-        boolean isIOFSpecial = invokeIsSpecialItemType(iofDescription);
-        boolean isTaxaSpecial = invokeIsSpecialItemType(taxaDescription);
-        boolean isRegularSpecial = invokeIsSpecialItemType(regularDescription);
-
-        // Then
-        assertThat(isIOFSpecial).isTrue();
-        assertThat(isTaxaSpecial).isTrue();
-        assertThat(isRegularSpecial).isFalse();
-    }
-
-    @Test
-    void shouldIdentifyVariousSpecialItemTypes() throws Exception {
-        // Given
-        String[] specialTypes = {
-            "iof", "taxa", "tarifa", "fee", "charge", "cobrança", 
-            "despesa no exterior", "foreign transaction", "international fee", "currency conversion"
-        };
-
-        // When & Then
-        for (String specialType : specialTypes) {
-            boolean isSpecial = invokeIsSpecialItemType(specialType);
-            assertThat(isSpecial).as("Should identify '%s' as special", specialType).isTrue();
-        }
-    }
-
-    @Test
-    void shouldHandleNullAndEmptyDescriptions() throws Exception {
-        // When
-        boolean nullResult = invokeIsSpecialItemType(null);
-        boolean emptyResult = invokeIsSpecialItemType("");
-
-        // Then
-        assertThat(nullResult).isFalse();
-        assertThat(emptyResult).isFalse();
-    }
-
-    @Test
-    void shouldDetectDuplicatesWithEnhancedLogicForSpecialItems() throws Exception {
-        // Given
-        Invoice invoice = createExistingInvoiceWithItems();
-        InvoiceItem existingIOF = InvoiceItem.of(invoice, "IOF DESPESA NO EXTERIOR", BigDecimal.valueOf(0.83), 
-            null, LocalDate.of(2025, 8, 23), 1, 1);
-        invoice.addItem(existingIOF);
-
-        ParsedInvoiceData.ParsedInvoiceItem newIOF = new ParsedInvoiceData.ParsedInvoiceItem("IOF DESPESA NO EXTERIOR", 
-            BigDecimal.valueOf(0.83), LocalDate.of(2025, 8, 23), null, 1, 1, 0.95);
-
-        // When
-        boolean isDuplicate = invokeIsItemAlreadyInDatabase(invoice, newIOF);
-
-        // Then
-        assertThat(isDuplicate).isTrue();
-    }
-
-    @Test
-    void shouldAllowSimilarIOFItemsOnDifferentDates() throws Exception {
-        // Given
-        Invoice invoice = createExistingInvoiceWithItems();
-        InvoiceItem existingIOF = InvoiceItem.of(invoice, "IOF DESPESA NO EXTERIOR", BigDecimal.valueOf(0.83), 
-            null, LocalDate.of(2025, 8, 23), 1, 1);
-        invoice.addItem(existingIOF);
-
-        ParsedInvoiceData.ParsedInvoiceItem newIOF = new ParsedInvoiceData.ParsedInvoiceItem("IOF DESPESA NO EXTERIOR", 
-            BigDecimal.valueOf(0.83), LocalDate.of(2025, 8, 24), null, 1, 1, 0.95); // Different date
-
-        // When
-        boolean isDuplicate = invokeIsItemAlreadyInDatabase(invoice, newIOF);
-
-        // Then
-        assertThat(isDuplicate).isFalse();
-    }
-
-    @Test
-    void shouldDetectDuplicatesForRegularItemsWithStrictComparison() throws Exception {
-        // Given
-        Invoice invoice = createExistingInvoiceWithItems();
-        InvoiceItem existingItem = InvoiceItem.of(invoice, "Amazon Purchase", BigDecimal.valueOf(99.99), 
-            null, LocalDate.of(2025, 8, 23), 1, 1);
-        invoice.addItem(existingItem);
-
-        ParsedInvoiceData.ParsedInvoiceItem newItem = new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", 
-            BigDecimal.valueOf(99.99), LocalDate.of(2025, 8, 23), null, 1, 1, 0.95);
-
-        // When
-        boolean isDuplicate = invokeIsItemAlreadyInDatabase(invoice, newItem);
-
-        // Then
-        assertThat(isDuplicate).isTrue();
-    }
-
-    @Test
-    void shouldNotDetectDuplicatesForRegularItemsWithDifferentAmounts() throws Exception {
-        // Given
-        Invoice invoice = createExistingInvoiceWithItems();
-        InvoiceItem existingItem = InvoiceItem.of(invoice, "Amazon Purchase", BigDecimal.valueOf(99.99), 
-            null, LocalDate.of(2025, 8, 23), 1, 1);
-        invoice.addItem(existingItem);
-
-        ParsedInvoiceData.ParsedInvoiceItem newItem = new ParsedInvoiceData.ParsedInvoiceItem("Amazon Purchase", 
-            BigDecimal.valueOf(89.99), LocalDate.of(2025, 8, 23), null, 1, 1, 0.95); // Different amount
-
-        // When
-        boolean isDuplicate = invokeIsItemAlreadyInDatabase(invoice, newItem);
-
-        // Then
-        assertThat(isDuplicate).isFalse();
-    }
-
-    @Test
-    void shouldHandleEmptyInvoiceItemsList() throws Exception {
-        // Given
-        Invoice invoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30)); // Empty invoice
-        ParsedInvoiceData.ParsedInvoiceItem newItem = new ParsedInvoiceData.ParsedInvoiceItem("Test Item", 
-            BigDecimal.valueOf(10.00), LocalDate.of(2025, 8, 23), null, 1, 1, 0.95);
-
-        // When
-        boolean isDuplicate = invokeIsItemAlreadyInDatabase(invoice, newItem);
-
-        // Then
-        assertThat(isDuplicate).isFalse();
-    }
-
-    @Test
     void shouldUseOptimizedSignatureComputationForSpecialItems() throws Exception {
         // Given
         String iofDescription = "IOF DESPESA NO EXTERIOR";
@@ -794,28 +780,28 @@ class InvoiceImportServiceTest {
     }
 
     @Test
-    void shouldBuildExistingSignaturesEfficiently() throws Exception {
+    void shouldBuildExistingSignatureCountsEfficiently() throws Exception {
         // Given
         Invoice invoice = createExistingInvoiceWithItems();
 
         // When
-        Set<String> signatures = invokeBuildExistingSignatures(invoice);
+        Map<String, Integer> counts = invokeBuildExistingSignatureCounts(invoice);
 
         // Then
-        assertThat(signatures).hasSize(2);
-        assertThat(signatures).allMatch(sig -> !sig.isEmpty());
+        assertThat(counts).hasSize(2);
+        assertThat(counts.values()).allMatch(count -> count >= 1);
     }
 
     @Test
     void shouldHandleEmptyInvoiceEfficiently() throws Exception {
         // Given
-        Invoice invoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30)); // Empty invoice
+        Invoice invoice = Invoice.of(testCreditCard, YearMonth.now(), LocalDate.now().plusDays(30));
 
         // When
-        Set<String> signatures = invokeBuildExistingSignatures(invoice);
+        Map<String, Integer> counts = invokeBuildExistingSignatureCounts(invoice);
 
         // Then
-        assertThat(signatures).isEmpty();
+        assertThat(counts).isEmpty();
     }
 
     @Test
@@ -828,17 +814,6 @@ class InvoiceImportServiceTest {
         assertThat(result.skipped()).isEqualTo(2);
         assertThat(result.totalProcessed()).isEqualTo(7);
         assertThat(result.successRate()).isCloseTo(71.43, within(0.01));
-    }
-
-    @Test
-    void shouldCreateValidItemProcessingResult() {
-        // When
-        InvoiceImportService.ItemProcessingResult addedResult = InvoiceImportService.ItemProcessingResult.added();
-        InvoiceImportService.ItemProcessingResult skippedResult = InvoiceImportService.ItemProcessingResult.skipped();
-
-        // Then
-        assertThat(addedResult.wasAdded()).isTrue();
-        assertThat(skippedResult.wasAdded()).isFalse();
     }
 
     @Test
@@ -901,20 +876,6 @@ class InvoiceImportServiceTest {
     }
 
     // Helper methods for deduplication tests (using reflection)
-    private boolean invokeIsSpecialItemType(String description) throws Exception {
-        Method method = InvoiceImportService.class.getDeclaredMethod("isSpecialItemType", String.class);
-        method.setAccessible(true);
-        return (boolean) method.invoke(invoiceImportService, description);
-    }
-
-    private boolean invokeIsItemAlreadyInDatabase(Invoice invoice,
-        ParsedInvoiceData.ParsedInvoiceItem newItem) throws Exception {
-        Method method = InvoiceImportService.class.getDeclaredMethod("isItemAlreadyInDatabase",
-            Invoice.class, ParsedInvoiceData.ParsedInvoiceItem.class);
-        method.setAccessible(true);
-        return (boolean) method.invoke(invoiceImportService, invoice, newItem);
-    }
-
     private String invokeComputeItemSignature(String description, BigDecimal amount, LocalDate date,
         int installmentNumber, int totalInstallments) throws Exception {
         Method method = InvoiceImportService.class.getDeclaredMethod("computeItemSignature",
@@ -924,9 +885,10 @@ class InvoiceImportServiceTest {
             installmentNumber, totalInstallments);
     }
 
-    private Set<String> invokeBuildExistingSignatures(Invoice invoice) throws Exception {
-        Method method = InvoiceImportService.class.getDeclaredMethod("buildExistingSignatures", Invoice.class);
+    @SuppressWarnings("unchecked")
+    private Map<String, Integer> invokeBuildExistingSignatureCounts(Invoice invoice) throws Exception {
+        Method method = InvoiceImportService.class.getDeclaredMethod("buildExistingSignatureCounts", Invoice.class);
         method.setAccessible(true);
-        return (Set<String>) method.invoke(invoiceImportService, invoice);
+        return (Map<String, Integer>) method.invoke(invoiceImportService, invoice);
     }
 } 

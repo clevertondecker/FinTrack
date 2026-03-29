@@ -43,8 +43,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -76,12 +77,6 @@ public class InvoiceImportService {
     /** Confidence threshold below which imports require manual review. */
     private static final double MANUAL_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
     
-    
-    /** Cached special item types for performance. */
-    private static final Set<String> SPECIAL_ITEM_TYPES = Set.of(
-        "iof", "taxa", "tarifa", "fee", "charge", "cobrança", "despesa no exterior",
-        "foreign transaction", "international fee", "currency conversion"
-    );
     
     /** Compiled regex pattern for whitespace normalization. */
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
@@ -678,12 +673,14 @@ public class InvoiceImportService {
         long startTime = System.currentTimeMillis();
         int initialItemCount = invoice.getItems().size();
 
-        logger.info("Adding {} items to invoice {} (with enhanced deduplication)",
+        logger.info("Adding {} items to invoice {} (with occurrence-aware deduplication)",
                 parsedItems.size(), invoice.getId());
 
-        Set<String> existingSignatures = buildExistingSignatures(invoice);
-        existingSignatures.addAll(extraSignatures);
-        ItemAdditionResult result = processItems(invoice, parsedItems, existingSignatures);
+        Map<String, Integer> existingCounts = buildExistingSignatureCounts(invoice);
+        for (String sig : extraSignatures) {
+            existingCounts.merge(sig, 1, Integer::sum);
+        }
+        ItemAdditionResult result = processItems(invoice, parsedItems, existingCounts);
 
         long processingTime = System.currentTimeMillis() - startTime;
         int finalItemCount = invoice.getItems().size();
@@ -700,7 +697,7 @@ public class InvoiceImportService {
     }
 
     /**
-     * Builds signatures from ALL invoices of the given month.
+     * Builds signature counts from ALL invoices of the given month.
      * Used during multi-card confirm to detect items already imported
      * by a previous single-card import into the wrong invoice.
      */
@@ -717,29 +714,23 @@ public class InvoiceImportService {
     }
 
     /**
-     * Builds a set of signatures for all existing items in the invoice.
-     *
-     * @param invoice the invoice to extract signatures from. Cannot be null.
-     * @return a set of unique item signatures. Never null, may be empty.
+     * Builds a count map of signatures for all existing items in the invoice.
+     * Counts occurrences so that legitimate duplicate items (same description,
+     * amount, date) are tracked individually.
      */
-    private Set<String> buildExistingSignatures(Invoice invoice) {
+    private Map<String, Integer> buildExistingSignatureCounts(Invoice invoice) {
         List<InvoiceItem> items = invoice.getItems();
-        
-        // Early return for empty invoices
         if (items.isEmpty()) {
-            return new HashSet<>();
+            return new HashMap<>();
         }
-        
-        // Pre-allocate capacity for better performance
-        Set<String> signatures = new HashSet<>(items.size());
-        
-        // Use stream for better readability and potential parallelization
-        items.stream()
-            .map(this::safeComputeSignature)
-            .filter(sig -> !sig.isEmpty())
-            .forEach(signatures::add);
-        
-        return signatures;
+        Map<String, Integer> counts = new HashMap<>(items.size());
+        for (InvoiceItem item : items) {
+            String sig = safeComputeSignature(item);
+            if (!sig.isEmpty()) {
+                counts.merge(sig, 1, Integer::sum);
+            }
+        }
+        return counts;
     }
 
     /**
@@ -772,31 +763,38 @@ public class InvoiceImportService {
      *
      * @param invoice the invoice to add items to. Cannot be null.
      * @param parsedItems the list of parsed items to process. Cannot be null or empty.
-     * @param existingSignatures the set of existing item signatures for duplicate detection. Cannot be null.
+     * @param signatureCounts count map of existing item signatures for occurrence-aware duplicate detection.
      * @return the result containing counts of added and skipped items. Never null.
      */
     private ItemAdditionResult processItems(Invoice invoice, 
                                           List<ParsedInvoiceData.ParsedInvoiceItem> parsedItems,
-                                          Set<String> existingSignatures) {
+                                          Map<String, Integer> signatureCounts) {
         int added = 0;
         int skipped = 0;
 
-        // Pre-allocate capacity for better performance
-        Set<String> processedSignatures = new HashSet<>();
-        processedSignatures.addAll(existingSignatures);
+        Map<String, Integer> batchConsumed = new HashMap<>();
 
         for (ParsedInvoiceData.ParsedInvoiceItem parsedItem : parsedItems) {
             try {
-                ItemProcessingResult result = processItem(invoice, parsedItem, processedSignatures);
-                if (result.wasAdded()) {
-                    added++;
-                    // Add new signature to prevent duplicates within the same batch
-                    processedSignatures.add(computeItemSignature(parsedItem));
-                } else {
+                String signature = computeItemSignature(parsedItem);
+                int alreadyExists = signatureCounts.getOrDefault(signature, 0);
+                int consumed = batchConsumed.getOrDefault(signature, 0);
+
+                if (consumed < alreadyExists) {
+                    batchConsumed.merge(signature, 1, Integer::sum);
                     skipped++;
                     logger.debug("Skipped duplicate item by signature: {}", parsedItem.description());
+                    continue;
                 }
-                
+
+                InvoiceItem invoiceItem = createInvoiceItem(invoice, parsedItem);
+                invoice.addItem(invoiceItem);
+                signatureCounts.merge(signature, 1, Integer::sum);
+                batchConsumed.merge(signature, 1, Integer::sum);
+                added++;
+                logger.debug("Added new item: {} (amount: {}, date: {})",
+                    parsedItem.description(), parsedItem.amount(), parsedItem.purchaseDate());
+
             } catch (RuntimeException e) {
                 logger.warn("Error adding item to invoice: {} - {}", 
                     parsedItem.description(), e.getMessage());
@@ -808,106 +806,6 @@ public class InvoiceImportService {
         }
 
         return new ItemAdditionResult(added, skipped);
-    }
-
-    /**
-     * Processes a single parsed item, checking for duplicates and adding if new.
-     * REFACTORED: Enhanced duplicate detection with better performance and error handling.
-     *
-     * @param invoice the invoice to add the item to. Cannot be null.
-     * @param parsedItem the parsed item to process. Cannot be null.
-     * @param existingSignatures the set of existing signatures. Cannot be null.
-     * @return the processing result indicating if item was added. Never null.
-     */
-    private ItemProcessingResult processItem(Invoice invoice,
-                                           ParsedInvoiceData.ParsedInvoiceItem parsedItem,
-                                           Set<String> existingSignatures) {
-        String signature = computeItemSignature(parsedItem);
-        
-        // Early return for signature-based duplicates (fastest check)
-        if (existingSignatures.contains(signature)) {
-            return ItemProcessingResult.skipped();
-        }
-
-        // Check for database duplicates only if necessary
-        if (isItemAlreadyInDatabase(invoice, parsedItem)) {
-            logger.debug("Skipping duplicate item: {} (amount: {}, date: {})", 
-                parsedItem.description(), parsedItem.amount(), parsedItem.purchaseDate());
-            return ItemProcessingResult.skipped();
-        }
-
-        try {
-            InvoiceItem invoiceItem = createInvoiceItem(invoice, parsedItem);
-            invoice.addItem(invoiceItem);
-            logger.debug("Added new item: {} (amount: {}, date: {})", 
-                parsedItem.description(), parsedItem.amount(), parsedItem.purchaseDate());
-            return ItemProcessingResult.added();
-        } catch (Exception e) {
-            logger.warn("Failed to add item {}: {}", parsedItem.description(), e.getMessage());
-            return ItemProcessingResult.skipped();
-        }
-    }
-
-    /**
-     * Checks if an item already exists in the database with the same characteristics.
-     * REFACTORED: Optimized duplicate detection with early returns and better performance.
-     *
-     * @param invoice the invoice to check in. Cannot be null.
-     * @param parsedItem the parsed item to check. Cannot be null.
-     * @return true if the item already exists, false otherwise.
-     */
-    private boolean isItemAlreadyInDatabase(Invoice invoice, ParsedInvoiceData.ParsedInvoiceItem parsedItem) {
-        try {
-            List<InvoiceItem> existingItems = invoice.getItems();
-            
-            // Early return for empty lists
-            if (existingItems.isEmpty()) {
-                return false;
-            }
-            
-            // Use stream with anyMatch for better readability and potential parallelization
-            return existingItems.stream()
-                .anyMatch(existingItem -> isSameItem(existingItem, parsedItem));
-                
-        } catch (Exception e) {
-            logger.warn("Error checking for existing items: {}", e.getMessage());
-            // If we can't check, assume it's safe to add
-            return false;
-        }
-    }
-
-    /**
-     * Determines if two items are essentially the same based on their characteristics.
-     * REFACTORED: Optimized comparison with early returns and better performance.
-     *
-     * @param existingItem the existing item in the database. Cannot be null.
-     * @param parsedItem the parsed item to compare. Cannot be null.
-     * @return true if the items are the same, false otherwise.
-     */
-    private boolean isSameItem(InvoiceItem existingItem, ParsedInvoiceData.ParsedInvoiceItem parsedItem) {
-        // Early return for basic mismatch (fastest checks first)
-        if (!existingItem.getDescription().equals(parsedItem.description())
-            || !existingItem.getAmount().equals(parsedItem.amount())) {
-            return false;
-        }
-        
-        // Check date only if basic match passes
-        LocalDate resolvedDate = resolveDate(parsedItem.purchaseDate());
-        if (!existingItem.getPurchaseDate().equals(resolvedDate)) {
-            return false;
-        }
-        
-        // For special items like IOF, be more permissive with installments
-        if (isSpecialItemType(existingItem.getDescription())) {
-            return true; // Allow IOF with same description, amount, and date
-        }
-        
-        // For regular items, check installments as well
-        int resolvedInstallments = resolveInstallments(parsedItem.installments());
-        int resolvedTotalInstallments = resolveInstallments(parsedItem.totalInstallments());
-        
-        return existingItem.getInstallments().equals(resolvedInstallments)
-            && existingItem.getTotalInstallments().equals(resolvedTotalInstallments);
     }
 
     /**
@@ -982,28 +880,6 @@ public class InvoiceImportService {
             }
             return (double) added / totalProcessed() * 100.0;
         }
-    }
-
-    /**
-     * Result of processing a single item during import.
-     * 
-     * @param wasAdded whether the item was successfully added to the invoice
-     */
-    public record ItemProcessingResult(boolean wasAdded) {
-        /**
-         * Creates a result indicating the item was added.
-         */
-        static ItemProcessingResult added() {
-            return new ItemProcessingResult(true);
-        }
-
-        /**
-         * Creates a result indicating the item was skipped.
-         */
-        static ItemProcessingResult skipped() {
-            return new ItemProcessingResult(false);
-        }
-
     }
 
     /**
@@ -1133,23 +1009,6 @@ public class InvoiceImportService {
             logger.warn("SHA-256 not available, using raw signature input: {}", e.getMessage());
             return input;
         }
-    }
-
-    /**
-     * Determines if an item is a special type that should have more permissive deduplication.
-     * REFACTORED: Optimized with cached set and better performance.
-     *
-     * @param description the description to check. Cannot be null.
-     * @return true if this is a special item type, false otherwise.
-     */
-    private boolean isSpecialItemType(String description) {
-        if (description == null || description.isEmpty()) {
-            return false;
-        }
-
-        String lower = description.toLowerCase();
-        return SPECIAL_ITEM_TYPES.stream()
-            .anyMatch(lower::contains);
     }
 
     /**

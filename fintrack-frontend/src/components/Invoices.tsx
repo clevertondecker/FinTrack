@@ -477,22 +477,35 @@ const Invoices: React.FC = () => {
   }, []);
 
   const handleUpdateItemCategory = useCallback(async (itemId: number, categoryId: number | null) => {
-    if (!selectedInvoice) return;
+    const targetItem = invoiceItems.find(i => i.id === itemId);
+    const invoiceId = targetItem?.invoiceId ?? selectedInvoice?.id;
+    if (!invoiceId) return;
     
     setUpdatingCategoryItemId(itemId);
     setItemError(null);
     
     try {
-      await apiService.updateInvoiceItemCategory(selectedInvoice.id, itemId, categoryId);
+      await apiService.updateInvoiceItemCategory(invoiceId, itemId, categoryId);
       
-      // Optimistic update with memoized category lookup
+      const newCategoryName = categoryId ? categoryMap.get(categoryId) || null : null;
       setInvoiceItems(prevItems => 
         prevItems.map(item => 
           item.id === itemId 
-            ? { ...item, category: categoryId ? categoryMap.get(categoryId) || null : null }
+            ? { ...item, category: newCategoryName }
             : item
         )
       );
+
+      if (isConsolidatedView) {
+        setCardItemGroups(prevGroups =>
+          prevGroups.map(group => ({
+            ...group,
+            items: group.items.map(item =>
+              item.id === itemId ? { ...item, category: newCategoryName } : item
+            )
+          }))
+        );
+      }
       
     } catch (err: any) {
       const errorMessage = extractErrorMessage(err, t('invoices.errorUpdatingCategory'));
@@ -501,7 +514,7 @@ const Invoices: React.FC = () => {
     } finally {
       setUpdatingCategoryItemId(null);
     }
-  }, [selectedInvoice, categoryMap, t, extractErrorMessage]);
+  }, [invoiceItems, selectedInvoice, isConsolidatedView, categoryMap, t, extractErrorMessage]);
 
   const handleOpenPayModal = (invoice: Invoice) => {
     setInvoiceToPay(invoice);

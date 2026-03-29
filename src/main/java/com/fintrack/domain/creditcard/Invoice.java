@@ -355,7 +355,7 @@ public class Invoice {
             + ", totalAmount=" + totalAmount
             + ", paidAmount=" + paidAmount
             + ", status=" + status
-            + ", items=" + items
+            + ", itemsCount=" + (items != null ? items.size() : 0)
             + ", createdAt=" + createdAt
             + ", updatedAt=" + updatedAt
             + '}';
