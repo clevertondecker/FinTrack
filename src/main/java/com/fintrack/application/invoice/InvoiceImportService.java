@@ -678,7 +678,9 @@ public class InvoiceImportService {
 
         Map<String, Integer> existingCounts = buildExistingSignatureCounts(invoice);
         for (String sig : extraSignatures) {
-            existingCounts.merge(sig, 1, Integer::sum);
+            if (!existingCounts.containsKey(sig)) {
+                existingCounts.put(sig, 1);
+            }
         }
         ItemAdditionResult result = processItems(invoice, parsedItems, existingCounts);
 
