@@ -88,4 +88,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
      * @return a list of invoices within the range. Never null, may be empty.
      */
     List<Invoice> findByMonthBetween(YearMonth fromMonth, YearMonth toMonth);
+
+    List<Invoice> findByMonthAndCreditCardOwner(YearMonth month, User user);
+
+    List<Invoice> findByMonthBetweenAndCreditCardOwner(YearMonth fromMonth, YearMonth toMonth, User user);
 } 

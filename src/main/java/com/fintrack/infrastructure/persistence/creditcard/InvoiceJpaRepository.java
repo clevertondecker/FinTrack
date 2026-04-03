@@ -118,7 +118,8 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
      * @return a list of invoices for the month with items loaded. Never null, may be empty.
      */
     @Query("SELECT DISTINCT i FROM Invoice i "
-        + "LEFT JOIN FETCH i.items "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
         + "WHERE i.month = :month")
     List<Invoice> findByMonth(@Param("month") YearMonth month);
 
@@ -141,9 +142,28 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
      * @return a list of invoices within the range with items loaded. Never null, may be empty.
      */
     @Query("SELECT DISTINCT i FROM Invoice i "
-        + "LEFT JOIN FETCH i.items "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
         + "WHERE i.month >= :fromMonth AND i.month <= :toMonth")
     List<Invoice> findByMonthBetween(
         @Param("fromMonth") YearMonth fromMonth,
         @Param("toMonth") YearMonth toMonth);
+
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
+        + "WHERE i.month = :month AND i.creditCard.owner = :owner")
+    List<Invoice> findByMonthAndCreditCardOwner(
+        @Param("month") YearMonth month,
+        @Param("owner") User owner);
+
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
+        + "WHERE i.month >= :fromMonth AND i.month <= :toMonth "
+        + "AND i.creditCard.owner = :owner")
+    List<Invoice> findByMonthBetweenAndCreditCardOwner(
+        @Param("fromMonth") YearMonth fromMonth,
+        @Param("toMonth") YearMonth toMonth,
+        @Param("owner") User owner);
 } 

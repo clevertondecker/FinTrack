@@ -2,6 +2,7 @@ package com.fintrack.application.invoice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.creditcard.InstallmentProjectionService;
 import com.fintrack.application.creditcard.MerchantCategorizationService;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
@@ -103,6 +104,8 @@ public class InvoiceImportService {
     private final MerchantCategorizationService merchantCategorizationService;
     /** The card auto-match service. */
     private final CardAutoMatchService cardAutoMatchService;
+    /** The installment projection service. */
+    private final InstallmentProjectionService installmentProjectionService;
 
     /** The upload directory path. */
     @Value("${app.upload.directory:uploads}")
@@ -114,7 +117,8 @@ public class InvoiceImportService {
                                PdfInvoiceParser pdfInvoiceParser,
                                ObjectMapper objectMapper,
                                MerchantCategorizationService merchantCategorizationService,
-                               CardAutoMatchService cardAutoMatchService) {
+                               CardAutoMatchService cardAutoMatchService,
+                               InstallmentProjectionService installmentProjectionService) {
         this.invoiceImportRepository = invoiceImportRepository;
         this.creditCardRepository = creditCardRepository;
         this.invoiceRepository = invoiceRepository;
@@ -122,6 +126,7 @@ public class InvoiceImportService {
         this.objectMapper = objectMapper;
         this.merchantCategorizationService = merchantCategorizationService;
         this.cardAutoMatchService = cardAutoMatchService;
+        this.installmentProjectionService = installmentProjectionService;
     }
 
     /**
@@ -288,6 +293,14 @@ public class InvoiceImportService {
             invoice = invoiceRepository.save(invoice);
             createdInvoiceIds.add(invoice.getId());
             totalItems += cardItems.size();
+
+            int projected = installmentProjectionService
+                    .projectInstallments(invoice, creditCard.getOwner());
+            if (projected > 0) {
+                logger.info(
+                        "Projected {} installment items for card {} in import {}",
+                        projected, mapping.detectedLastFourDigits(), importId);
+            }
         }
 
         importRecord.markAsCompletedWithoutInvoiceReference();
@@ -590,12 +603,22 @@ public class InvoiceImportService {
         
         addItemsToInvoice(invoice, parsedData.items(), Set.of());
         
-        // Apply merchant categorization rules to new items
         User owner = creditCard.getOwner();
-        int categorized = merchantCategorizationService.applyRulesToItems(invoice.getItems(), owner);
-        logger.info("Auto-categorized {} items for import {}", categorized, importRecord.getId());
+        int categorized = merchantCategorizationService
+                .applyRulesToItems(invoice.getItems(), owner);
+        logger.info("Auto-categorized {} items for import {}",
+                categorized, importRecord.getId());
         
-        return invoiceRepository.save(invoice);
+        Invoice saved = invoiceRepository.save(invoice);
+
+        int projected = installmentProjectionService
+                .projectInstallments(saved, owner);
+        if (projected > 0) {
+            logger.info("Projected {} installment items from import {}",
+                    projected, importRecord.getId());
+        }
+
+        return saved;
     }
 
     /**
@@ -670,6 +693,8 @@ public class InvoiceImportService {
             return;
         }
 
+        installmentProjectionService.removeProjectedItems(invoice);
+
         long startTime = System.currentTimeMillis();
         int initialItemCount = invoice.getItems().size();
 
@@ -708,6 +733,7 @@ public class InvoiceImportService {
         Set<String> signatures = new HashSet<>();
         for (Invoice inv : allMonthInvoices) {
             inv.getItems().stream()
+                .filter(item -> !item.isProjected())
                 .map(this::safeComputeSignature)
                 .filter(sig -> !sig.isEmpty())
                 .forEach(signatures::add);
@@ -727,6 +753,9 @@ public class InvoiceImportService {
         }
         Map<String, Integer> counts = new HashMap<>(items.size());
         for (InvoiceItem item : items) {
+            if (item.isProjected()) {
+                continue;
+            }
             String sig = safeComputeSignature(item);
             if (!sig.isEmpty()) {
                 counts.merge(sig, 1, Integer::sum);

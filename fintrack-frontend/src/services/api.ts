@@ -19,6 +19,7 @@ import {
   InvoiceItemDetailResponse,
   InvoiceDeleteInfo,
   Category,
+  CategoryCreateResponse,
   CategoryUsageResponse
 } from '../types/invoice';
 import {
@@ -268,8 +269,8 @@ class ApiService {
     return response.data;
   }
 
-  async createCategory(name: string, color?: string, icon?: string): Promise<Category> {
-    const response = await this.api.post<Category>('/categories', { name, color, icon });
+  async createCategory(name: string, color?: string, icon?: string): Promise<CategoryCreateResponse> {
+    const response = await this.api.post<CategoryCreateResponse>('/categories', { name, color, icon });
     return response.data;
   }
 
@@ -403,6 +404,13 @@ class ApiService {
 
   async deleteInvoice(invoiceId: number): Promise<void> {
     await this.api.delete(`/invoices/${invoiceId}`);
+  }
+
+  async projectInstallments(invoiceId: number): Promise<{ message: string; projectedCount: number }> {
+    const response = await this.api.post<{ message: string; projectedCount: number }>(
+      `/invoices/${invoiceId}/project-installments`
+    );
+    return response.data;
   }
 
   // Atualiza a categoria de um item de fatura

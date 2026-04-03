@@ -74,4 +74,17 @@ public interface InvoiceCalculationService {
      * @return shares per participant, grouped by email. Never null, may be empty.
      */
     List<ParticipantShare> calculateOtherParticipantShares(Invoice invoice, User owner);
+
+    /**
+     * Calculates the amount a specific user is responsible for in a single invoice item.
+     * If the user has an explicit share, returns that amount.
+     * If the item has no shares and the user is the card owner, returns the full amount.
+     * If the item has shares but the user has none, returns the unshared amount for the card owner,
+     * or zero for other users.
+     *
+     * @param item the invoice item to calculate for. Must not be null.
+     * @param user the user to calculate for. Must not be null.
+     * @return the amount the user is responsible for. Never null.
+     */
+    BigDecimal calculateUserShareForItem(InvoiceItem item, User user);
 } 

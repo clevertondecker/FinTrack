@@ -18,5 +18,6 @@ public record InvoiceItemResponse(
     Integer totalInstallments,
     Boolean isShared,
     BigDecimal sharedAmount,
-    BigDecimal unsharedAmount
+    BigDecimal unsharedAmount,
+    Boolean projected
 ) {} 

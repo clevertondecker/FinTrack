@@ -82,7 +82,7 @@ public class Invoice {
      * Groups invoices created from the same multi-card import.
      * All invoices sharing the same groupId belong to the same consolidated bill.
      */
-    @Column(name = "import_group_id", length = 36)
+    @Column(name = "import_group_id", length = 80)
     private String importGroupId;
 
     /**

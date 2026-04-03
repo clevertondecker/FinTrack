@@ -234,6 +234,13 @@
     "remainingAmountLabel": "Restante",
     "myShare": "Minha parte",
     "itemShared": "Item dividido",
+    "projectedItem": "Item projetado (parcela futura)",
+    "projectInstallments": "Projetar parcelas",
+    "projectInstallmentsTooltip": "Projetar parcelas futuras desta fatura",
+    "projecting": "Projetando...",
+    "projectedSuccess": "{{count}} item(ns) projetado(s) com sucesso!",
+    "noInstallmentsToProject": "Nenhuma parcela para projetar nesta fatura.",
+    "projectionError": "Erro ao projetar parcelas.",
     "createdAtLabel": "Criada em",
     "viewButton": "Ver Detalhes",
     "payButton": "Pagar",
@@ -321,6 +328,17 @@
       "dueToday": "Vence hoje",
       "dueTomorrow": "Vence amanhã",
       "dueInDays": "Vence em {{days}} dias"
+    },
+    "featured": {
+      "currentBill": "Fatura Atual"
+    },
+    "sections": {
+      "urgent": "Faturas Urgentes",
+      "upcoming": "Próximas Faturas",
+      "paid": "Faturas Pagas"
+    },
+    "compact": {
+      "cardCount": "{{count}} cartões"
     },
     "noCategory": "Sem categoria",
     "viewAllDetails": "Ver Fatura Completa",

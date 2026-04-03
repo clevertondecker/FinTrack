@@ -9,6 +9,7 @@ export interface Invoice {
   creditCardId: number;
   creditCardName: string;
   dueDate: string;
+  invoiceMonth?: string;
   totalAmount: number | null;
   paidAmount: number | null;
   status: string;
@@ -33,6 +34,7 @@ export interface InvoiceItem {
   isShared?: boolean;
   sharedAmount?: number;
   unsharedAmount?: number;
+  projected?: boolean;
 }
 
 export interface CreateInvoiceRequest {
@@ -144,6 +146,15 @@ export interface Category {
   color?: string;
   icon?: string;
   displayOrder?: number;
+}
+
+export interface CategoryCreateResponse {
+  message: string;
+  id: number;
+  name: string;
+  color: string;
+  icon: string | null;
+  displayOrder: number;
 }
 
 export interface CategoryUsageResponse {

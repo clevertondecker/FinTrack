@@ -4,10 +4,10 @@ import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.ExpenseReportService;
 import com.fintrack.domain.creditcard.Invoice;
+import com.fintrack.domain.creditcard.InvoiceCalculationService;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.InvoiceRepository;
 import com.fintrack.domain.creditcard.InvoiceStatus;
-import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.user.User;
 import com.fintrack.dto.dashboard.CategoryRankingResponse;
 import com.fintrack.dto.dashboard.CreditCardOverviewResponse;
@@ -39,24 +39,27 @@ public class DashboardServiceImpl implements DashboardService {
     private final CreditCardJpaRepository creditCardRepository;
     private final InvoiceRepository invoiceRepository;
     private final ExpenseReportService expenseReportService;
+    private final InvoiceCalculationService invoiceCalculationService;
 
     public DashboardServiceImpl(
             final CreditCardJpaRepository creditCardRepository,
             final InvoiceRepository invoiceRepository,
-            final ExpenseReportService expenseReportService) {
+            final ExpenseReportService expenseReportService,
+            final InvoiceCalculationService invoiceCalculationService) {
         this.creditCardRepository = creditCardRepository;
         this.invoiceRepository = invoiceRepository;
         this.expenseReportService = expenseReportService;
+        this.invoiceCalculationService = invoiceCalculationService;
     }
 
     @Override
     public DashboardOverviewResponse getOverview(final User user, final YearMonth month) {
         List<CreditCard> activeCards =
                 creditCardRepository.findByOwnerOrParentCardOwnerAndActiveTrue(user);
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
 
         List<CreditCardOverviewResponse> cardOverviews =
-                buildCardOverviews(activeCards, invoices, month);
+                buildCardOverviews(activeCards, invoices, month, user);
 
         BigDecimal totalUserExpenses = expenseReportService.getTotalExpenses(user, month);
         BigDecimal totalGross = expenseReportService.getGrandTotalExpenses(user, month);
@@ -66,7 +69,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
                     continue;
                 }
@@ -100,10 +103,11 @@ public class DashboardServiceImpl implements DashboardService {
     private List<CreditCardOverviewResponse> buildCardOverviews(
             final List<CreditCard> cards,
             final List<Invoice> allInvoices,
-            final YearMonth month) {
+            final YearMonth month,
+            final User user) {
 
         YearMonth nextMonth = month.plusMonths(1);
-        List<Invoice> nextMonthInvoices = invoiceRepository.findByMonth(nextMonth);
+        List<Invoice> nextMonthInvoices = invoiceRepository.findByMonthAndCreditCardOwner(nextMonth, user);
 
         List<CreditCardOverviewResponse> result = new ArrayList<>();
         for (CreditCard card : cards) {
@@ -167,7 +171,7 @@ public class DashboardServiceImpl implements DashboardService {
         LocalDate monthEnd = month.atEndOfMonth();
 
         List<Invoice> relevantInvoices =
-                invoiceRepository.findByMonthBetween(month, month.plusMonths(1));
+                invoiceRepository.findByMonthBetweenAndCreditCardOwner(month, month.plusMonths(1), user);
 
         Map<LocalDate, BigDecimal> dailyMap = new TreeMap<>();
         for (Invoice invoice : relevantInvoices) {
@@ -176,7 +180,7 @@ public class DashboardServiceImpl implements DashboardService {
                 if (pd == null || pd.isBefore(monthStart) || pd.isAfter(monthEnd)) {
                     continue;
                 }
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) > 0) {
                     dailyMap.merge(pd, userShare, BigDecimal::add);
                 }
@@ -203,26 +207,6 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         return result;
-    }
-
-    private BigDecimal calculateUserShareForItem(final InvoiceItem item, final User user) {
-        for (ItemShare share : item.getShares()) {
-            if (user.equals(share.getUser())) {
-                return share.getAmount();
-            }
-        }
-        if (item.getShares().isEmpty()) {
-            User cardOwner = item.getInvoice().getCreditCard().getOwner();
-            if (cardOwner.equals(user)) {
-                return item.getAmount();
-            }
-            return BigDecimal.ZERO;
-        }
-        User cardOwner = item.getInvoice().getCreditCard().getOwner();
-        if (cardOwner.equals(user)) {
-            return item.getUnsharedAmount();
-        }
-        return BigDecimal.ZERO;
     }
 
     private UserResponse toUserResponse(final User user) {

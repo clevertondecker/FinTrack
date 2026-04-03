@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.Optional;
 import java.util.Set;
 import java.util.List;
 
@@ -32,7 +31,9 @@ import org.springframework.http.MediaType;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
+import com.fintrack.application.creditcard.InstallmentProjectionService;
 import com.fintrack.application.creditcard.InvoiceService;
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
@@ -56,6 +57,12 @@ class InvoiceControllerTest {
 
     @MockBean
     private InvoiceService invoiceService;
+
+    @MockBean
+    private InstallmentProjectionService installmentProjectionService;
+
+    @MockBean
+    private UserService userService;
 
     private User testUser;
     private Bank testBank;
@@ -86,7 +93,7 @@ class InvoiceControllerTest {
         }
         """;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.createInvoice(any(), eq(testUser))).thenReturn(testInvoice);
 
         // When & Then
@@ -112,7 +119,7 @@ class InvoiceControllerTest {
         }
         """;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+        when(userService.getCurrentUser("john@example.com")).thenThrow(new IllegalArgumentException("User not found"));
 
         // When & Then
         mockMvc.perform(post("/api/invoices")
@@ -134,7 +141,7 @@ class InvoiceControllerTest {
         }
         """;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.createInvoice(any(), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -154,7 +161,7 @@ class InvoiceControllerTest {
         List<Invoice> invoices = List.of(testInvoice);
         List<InvoiceResponse> invoiceResponses = getInvoiceResponses();
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getUserInvoices(eq(testUser))).thenReturn(invoices);
         when(invoiceService.toInvoiceResponse(any(Invoice.class), eq(testUser)))
             .thenReturn(invoiceResponses.get(0));
@@ -175,6 +182,7 @@ class InvoiceControllerTest {
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
             testInvoice.getDueDate(),
+            testInvoice.getMonth().toString(),
             testInvoice.getTotalAmount(),
             testInvoice.getPaidAmount(),
             testInvoice.getStatus().name(),
@@ -196,7 +204,7 @@ class InvoiceControllerTest {
         List<Invoice> invoices = List.of(testInvoice);
         List<InvoiceResponse> invoiceResponses = getInvoiceResponses();
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoicesByCreditCard(eq(creditCardId), eq(testUser))).thenReturn(invoices);
         when(invoiceService.toInvoiceResponse(any(Invoice.class), eq(testUser)))
             .thenReturn(invoiceResponses.get(0));
@@ -218,7 +226,7 @@ class InvoiceControllerTest {
         // Given
         Long creditCardId = 999L;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoicesByCreditCard(eq(creditCardId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -240,6 +248,7 @@ class InvoiceControllerTest {
             testInvoice.getCreditCard().getId(),
             testInvoice.getCreditCard().getName(),
             testInvoice.getDueDate(),
+            testInvoice.getMonth().toString(),
             testInvoice.getTotalAmount(),
             testInvoice.getPaidAmount(),
             testInvoice.getStatus().name(),
@@ -250,7 +259,7 @@ class InvoiceControllerTest {
             null
         );
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
         when(invoiceService.toInvoiceResponse(eq(testInvoice), eq(testUser))).thenReturn(invoiceResponse);
 
@@ -259,7 +268,8 @@ class InvoiceControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Invoice retrieved successfully"))
-                .andExpect(jsonPath("$.invoice").exists());
+                .andExpect(jsonPath("$.invoice").exists())
+                .andExpect(jsonPath("$.invoice.invoiceMonth").value(testInvoice.getMonth().toString()));
     }
 
     @Test
@@ -269,7 +279,7 @@ class InvoiceControllerTest {
         // Given
         Long invoiceId = 999L;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Invoice not found"));
 
@@ -288,7 +298,7 @@ class InvoiceControllerTest {
     void shouldDeleteInvoiceSuccessfully() throws Exception {
         Long invoiceId = 1L;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
         doNothing().when(invoiceService).deleteInvoice(eq(invoiceId));
 
@@ -304,7 +314,7 @@ class InvoiceControllerTest {
     void shouldReturn400WhenDeletingInvoiceNotOwned() throws Exception {
         Long invoiceId = 999L;
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Invoice not found"));
 
@@ -319,7 +329,7 @@ class InvoiceControllerTest {
     @WithMockUser(username = "john@example.com")
     @DisplayName("Should return 400 when user not found for delete")
     void shouldReturn400WhenUserNotFoundForDelete() throws Exception {
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+        when(userService.getCurrentUser("john@example.com")).thenThrow(new IllegalArgumentException("User not found"));
 
         mockMvc.perform(delete("/api/invoices/{id}", 1L))
                 .andExpect(status().isBadRequest())
@@ -339,7 +349,7 @@ class InvoiceControllerTest {
             new BigDecimal("50.00"), cat, LocalDate.of(2024, 1, 10));
         testInvoice.addItem(item);
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(testInvoice);
 
         mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
@@ -370,7 +380,7 @@ class InvoiceControllerTest {
         setInvoiceId(invoiceWithShares, 1L);
         invoiceWithShares.addItem(itemWithShares);
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(invoiceWithShares);
 
         mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
@@ -402,7 +412,7 @@ class InvoiceControllerTest {
         setInvoiceId(invoiceWithShares, 1L);
         invoiceWithShares.addItem(itemWithShares);
 
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(invoiceId), eq(testUser))).thenReturn(invoiceWithShares);
 
         mockMvc.perform(get("/api/invoices/{id}/delete-info", invoiceId))
@@ -414,7 +424,7 @@ class InvoiceControllerTest {
     @WithMockUser(username = "john@example.com")
     @DisplayName("Should return 400 when invoice not found for delete info")
     void shouldReturn400WhenInvoiceNotFoundForDeleteInfo() throws Exception {
-        when(invoiceService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
         when(invoiceService.getInvoice(eq(999L), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Invoice not found"));
 

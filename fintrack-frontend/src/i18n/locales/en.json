@@ -239,6 +239,13 @@
     "payButton": "Pay",
     "detailsModalTitle": "Invoice Details",
     "statusLabel": "Status",
+    "projectedItem": "Projected item (future installment)",
+    "projectInstallments": "Project installments",
+    "projectInstallmentsTooltip": "Project future installments from this invoice",
+    "projecting": "Projecting...",
+    "projectedSuccess": "{{count}} item(s) projected successfully!",
+    "noInstallmentsToProject": "No installments to project from this invoice.",
+    "projectionError": "Error projecting installments.",
     "itemsLabel": "Invoice Items",
     "descriptionPlaceholder": "Description",
     "amountPlaceholder": "Amount",
@@ -327,6 +334,17 @@
       "dueToday": "Due today",
       "dueTomorrow": "Due tomorrow",
       "dueInDays": "Due in {{days}} days"
+    },
+    "featured": {
+      "currentBill": "Current Bill"
+    },
+    "sections": {
+      "urgent": "Urgent Invoices",
+      "upcoming": "Upcoming Invoices",
+      "paid": "Paid Invoices"
+    },
+    "compact": {
+      "cardCount": "{{count}} cards"
     }
   },
   "invoiceItems": {

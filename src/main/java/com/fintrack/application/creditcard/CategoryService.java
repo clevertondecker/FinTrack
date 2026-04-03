@@ -54,11 +54,7 @@ public class CategoryService {
         Category category = Category.of(name.trim(), color);
         category.setIcon(icon);
 
-        Integer maxOrder = categoryRepository.findAll().stream()
-                .map(Category::getDisplayOrder)
-                .filter(o -> o != null)
-                .max(Integer::compareTo)
-                .orElse(0);
+        int maxOrder = categoryRepository.findMaxDisplayOrder();
         category.setDisplayOrder(maxOrder + 1);
 
         return categoryRepository.save(category);

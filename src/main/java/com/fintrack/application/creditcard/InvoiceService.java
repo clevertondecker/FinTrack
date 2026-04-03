@@ -375,6 +375,7 @@ public class InvoiceService {
             invoice.getCreditCard().getId(),
             invoice.getCreditCard().getName(),
             invoice.getDueDate(),
+            invoice.getMonth().toString(),
             invoice.getTotalAmount(),
             invoice.getPaidAmount(),
             currentStatus.name(),
@@ -422,6 +423,7 @@ public class InvoiceService {
             invoice.getCreditCard().getId(),
             invoice.getCreditCard().getName(),
             invoice.getDueDate(),
+            invoice.getMonth().toString(),
             invoice.getTotalAmount(),
             invoice.getPaidAmount(),
             currentStatus.name(),
@@ -459,6 +461,7 @@ public class InvoiceService {
         dto.put("category", item.getCategory() != null ? item.getCategory().getName() : null);
         dto.put("purchaseDate", item.getPurchaseDate().toString());
         dto.put("createdAt", item.getCreatedAt());
+        dto.put("projected", item.isProjected());
         return dto;
     }
 
@@ -492,7 +495,8 @@ public class InvoiceService {
             item.getTotalInstallments(),
             !item.getShares().isEmpty(),
             item.getSharedAmount(),
-            item.getUnsharedAmount()
+            item.getUnsharedAmount(),
+            item.isProjected()
         );
     }
 

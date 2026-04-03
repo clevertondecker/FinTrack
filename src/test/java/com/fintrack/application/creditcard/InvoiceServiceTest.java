@@ -544,6 +544,7 @@ class InvoiceServiceTest {
             assertEquals(testInvoice.getCreditCard().getId(), result.creditCardId());
             assertEquals(testInvoice.getCreditCard().getName(), result.creditCardName());
             assertEquals(testInvoice.getDueDate(), result.dueDate());
+            assertEquals(testInvoice.getMonth().toString(), result.invoiceMonth());
             assertEquals(testInvoice.getTotalAmount(), result.totalAmount());
             assertEquals(testInvoice.getPaidAmount(), result.paidAmount());
             assertEquals(testInvoice.getStatus().name(), result.status());

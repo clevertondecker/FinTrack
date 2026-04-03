@@ -1,6 +1,8 @@
 package com.fintrack.controller.creditcard;
 
+import com.fintrack.application.creditcard.InstallmentProjectionService;
 import com.fintrack.application.creditcard.InvoiceService;
+import com.fintrack.controller.BaseController;
 import com.fintrack.dto.creditcard.CreateInvoiceRequest;
 import com.fintrack.dto.creditcard.InvoiceCreateResponse;
 import com.fintrack.dto.creditcard.InvoiceListResponse;
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
  * REST controller for managing invoices.
@@ -27,13 +29,19 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/invoices")
-public class InvoiceController {
+public class InvoiceController extends BaseController {
 
     /** The invoice service. */
     private final InvoiceService invoiceService;
 
-    public InvoiceController(InvoiceService invoiceService) {
+    /** The installment projection service. */
+    private final InstallmentProjectionService installmentProjectionService;
+
+    public InvoiceController(
+            InvoiceService invoiceService,
+            InstallmentProjectionService installmentProjectionService) {
         this.invoiceService = invoiceService;
+        this.installmentProjectionService = installmentProjectionService;
     }
 
     /**
@@ -48,12 +56,7 @@ public class InvoiceController {
             @Valid @RequestBody CreateInvoiceRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Find the user
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         // Create the invoice using service
         Invoice invoice = invoiceService.createInvoice(request, user);
@@ -79,11 +82,7 @@ public class InvoiceController {
     public ResponseEntity<InvoiceListResponse> getUserInvoices(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         List<Invoice> invoices = invoiceService.getUserInvoices(user);
         List<InvoiceResponse> invoiceResponses = invoices.stream()
@@ -111,11 +110,7 @@ public class InvoiceController {
             @PathVariable Long creditCardId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         List<Invoice> invoices = invoiceService.getInvoicesByCreditCard(creditCardId, user);
         List<InvoiceResponse> invoiceResponses = invoices.stream()
@@ -147,11 +142,7 @@ public class InvoiceController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         Invoice invoice = invoiceService.getInvoice(id, user);
         InvoiceResponse invoiceResponse = invoiceService.toInvoiceResponse(invoice, user);
@@ -168,12 +159,8 @@ public class InvoiceController {
     public ResponseEntity<InvoicePaymentResponse> payInvoice(
             @PathVariable Long id,
             @Valid @RequestBody InvoicePaymentRequest request,
-            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
-        Optional<com.fintrack.domain.user.User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        com.fintrack.domain.user.User user = userOpt.get();
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = resolveUser(userDetails);
         InvoicePaymentResponse response = invoiceService.payInvoice(id, request, user);
         return ResponseEntity.ok(response);
     }
@@ -186,7 +173,7 @@ public class InvoiceController {
     public ResponseEntity<java.util.Map<String, Object>> getDeleteInfo(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        User user = requireUser(userDetails);
+        User user = resolveUser(userDetails);
         Invoice invoice = invoiceService.getInvoice(id, user);
 
         int totalItems = invoice.getItems().size();
@@ -217,14 +204,30 @@ public class InvoiceController {
     public ResponseEntity<Void> deleteInvoice(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        User user = requireUser(userDetails);
+        User user = resolveUser(userDetails);
         invoiceService.getInvoice(id, user);
         invoiceService.deleteInvoice(id);
         return ResponseEntity.noContent().build();
     }
 
-    private User requireUser(UserDetails userDetails) {
-        return invoiceService.findUserByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    /**
+     * Projects remaining installment items from this invoice into future
+     * invoices, copying categories and shares.
+     *
+     * @param id the invoice ID.
+     * @param userDetails the authenticated user details.
+     * @return the number of projected items created.
+     */
+    @PostMapping("/{id}/project-installments")
+    public ResponseEntity<Map<String, Object>> projectInstallments(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = resolveUser(userDetails);
+        Invoice invoice = invoiceService.getInvoice(id, user);
+        int count = installmentProjectionService
+                .projectInstallments(invoice, user);
+        return ResponseEntity.ok(Map.of(
+                "message", "Projected " + count + " installment items",
+                "projectedCount", count));
     }
 }

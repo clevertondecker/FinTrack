@@ -417,9 +417,8 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
      *
      * @return the number of items that were recalculated.
      */
-    public int recalculateAllShares() {
-        // Get all shares and group by invoice item
-        List<ItemShare> allShares = itemShareRepository.findAll();
+    public int recalculateSharesForUser(User user) {
+        List<ItemShare> allShares = itemShareRepository.findByCardOwner(user);
         Map<InvoiceItem, List<ItemShare>> sharesByItem = allShares.stream()
                 .collect(Collectors.groupingBy(ItemShare::getInvoiceItem));
 

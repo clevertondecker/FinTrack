@@ -1,5 +1,6 @@
 package com.fintrack.controller.creditcard;
 
+import com.fintrack.controller.BaseController;
 import com.fintrack.application.creditcard.CreditCardService;
 import com.fintrack.dto.creditcard.CreateCreditCardRequest;
 import com.fintrack.dto.creditcard.CreditCardCreateResponse;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * REST controller for managing credit cards.
@@ -24,7 +24,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/credit-cards")
-public class CreditCardController {
+public class CreditCardController extends BaseController {
 
     /** The credit card service. */
     private final CreditCardService creditCardService;
@@ -45,11 +45,7 @@ public class CreditCardController {
             @Valid @RequestBody CreateCreditCardRequest request,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Create the credit card using service
         CreditCard creditCard = creditCardService.createCreditCard(request, user);
@@ -80,11 +76,7 @@ public class CreditCardController {
             @RequestParam(defaultValue = "false") boolean includeInactive,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Get credit cards using service
         List<CreditCard> creditCards = creditCardService.getUserCreditCards(user, includeInactive);
@@ -115,11 +107,7 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Get credit card using service
         CreditCard creditCard = creditCardService.getCreditCard(id, user);
@@ -146,11 +134,7 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Activate credit card using service
         CreditCard creditCard = creditCardService.activateCreditCard(id, user);
@@ -176,11 +160,7 @@ public class CreditCardController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Deactivate credit card using service
         CreditCard creditCard = creditCardService.deactivateCreditCard(id, user);
@@ -208,11 +188,7 @@ public class CreditCardController {
             @Valid @RequestBody CreateCreditCardRequest request,
             Authentication authentication) {
 
-        Optional<User> userOpt = creditCardService.findUserByUsername(authentication.getName());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(authentication);
 
         // Update credit card using service
         CreditCard creditCard = creditCardService.updateCreditCard(id, request, user);

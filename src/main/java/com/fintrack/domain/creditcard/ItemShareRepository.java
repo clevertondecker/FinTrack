@@ -93,4 +93,11 @@ public interface ItemShareRepository extends JpaRepository<ItemShare, Long> {
      * @return list of shares for the contact. Never null, may be empty.
      */
     List<ItemShare> findByTrustedContact(TrustedContact contact);
+
+    @Query("SELECT s FROM ItemShare s "
+        + "JOIN s.invoiceItem ii "
+        + "JOIN ii.invoice i "
+        + "JOIN i.creditCard cc "
+        + "WHERE cc.owner = :owner")
+    List<ItemShare> findByCardOwner(@Param("owner") User owner);
 } 

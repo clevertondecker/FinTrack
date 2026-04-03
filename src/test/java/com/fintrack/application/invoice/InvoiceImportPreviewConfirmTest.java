@@ -64,6 +64,8 @@ class InvoiceImportPreviewConfirmTest {
     private MerchantCategorizationService merchantCategorizationService;
     @Mock
     private CardAutoMatchService cardAutoMatchService;
+    @Mock
+    private com.fintrack.application.creditcard.InstallmentProjectionService installmentProjectionService;
 
     @InjectMocks
     private InvoiceImportService service;

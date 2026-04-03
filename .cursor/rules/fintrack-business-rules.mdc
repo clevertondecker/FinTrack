@@ -29,6 +29,15 @@ alwaysApply: true
 - Items have a `Category` (auto-assigned via `MerchantCategoryRule` or manual)
 - `categorizationSource` tracks if category was auto-applied or manual
 - Items track installments (`installments` / `totalInstallments`)
+- Items can be `projected` (auto-generated from installment projections) with a `sourceItemId` reference
+
+## Installment Projection
+
+- After import, installment items (totalInstallments > 1) are automatically projected into future months
+- Projected items copy description, amount, category, and shares from the source
+- Projection is idempotent: checks `sourceItemId` + installment number before creating
+- Before re-import, existing projected items are removed and re-projected
+- Frontend displays projected items with a visual badge
 
 ## Expense Sharing (ItemShare)
 

@@ -4,11 +4,16 @@ import com.fintrack.domain.creditcard.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface CategoryJpaRepository extends JpaRepository<Category, Long> {
+
+    @Query("SELECT COALESCE(MAX(c.displayOrder), 0) FROM Category c")
+    int findMaxDisplayOrder();
 
     Optional<Category> findByName(String name);
 

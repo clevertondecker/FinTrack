@@ -1,6 +1,5 @@
 package com.fintrack.controller.creditcard;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -11,7 +10,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +25,19 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fintrack.application.creditcard.ExpenseReportServiceImpl;
-import com.fintrack.application.creditcard.InvoiceService;
+import com.fintrack.application.creditcard.ExpenseReportAssemblyService;
+import com.fintrack.application.user.UserService;
 import com.fintrack.config.TestSecurityConfig;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
+import com.fintrack.dto.creditcard.CategoryResponse;
+import com.fintrack.dto.creditcard.ExpenseByCategoryResponse;
 import com.fintrack.dto.creditcard.ExpenseDetailResponse;
+import com.fintrack.dto.creditcard.ExpenseReportResponse;
+import com.fintrack.dto.creditcard.CategoryExpenseSummary;
+import com.fintrack.dto.dashboard.DailyExpenseResponse;
+import com.fintrack.dto.user.UserResponse;
 
 /**
  * Unit tests for ExpenseReportController.
@@ -50,12 +54,13 @@ class ExpenseReportControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private ExpenseReportServiceImpl expenseReportService;
+    private ExpenseReportAssemblyService assemblyService;
 
     @MockBean
-    private InvoiceService invoiceService;
+    private UserService userService;
 
     private User testUser;
+    private UserResponse testUserResponse;
     private Category foodCategory;
     private Category transportCategory;
     private YearMonth testMonth;
@@ -63,18 +68,20 @@ class ExpenseReportControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         testUser = User.createLocalUser("John Doe", "john@example.com", "password123", Set.of(Role.USER));
+        testUserResponse = new UserResponse(null, "John Doe", "john@example.com",
+                new String[]{"USER"}, null, null);
+
         foodCategory = Category.of("Food", "#FF0000");
         transportCategory = Category.of("Transport", "#0000FF");
-        
-        // Set category IDs for proper comparison in Map
+
         java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
         foodIdField.setAccessible(true);
         foodIdField.set(foodCategory, 1L);
-        
+
         java.lang.reflect.Field transportIdField = Category.class.getDeclaredField("id");
         transportIdField.setAccessible(true);
         transportIdField.set(transportCategory, 2L);
-        
+
         testMonth = YearMonth.of(2024, 11);
     }
 
@@ -86,33 +93,36 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return expense report successfully")
         void shouldReturnExpenseReportSuccessfully() throws Exception {
-            // Given
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00"),
-                    transportCategory, new BigDecimal("50.00")
-            );
-
             List<ExpenseDetailResponse> foodDetails = List.of(
-                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("100.00"), 
+                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("100.00"),
                             LocalDate.of(2024, 10, 15), 1L)
             );
-
             List<ExpenseDetailResponse> transportDetails = List.of(
-                    new ExpenseDetailResponse(null, 2L, "Uber", new BigDecimal("50.00"), 
+                    new ExpenseDetailResponse(null, 2L, "Uber", new BigDecimal("50.00"),
                             LocalDate.of(2024, 10, 20), 1L)
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(expensesByCategory);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(foodDetails);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, transportCategory))
-                    .thenReturn(transportDetails);
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("150.00"));
+            List<DailyExpenseResponse> foodDaily = List.of(
+                    new DailyExpenseResponse(LocalDate.of(2024, 10, 15), new BigDecimal("100.00")));
+            List<DailyExpenseResponse> transportDaily = List.of(
+                    new DailyExpenseResponse(LocalDate.of(2024, 10, 20), new BigDecimal("50.00")));
 
-            // When & Then
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            new ExpenseByCategoryResponse(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("66.7"), 1, foodDetails, foodDaily),
+                            new ExpenseByCategoryResponse(
+                                    CategoryResponse.from(transportCategory), new BigDecimal("50.00"),
+                                    new BigDecimal("33.3"), 1, transportDetails, transportDaily)
+                    ),
+                    new BigDecimal("150.00")
+            );
+
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, false)).thenReturn(report);
+
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -129,21 +139,21 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should default to current month when month not provided")
         void shouldDefaultToCurrentMonthWhenMonthNotProvided() throws Exception {
-            // Given
             YearMonth currentMonth = YearMonth.now();
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00")
+
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, currentMonth,
+                    List.of(
+                            ExpenseByCategoryResponse.withoutDetails(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("100.0"), 1)
+                    ),
+                    new BigDecimal("100.00")
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, currentMonth))
-                    .thenReturn(expensesByCategory);
-            when(expenseReportService.getExpenseDetails(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(expenseReportService.getTotalExpenses(testUser, currentMonth))
-                    .thenReturn(new BigDecimal("100.00"));
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, currentMonth, false)).thenReturn(report);
 
-            // When & Then
             mockMvc.perform(get("/api/expenses/by-category")
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
@@ -155,35 +165,28 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should filter by category ID when provided")
         void shouldFilterByCategoryIdWhenProvided() throws Exception {
-            // Given
-            Map<Category, BigDecimal> allExpenses = Map.of(
-                    foodCategory, new BigDecimal("100.00"),
-                    transportCategory, new BigDecimal("50.00")
-            );
-
             List<ExpenseDetailResponse> foodDetails = List.of(
-                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("100.00"), 
+                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("100.00"),
                             LocalDate.of(2024, 10, 15), 1L)
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(allExpenses);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(foodDetails);
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("150.00"));
+            List<DailyExpenseResponse> foodDaily = List.of(
+                    new DailyExpenseResponse(LocalDate.of(2024, 10, 15), new BigDecimal("100.00")));
 
-            // Set category ID via reflection
-            try {
-                java.lang.reflect.Field idField = Category.class.getDeclaredField("id");
-                idField.setAccessible(true);
-                idField.set(foodCategory, 1L);
-            } catch (Exception e) {
-                // Ignore if reflection fails
-            }
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            new ExpenseByCategoryResponse(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("66.7"), 1, foodDetails, foodDaily)
+                    ),
+                    new BigDecimal("150.00")
+            );
 
-            // When & Then
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildFilteredCategoryReport(testUser, testMonth, 1L, false))
+                    .thenReturn(report);
+
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .param("categoryId", "1")
@@ -197,16 +200,13 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return empty report when category ID not found")
         void shouldReturnEmptyReportWhenCategoryIdNotFound() throws Exception {
-            // Given
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00")
-            );
+            ExpenseReportResponse emptyReport = new ExpenseReportResponse(
+                    testUserResponse, testMonth, List.of(), BigDecimal.ZERO);
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(expensesByCategory);
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildFilteredCategoryReport(testUser, testMonth, 999L, false))
+                    .thenReturn(emptyReport);
 
-            // When & Then
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .param("categoryId", "999")
@@ -221,10 +221,9 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return 400 when user not found")
         void shouldReturn400WhenUserNotFound() throws Exception {
-            // Given
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.empty());
+            when(userService.getCurrentUser("john@example.com"))
+                    .thenThrow(new IllegalArgumentException("User not found"));
 
-            // When & Then
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -235,14 +234,13 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return empty report when no expenses exist")
         void shouldReturnEmptyReportWhenNoExpensesExist() throws Exception {
-            // Given
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(Map.of());
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(BigDecimal.ZERO);
+            ExpenseReportResponse emptyReport = new ExpenseReportResponse(
+                    testUserResponse, testMonth, List.of(), BigDecimal.ZERO);
 
-            // When & Then
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, false))
+                    .thenReturn(emptyReport);
+
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -256,21 +254,22 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should sort categories by total amount descending")
         void shouldSortCategoriesByTotalAmountDescending() throws Exception {
-            // Given
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("50.00"),
-                    transportCategory, new BigDecimal("100.00")
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            ExpenseByCategoryResponse.withoutDetails(
+                                    CategoryResponse.from(transportCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("66.7"), 0),
+                            ExpenseByCategoryResponse.withoutDetails(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("50.00"),
+                                    new BigDecimal("33.3"), 0)
+                    ),
+                    new BigDecimal("150.00")
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(expensesByCategory);
-            when(expenseReportService.getExpenseDetails(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("150.00"));
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, false)).thenReturn(report);
 
-            // When & Then
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -283,25 +282,27 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return total expenses when showTotal is true")
         void shouldReturnTotalExpensesWhenShowTotalIsTrue() throws Exception {
-            // Given
-            Map<Category, BigDecimal> totalExpensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("200.00")
-            );
-
             List<ExpenseDetailResponse> totalDetails = List.of(
                     new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("200.00"),
                             LocalDate.of(2024, 10, 15), 1L)
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getTotalExpensesByCategory(testUser, testMonth))
-                    .thenReturn(totalExpensesByCategory);
-            when(expenseReportService.getTotalExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(totalDetails);
-            when(expenseReportService.getGrandTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("200.00"));
+            List<DailyExpenseResponse> dailyBreakdown = List.of(
+                    new DailyExpenseResponse(LocalDate.of(2024, 10, 15), new BigDecimal("200.00")));
 
-            // When & Then
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            new ExpenseByCategoryResponse(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("200.00"),
+                                    new BigDecimal("100.0"), 1, totalDetails, dailyBreakdown)
+                    ),
+                    new BigDecimal("200.00")
+            );
+
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, true)).thenReturn(report);
+
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .param("showTotal", "true")
@@ -315,25 +316,27 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return user expenses when showTotal is false")
         void shouldReturnUserExpensesWhenShowTotalIsFalse() throws Exception {
-            // Given
-            Map<Category, BigDecimal> userExpensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00")
-            );
-
             List<ExpenseDetailResponse> userDetails = List.of(
                     new ExpenseDetailResponse(1L, 1L, "Groceries", new BigDecimal("100.00"),
                             LocalDate.of(2024, 10, 15), 1L)
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(userExpensesByCategory);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(userDetails);
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("100.00"));
+            List<DailyExpenseResponse> dailyBreakdown = List.of(
+                    new DailyExpenseResponse(LocalDate.of(2024, 10, 15), new BigDecimal("100.00")));
 
-            // When & Then
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            new ExpenseByCategoryResponse(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("100.0"), 1, userDetails, dailyBreakdown)
+                    ),
+                    new BigDecimal("100.00")
+            );
+
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, false)).thenReturn(report);
+
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .param("showTotal", "false")
@@ -347,20 +350,19 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should default showTotal to false when not provided")
         void shouldDefaultShowTotalToFalseWhenNotProvided() throws Exception {
-            // Given
-            Map<Category, BigDecimal> userExpensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00")
+            ExpenseReportResponse report = new ExpenseReportResponse(
+                    testUserResponse, testMonth,
+                    List.of(
+                            ExpenseByCategoryResponse.withoutDetails(
+                                    CategoryResponse.from(foodCategory), new BigDecimal("100.00"),
+                                    new BigDecimal("100.0"), 1)
+                    ),
+                    new BigDecimal("100.00")
             );
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(userExpensesByCategory);
-            when(expenseReportService.getExpenseDetails(any(), any(), any()))
-                    .thenReturn(List.of());
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("100.00"));
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildCategoryReport(testUser, testMonth, false)).thenReturn(report);
 
-            // When & Then - should call getExpensesByCategory (not getTotalExpensesByCategory)
             mockMvc.perform(get("/api/expenses/by-category")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -377,33 +379,19 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return expense summary successfully")
         void shouldReturnExpenseSummarySuccessfully() throws Exception {
-            // Given
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00"),
-                    transportCategory, new BigDecimal("50.00")
+            Map<String, Object> summary = Map.of(
+                    "user", testUserResponse,
+                    "month", "2024-11",
+                    "totalAmount", new BigDecimal("150.00"),
+                    "expensesByCategory", List.of(
+                            new CategoryExpenseSummary(1L, "Food", "#FF0000", new BigDecimal("100.00"), 1),
+                            new CategoryExpenseSummary(2L, "Transport", "#0000FF", new BigDecimal("50.00"), 1)
+                    )
             );
 
-            List<ExpenseDetailResponse> foodDetails = List.of(
-                    new ExpenseDetailResponse(null, 1L, "Groceries", new BigDecimal("100.00"), 
-                            LocalDate.of(2024, 10, 15), 1L)
-            );
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildSummary(testUser, testMonth)).thenReturn(summary);
 
-            List<ExpenseDetailResponse> transportDetails = List.of(
-                    new ExpenseDetailResponse(null, 2L, "Uber", new BigDecimal("50.00"), 
-                            LocalDate.of(2024, 10, 20), 1L)
-            );
-
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("150.00"));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(expensesByCategory);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(foodDetails);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, transportCategory))
-                    .thenReturn(transportDetails);
-
-            // When & Then
             mockMvc.perform(get("/api/expenses/summary")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -418,16 +406,18 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should default to current month when month not provided")
         void shouldDefaultToCurrentMonthWhenMonthNotProvided() throws Exception {
-            // Given
             YearMonth currentMonth = YearMonth.now();
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getTotalExpenses(testUser, currentMonth))
-                    .thenReturn(BigDecimal.ZERO);
-            when(expenseReportService.getExpensesByCategory(testUser, currentMonth))
-                    .thenReturn(Map.of());
+            Map<String, Object> summary = Map.of(
+                    "user", testUserResponse,
+                    "month", currentMonth.toString(),
+                    "totalAmount", BigDecimal.ZERO,
+                    "expensesByCategory", List.of()
+            );
 
-            // When & Then
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildSummary(testUser, currentMonth)).thenReturn(summary);
+
             mockMvc.perform(get("/api/expenses/summary")
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
@@ -438,10 +428,9 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should return 400 when user not found")
         void shouldReturn400WhenUserNotFound() throws Exception {
-            // Given
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.empty());
+            when(userService.getCurrentUser("john@example.com"))
+                    .thenThrow(new IllegalArgumentException("User not found"));
 
-            // When & Then
             mockMvc.perform(get("/api/expenses/summary")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -452,27 +441,18 @@ class ExpenseReportControllerTest {
         @WithMockUser(username = "john@example.com")
         @DisplayName("Should include transaction count in summary")
         void shouldIncludeTransactionCountInSummary() throws Exception {
-            // Given
-            Map<Category, BigDecimal> expensesByCategory = Map.of(
-                    foodCategory, new BigDecimal("100.00")
+            Map<String, Object> summary = Map.of(
+                    "user", testUserResponse,
+                    "month", "2024-11",
+                    "totalAmount", new BigDecimal("100.00"),
+                    "expensesByCategory", List.of(
+                            new CategoryExpenseSummary(1L, "Food", "#FF0000", new BigDecimal("100.00"), 2)
+                    )
             );
 
-            List<ExpenseDetailResponse> foodDetails = List.of(
-                    new ExpenseDetailResponse(null, 1L, "Item 1", new BigDecimal("50.00"), 
-                            LocalDate.of(2024, 10, 15), 1L),
-                    new ExpenseDetailResponse(null, 2L, "Item 2", new BigDecimal("50.00"), 
-                            LocalDate.of(2024, 10, 20), 1L)
-            );
+            when(userService.getCurrentUser("john@example.com")).thenReturn(testUser);
+            when(assemblyService.buildSummary(testUser, testMonth)).thenReturn(summary);
 
-            when(invoiceService.findUserByUsername("john@example.com")).thenReturn(Optional.of(testUser));
-            when(expenseReportService.getTotalExpenses(testUser, testMonth))
-                    .thenReturn(new BigDecimal("100.00"));
-            when(expenseReportService.getExpensesByCategory(testUser, testMonth))
-                    .thenReturn(expensesByCategory);
-            when(expenseReportService.getExpenseDetails(testUser, testMonth, foodCategory))
-                    .thenReturn(foodDetails);
-
-            // When & Then
             mockMvc.perform(get("/api/expenses/summary")
                     .param("month", "2024-11")
                     .contentType(MediaType.APPLICATION_JSON))
@@ -481,4 +461,3 @@ class ExpenseReportControllerTest {
         }
     }
 }
-

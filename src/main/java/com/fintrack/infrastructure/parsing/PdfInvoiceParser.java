@@ -480,6 +480,9 @@ public class PdfInvoiceParser {
         }
     }
 
+    private static final Pattern INSTALLMENT_SUFFIX =
+            Pattern.compile("^(.+?)\\s+(\\d{1,2})/(\\d{1,2})$");
+
     private ParsedInvoiceItem tryParseParceled(String line) {
         Matcher m = PARCELED_ITEM_PATTERN.matcher(line);
         if (!m.find()) {
@@ -489,9 +492,11 @@ public class PdfInvoiceParser {
             String[] parts = m.group(2).split("/");
             int first = Integer.parseInt(parts[0]);
             int second = Integer.parseInt(parts[1]);
-            // Disambiguate: installments have second >= first and second > 12
-            if (second >= first && second > 12 && second <= 48) {
+            if (second >= first && first >= 1 && second >= 2 && second <= 48) {
                 String description = m.group(1).trim();
+                if (SANTANDER_ITEM_PATTERN.matcher(line).find()) {
+                    return null;
+                }
                 BigDecimal amount = parseBrazilianAmount(m.group(3));
                 return new ParsedInvoiceItem(
                     description, amount, LocalDate.now(), null,
@@ -512,8 +517,24 @@ public class PdfInvoiceParser {
             LocalDate date = parseDate(m.group(1));
             String description = m.group(2).trim();
             BigDecimal amount = parseBrazilianAmount(m.group(3));
+
+            int installments = 1;
+            int totalInstallments = 1;
+            Matcher im = INSTALLMENT_SUFFIX.matcher(description);
+            if (im.matches()) {
+                int current = Integer.parseInt(im.group(2));
+                int total = Integer.parseInt(im.group(3));
+                if (total >= 2 && total <= 48
+                        && current >= 1 && current <= total) {
+                    description = im.group(1).trim();
+                    installments = current;
+                    totalInstallments = total;
+                }
+            }
+
             return new ParsedInvoiceItem(
-                description, amount, date, null, 1, 1, 0.9);
+                description, amount, date, null,
+                installments, totalInstallments, 0.9);
         } catch (Exception e) {
             logger.warn("Error processing standard item: {}", line, e);
             return null;

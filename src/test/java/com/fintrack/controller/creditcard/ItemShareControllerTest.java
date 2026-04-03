@@ -1,6 +1,7 @@
 package com.fintrack.controller.creditcard;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.Invoice;
@@ -26,7 +27,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.anyList;
@@ -53,6 +53,9 @@ class ItemShareControllerTest {
 
     @MockBean
     private com.fintrack.application.creditcard.InvoiceService invoiceService;
+
+    @MockBean
+    private UserService userService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -88,7 +91,7 @@ class ItemShareControllerTest {
         CreateItemShareRequest request = new CreateItemShareRequest(List.of(share1, share2));
 
         // Mock user and item
-        when(invoiceService.findUserByUsername(anyString())).thenReturn(Optional.of(user1));
+        when(userService.getCurrentUser(anyString())).thenReturn(user1);
         when(invoiceService.getInvoiceItem(eq(1L), eq(1L), eq(user1))).thenReturn(invoiceItem);
 
         // Mock saving shares

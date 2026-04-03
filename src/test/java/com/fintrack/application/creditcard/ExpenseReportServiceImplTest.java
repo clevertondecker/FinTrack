@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -79,6 +80,24 @@ class ExpenseReportServiceImplTest {
         testMonth = YearMonth.of(2024, 11);
         foodCategory = Category.of("Food", "#FF0000");
         transportCategory = Category.of("Transport", "#0000FF");
+
+        lenient().when(invoiceCalculationService.calculateUserShareForItem(
+                any(InvoiceItem.class), any(User.class)))
+                .thenAnswer(inv -> {
+                    InvoiceItem item = inv.getArgument(0);
+                    User user = inv.getArgument(1);
+                    for (ItemShare share : item.getShares()) {
+                        if (user.equals(share.getUser())) {
+                            return share.getAmount();
+                        }
+                    }
+                    if (item.getShares().isEmpty()) {
+                        User owner = item.getInvoice().getCreditCard().getOwner();
+                        return owner.equals(user) ? item.getAmount() : BigDecimal.ZERO;
+                    }
+                    User owner = item.getInvoice().getCreditCard().getOwner();
+                    return owner.equals(user) ? item.getUnsharedAmount() : BigDecimal.ZERO;
+                });
     }
 
     @Nested
@@ -103,14 +122,14 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return empty map when no invoices exist for month")
         void shouldReturnEmptyMapWhenNoInvoicesExist() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
 
             // Then
             assertThat(result).isEmpty();
-            verify(invoiceRepository).findByMonth(testMonth);
+            verify(invoiceRepository).findByMonthAndCreditCardOwner(testMonth, cardOwner);
         }
 
         @Test
@@ -135,7 +154,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(foodItem);
             invoice.addItem(transportItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -166,7 +185,8 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(sharedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(eq(testMonth), any(User.class)))
+                    .thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> otherUserResult =
@@ -189,7 +209,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(uncategorizedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -219,7 +239,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(unsharedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of(invoice));
 
             // When - otherUser is not card owner and has no shares
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(otherUser, testMonth);
@@ -246,7 +266,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(item1);
             invoice.addItem(item2);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -275,7 +295,8 @@ class ExpenseReportServiceImplTest {
             foodIdField.setAccessible(true);
             foodIdField.set(foodCategory, 1L);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice1, invoice2));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner))
+                    .thenReturn(List.of(invoice1, invoice2));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -300,7 +321,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -319,7 +340,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return zero when no invoices exist")
         void shouldReturnZeroWhenNoInvoicesExist() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             BigDecimal result = expenseReportService.getTotalExpenses(cardOwner, testMonth);
@@ -344,7 +365,8 @@ class ExpenseReportServiceImplTest {
             invoice2IdField.setAccessible(true);
             invoice2IdField.set(invoice2, 2L);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice1, invoice2));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner))
+                    .thenReturn(List.of(invoice1, invoice2));
             when(invoiceCalculationService.calculateUserShare(any(Invoice.class), eq(cardOwner)))
                     .thenAnswer(invocation -> {
                         Invoice inv = invocation.getArgument(0);
@@ -373,7 +395,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return zero when category has no expenses")
         void shouldReturnZeroWhenCategoryHasNoExpenses() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             BigDecimal result = expenseReportService.getTotalByCategory(cardOwner, testMonth, foodCategory);
@@ -404,7 +426,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(foodItem);
             invoice.addItem(transportItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             BigDecimal result = expenseReportService.getTotalByCategory(cardOwner, testMonth, foodCategory);
@@ -422,7 +444,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return empty list when no expenses match category")
         void shouldReturnEmptyListWhenNoExpensesMatchCategory() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
@@ -456,7 +478,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(sharedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of(invoice));
 
             // When
             List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
@@ -485,7 +507,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(unsharedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
@@ -509,7 +531,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(uncategorizedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
@@ -544,7 +566,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(foodItem);
             invoice.addItem(transportItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             List<ExpenseDetailResponse> foodResult = expenseReportService.getExpenseDetails(
@@ -575,7 +597,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(unsharedItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of(invoice));
 
             // When - otherUser is not card owner and has no shares
             List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
@@ -617,7 +639,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(item1);
             invoice.addItem(item2);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When - card owner requests total (includes all expenses, not just their share)
             Map<Category, BigDecimal> result =
@@ -643,7 +665,7 @@ class ExpenseReportServiceImplTest {
 
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of());
 
             // When - otherUser requests total (but doesn't own the card)
             Map<Category, BigDecimal> result =
@@ -657,7 +679,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return empty map when no invoices exist")
         void shouldReturnEmptyMapWhenNoInvoicesExist() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             Map<Category, BigDecimal> result =
@@ -690,7 +712,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(item1);
             invoice.addItem(item2);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When - card owner requests grand total
             BigDecimal result = expenseReportService.getGrandTotalExpenses(cardOwner, testMonth);
@@ -708,7 +730,7 @@ class ExpenseReportServiceImplTest {
                     foodCategory, LocalDate.of(2024, 10, 15));
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of());
 
             // When - otherUser requests grand total (but doesn't own the card)
             BigDecimal result = expenseReportService.getGrandTotalExpenses(otherUser, testMonth);
@@ -721,7 +743,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should return zero when no invoices exist")
         void shouldReturnZeroWhenNoInvoicesExist() {
             // Given
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of());
 
             // When
             BigDecimal result = expenseReportService.getGrandTotalExpenses(cardOwner, testMonth);
@@ -754,7 +776,7 @@ class ExpenseReportServiceImplTest {
 
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When - card owner requests total details
             List<ExpenseDetailResponse> result =
@@ -780,7 +802,7 @@ class ExpenseReportServiceImplTest {
 
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser)).thenReturn(List.of());
 
             // When - otherUser requests total details (but doesn't own the card)
             List<ExpenseDetailResponse> result =
@@ -811,7 +833,7 @@ class ExpenseReportServiceImplTest {
             invoice.addItem(foodItem);
             invoice.addItem(transportItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             List<ExpenseDetailResponse> foodResult =
@@ -841,7 +863,7 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(zeroItem);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -856,7 +878,7 @@ class ExpenseReportServiceImplTest {
             // Given
             Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 10));
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner)).thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
@@ -885,7 +907,8 @@ class ExpenseReportServiceImplTest {
             
             invoice.addItem(item);
 
-            when(invoiceRepository.findByMonth(testMonth)).thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardOwner(eq(testMonth), any(User.class)))
+                    .thenReturn(List.of(invoice));
 
             // When
             Map<Category, BigDecimal> otherUserResult =

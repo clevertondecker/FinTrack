@@ -147,14 +147,8 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
         return result;
     }
 
-    /**
-     * Calculates the amount a specific user is responsible for in a specific invoice item.
-     *
-     * @param item the invoice item to calculate for. Must not be null.
-     * @param user the user to calculate for. Must not be null.
-     * @return the amount the user is responsible for. Never null.
-     */
-    private BigDecimal calculateUserShareForItem(InvoiceItem item, User user) {
+    @Override
+    public BigDecimal calculateUserShareForItem(InvoiceItem item, User user) {
         for (ItemShare share : item.getShares()) {
             if (user.equals(share.getUser())) {
                 return share.getAmount();

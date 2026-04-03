@@ -128,7 +128,7 @@ class CategoryServiceTest {
         @DisplayName("Should create category with name, color and icon")
         void shouldCreateCategoryWithAllFields() {
             when(categoryRepository.existsByName("Food")).thenReturn(false);
-            when(categoryRepository.findAll()).thenReturn(List.of());
+            when(categoryRepository.findMaxDisplayOrder()).thenReturn(0);
             when(categoryRepository.save(any(Category.class)))
                     .thenAnswer(inv -> {
                         Category cat = inv.getArgument(0);
@@ -151,7 +151,7 @@ class CategoryServiceTest {
             Category existing = createCategory(1L, "Existing", "#000");
             existing.setDisplayOrder(5);
             when(categoryRepository.existsByName("New")).thenReturn(false);
-            when(categoryRepository.findAll()).thenReturn(List.of(existing));
+            when(categoryRepository.findMaxDisplayOrder()).thenReturn(5);
             when(categoryRepository.save(any(Category.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
@@ -175,7 +175,7 @@ class CategoryServiceTest {
         @DisplayName("Should trim name before saving")
         void shouldTrimName() {
             when(categoryRepository.existsByName("Food")).thenReturn(false);
-            when(categoryRepository.findAll()).thenReturn(List.of());
+            when(categoryRepository.findMaxDisplayOrder()).thenReturn(0);
             when(categoryRepository.save(any(Category.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 

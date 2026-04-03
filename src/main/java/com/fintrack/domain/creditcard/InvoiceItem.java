@@ -87,6 +87,14 @@ public class InvoiceItem {
     @JoinColumn(name = "applied_rule_id")
     private MerchantCategoryRule appliedRule;
 
+    /** Whether this item was auto-projected from a previous month's installment. */
+    @Column(name = "projected", nullable = false)
+    private boolean projected = false;
+
+    /** The ID of the source item that generated this projection (referential only, not a FK). */
+    @Column(name = "source_item_id")
+    private Long sourceItemId;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -160,6 +168,32 @@ public class InvoiceItem {
     public static InvoiceItem of(final Invoice invoice, final String description, final BigDecimal amount,
                                 final Category category, final LocalDate purchaseDate) {
         return new InvoiceItem(invoice, description, amount, category, purchaseDate, 1, 1);
+    }
+
+    /**
+     * Creates a projected installment item based on a source item from a previous month.
+     *
+     * @param invoice the target invoice. Cannot be null.
+     * @param description the item's description. Cannot be null or blank.
+     * @param amount the per-installment amount. Must be positive.
+     * @param category the category (inherited from source). Can be null.
+     * @param purchaseDate the original purchase date. Cannot be null.
+     * @param installments the projected installment number. Must be positive.
+     * @param totalInstallments the total number of installments. Must be positive.
+     * @param sourceItemId the ID of the source item that originated this projection.
+     * @return a projected InvoiceItem. Never null.
+     */
+    public static InvoiceItem projected(
+            final Invoice invoice, final String description, final BigDecimal amount,
+            final Category category, final LocalDate purchaseDate,
+            final Integer installments, final Integer totalInstallments,
+            final Long sourceItemId) {
+        InvoiceItem item = new InvoiceItem(
+                invoice, description, amount, category,
+                purchaseDate, installments, totalInstallments);
+        item.projected = true;
+        item.sourceItemId = sourceItemId;
+        return item;
     }
 
     /**
@@ -380,6 +414,24 @@ public class InvoiceItem {
         return appliedRule;
     }
 
+    /**
+     * Whether this item was auto-projected from a previous month's installment.
+     *
+     * @return true if projected, false if real/imported.
+     */
+    public boolean isProjected() {
+        return projected;
+    }
+
+    /**
+     * Gets the ID of the source item that generated this projection.
+     *
+     * @return the source item ID, or null if this is not a projected item.
+     */
+    public Long getSourceItemId() {
+        return sourceItemId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -408,6 +460,8 @@ public class InvoiceItem {
             + ", installments=" + installments
             + ", totalInstallments=" + totalInstallments
             + ", sharesCount=" + (shares != null ? shares.size() : 0)
+            + ", projected=" + projected
+            + ", sourceItemId=" + sourceItemId
             + ", createdAt=" + createdAt
             + '}';
     }

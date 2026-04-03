@@ -27,9 +27,14 @@ const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="item-row">
+    <div className={`item-row${item.projected ? ' projected-item' : ''}`}>
       <div className="item-description">
         {item.description}
+        {item.projected && (
+          <span className="projected-badge" title={t('invoices.projectedItem')}>
+            📅
+          </span>
+        )}
         {item.isShared && (
           <span className="shared-indicator" title={t('invoices.itemShared')}>
             👥

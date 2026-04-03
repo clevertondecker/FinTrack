@@ -47,7 +47,7 @@ public class BankService {
      */
     @Transactional(readOnly = true)
     public List<Bank> findAll() {
-        return bankRepository.findAll();
+        return bankRepository.findAllByOrderByNameAsc();
     }
 
     /**

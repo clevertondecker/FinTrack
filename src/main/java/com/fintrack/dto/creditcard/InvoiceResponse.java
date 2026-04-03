@@ -15,6 +15,7 @@ public record InvoiceResponse(
     Long creditCardId,
     String creditCardName,
     LocalDate dueDate,
+    String invoiceMonth,
     BigDecimal totalAmount,
     BigDecimal paidAmount,
     String status,

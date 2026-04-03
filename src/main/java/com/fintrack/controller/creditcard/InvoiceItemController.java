@@ -1,6 +1,7 @@
 package com.fintrack.controller.creditcard;
 
 import com.fintrack.application.creditcard.InvoiceService;
+import com.fintrack.controller.BaseController;
 import com.fintrack.dto.creditcard.CreateInvoiceItemRequest;
 import com.fintrack.dto.creditcard.InvoiceItemCreateResponse;
 import com.fintrack.dto.creditcard.InvoiceItemListResponse;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * REST controller for managing invoice items.
@@ -26,7 +26,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/invoices")
-public class InvoiceItemController {
+public class InvoiceItemController extends BaseController {
 
     /** The invoice service. */
     private final InvoiceService invoiceService;
@@ -49,11 +49,7 @@ public class InvoiceItemController {
             @Valid @RequestBody CreateInvoiceItemRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         Invoice savedInvoice = invoiceService.createInvoiceItem(invoiceId, request, user);
         List<InvoiceItem> items = invoiceService.getInvoiceItems(invoiceId, user);
@@ -89,11 +85,7 @@ public class InvoiceItemController {
             @PathVariable Long invoiceId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         List<InvoiceItem> items = invoiceService.getInvoiceItems(invoiceId, user);
         List<InvoiceItemResponse> itemResponses = invoiceService.toInvoiceItemResponseList(items);
@@ -124,11 +116,7 @@ public class InvoiceItemController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
         InvoiceItemResponse itemResponse = invoiceService.toInvoiceItemResponse(item);
@@ -155,11 +143,7 @@ public class InvoiceItemController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         Invoice updatedInvoice = invoiceService.deleteInvoiceItem(invoiceId, itemId, user);
 
@@ -187,11 +171,7 @@ public class InvoiceItemController {
             @Valid @RequestBody UpdateInvoiceItemCategoryRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         InvoiceItem updatedItem =
                 invoiceService.updateInvoiceItemCategory(

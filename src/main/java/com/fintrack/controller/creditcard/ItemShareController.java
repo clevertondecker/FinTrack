@@ -2,6 +2,7 @@ package com.fintrack.controller.creditcard;
 
 import com.fintrack.application.creditcard.ExpenseSharingServiceImpl;
 import com.fintrack.application.creditcard.InvoiceService;
+import com.fintrack.controller.BaseController;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.creditcard.Invoice;
@@ -25,7 +26,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * REST controller for managing item shares.
@@ -33,7 +33,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/invoices")
-public class ItemShareController {
+public class ItemShareController extends BaseController {
 
     /** The expense sharing service. */
     private final ExpenseSharingServiceImpl expenseSharingService;
@@ -61,11 +61,7 @@ public class ItemShareController {
             @Valid @RequestBody CreateItemShareRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
@@ -109,11 +105,7 @@ public class ItemShareController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
@@ -155,11 +147,7 @@ public class ItemShareController {
             @PathVariable Long itemId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
@@ -185,11 +173,7 @@ public class ItemShareController {
     public ResponseEntity<MySharesResponse> getMyShares(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         // Get all shares for the user
         List<ItemShare> userShares = expenseSharingService.getSharesForUser(user);
@@ -223,11 +207,7 @@ public class ItemShareController {
             @Valid @RequestBody MarkShareAsPaidRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         ItemShare updatedShare = expenseSharingService.markShareAsPaid(
             shareId, request.paymentMethod(), request.paidAt(), user);
@@ -249,11 +229,7 @@ public class ItemShareController {
             @PathVariable Long shareId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         ItemShare updatedShare = expenseSharingService.markShareAsUnpaid(shareId, user);
 
@@ -276,11 +252,7 @@ public class ItemShareController {
             @Valid @RequestBody BulkMarkSharesAsPaidRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        User user = userOpt.get();
+        User user = resolveUser(userDetails);
 
         List<ItemShare> updated = expenseSharingService.markSharesAsPaidBulk(
             request.shareIds(), request.paymentMethod(), request.paidAt(), user);
@@ -377,12 +349,9 @@ public class ItemShareController {
     public ResponseEntity<Map<String, Object>> recalculateAllShares(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Optional<User> userOpt = invoiceService.findUserByUsername(userDetails.getUsername());
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
+        User user = resolveUser(userDetails);
 
-        int recalculated = expenseSharingService.recalculateAllShares();
+        int recalculated = expenseSharingService.recalculateSharesForUser(user);
 
         Map<String, Object> response = Map.of(
             "message", "Shares recalculated successfully",

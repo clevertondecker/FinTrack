@@ -162,7 +162,8 @@ Um cartão pode ser atribuído a:
 
 ### Estrutura
 - Vinculada a um `CreditCard` e um mês (`YearMonth`).
-- Campos: `dueDate`, `totalAmount` (soma dos itens), `paidAmount`, `status`.
+- Campos: `dueDate`, `totalAmount` (soma dos itens), `paidAmount`, `status`, `importGroupId`.
+- `invoiceMonth` (DTO): campo derivado de `month.toString()`, usado no frontend para consolidar faturas de diferentes cartões no mesmo mês.
 
 ### Status (InvoiceStatus)
 - `OPEN`: fatura aberta, sem pagamento.
@@ -206,6 +207,17 @@ Um cartão pode ser atribuído a:
 ### Parcelas
 - `installments`: número da parcela atual (ex: 3 de 6).
 - `totalInstallments`: total de parcelas.
+- Itens podem ser `projected` (projetados automaticamente a partir de parcelas futuras).
+- `sourceItemId`: referência ao item original que gerou a projeção.
+
+### Projeção de Parcelas (InstallmentProjectionService)
+- Após importação de fatura, o sistema projeta automaticamente parcelas futuras em faturas dos meses seguintes.
+- Para cada item parcelado com parcelas restantes (`installments < totalInstallments`), cria itens projetados nas faturas dos meses seguintes.
+- Itens projetados copiam: descrição, valor, categoria, data de compra e divisões de despesas (shares).
+- Projeção é **idempotente**: verifica se já existe projeção para o mesmo `sourceItemId` e número de parcela antes de criar.
+- Antes de nova importação, itens projetados da fatura atual são removidos e reprojetados.
+- Faturas futuras são criadas automaticamente se não existirem (com data de vencimento calculada a partir da fatura original).
+- Endpoint manual: `POST /api/invoices/{id}/project-installments`.
 
 ---
 
@@ -465,7 +477,7 @@ Sugestões descartadas são persistidas como assinaturas canceladas, impedindo q
 ### Páginas principais
 - **Dashboard**: visão geral com cards de resumo (total gastos, transações, cartões ativos), ranking de categorias, gráfico de evolução diária e tabela de cartões com status da fatura; valores refletem **a parte do usuário** (shares), não o total bruto do cartão.
 - **Cartões**: gestão de cartões (CRUD, agrupamento por principal, ativação/desativação).
-- **Faturas** (aba Faturas): listagem, filtros, pagamento, itens, categorização, divisão por pessoa no modal de detalhes; **exclusão de fatura** com modal que consome `delete-info` (avisos de itens compartilhados). Na visão consolidada, ações por item usam o **`invoiceId` real do item**, não só o da fatura pai.
+- **Faturas** (aba Faturas): layout "Card Destaque + Lista Compacta" com seções: **Urgentes** (vencidas/parciais como cards grandes), **Fatura Atual** (card em destaque com breakdown de cartões), **Próximas** (lista compacta), **Pagas** (lista compacta). Faturas de diferentes cartões no mesmo mês são consolidadas por `invoiceMonth` no frontend (`invoiceUtils.consolidateInvoices`). Itens projetados são exibidos com badge visual. Ações por item usam o **`invoiceId` real do item**, não o da fatura consolidada. **Exclusão de fatura** com modal que consome `delete-info`.
 - **Faturas** (aba Assinaturas): gestão de assinaturas com detecção automática, sugestões com confirmar/descartar, cards de resumo (custo mensal, ativas, detectadas, não detectadas), CRUD manual, e status visual por item (detectada/não detectada/preço alterado).
 - **Importação**: upload de PDF, acompanhamento de progresso (e fluxos de preview/confirmação quando aplicável).
 - **Pessoas**: gestão do Círculo de Confiança (contatos).

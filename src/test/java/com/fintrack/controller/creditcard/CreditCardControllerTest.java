@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.Set;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +31,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import com.fintrack.application.creditcard.CreditCardService;
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.CardType;
 import com.fintrack.domain.creditcard.CreditCard;
@@ -52,6 +52,9 @@ public class CreditCardControllerTest {
 
     @MockBean
     private CreditCardService creditCardService;
+
+    @MockBean
+    private UserService userService;
 
     private User testUser;
     private Bank testBank;
@@ -78,7 +81,7 @@ public class CreditCardControllerTest {
         // Given
         Long creditCardId = 2L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.activateCreditCard(eq(creditCardId), eq(testUser))).thenReturn(inactiveCreditCard);
 
         // When & Then
@@ -96,7 +99,7 @@ public class CreditCardControllerTest {
         // Given
         Long creditCardId = 999L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.activateCreditCard(eq(creditCardId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -114,7 +117,8 @@ public class CreditCardControllerTest {
         // Given
         Long creditCardId = 1L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+        when(userService.getCurrentUser(eq("john@example.com")))
+            .thenThrow(new IllegalArgumentException("User not found"));
 
         // When & Then
         mockMvc.perform(patch("/api/credit-cards/{id}/activate", creditCardId)
@@ -157,7 +161,7 @@ public class CreditCardControllerTest {
         );
         List<CreditCardResponse> creditCardResponses = List.of(creditCardResponse1, creditCardResponse2);
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.getUserCreditCards(eq(testUser), eq(false))).thenReturn(creditCards);
         when(creditCardService.toCreditCardResponseList(eq(creditCards))).thenReturn(creditCardResponses);
         when(creditCardService.toGroupedCreditCardResponseList(eq(creditCards))).thenReturn(List.of());
@@ -194,7 +198,7 @@ public class CreditCardControllerTest {
             null, null, null, null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.getCreditCard(eq(creditCardId), eq(testUser))).thenReturn(testCreditCard);
         when(creditCardService.toCreditCardResponse(eq(testCreditCard))).thenReturn(creditCardResponse);
 
@@ -217,7 +221,7 @@ public class CreditCardControllerTest {
         // Given
         Long creditCardId = 999L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.getCreditCard(eq(creditCardId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -234,7 +238,7 @@ public class CreditCardControllerTest {
     void shouldDeactivateCreditCardSuccessfully() throws Exception {
         Long creditCardId = 1L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.deactivateCreditCard(eq(creditCardId), eq(testUser))).thenReturn(testCreditCard);
 
         mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
@@ -250,7 +254,7 @@ public class CreditCardControllerTest {
     void shouldReturn404WhenDeactivatingNonExistentCreditCard() throws Exception {
         Long creditCardId = 999L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.deactivateCreditCard(eq(creditCardId), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -266,7 +270,8 @@ public class CreditCardControllerTest {
     void shouldReturn400WhenUserNotFoundOnDeactivate() throws Exception {
         Long creditCardId = 1L;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+        when(userService.getCurrentUser(eq("john@example.com")))
+            .thenThrow(new IllegalArgumentException("User not found"));
 
         mockMvc.perform(delete("/api/credit-cards/{id}", creditCardId)
                 .contentType(MediaType.APPLICATION_JSON))
@@ -293,7 +298,7 @@ public class CreditCardControllerTest {
             new BigDecimal("10000.00"), testUser, testBank);
         setCreditCardId(updatedCreditCard, creditCardId);
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser))).thenReturn(updatedCreditCard);
 
         mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
@@ -323,7 +328,7 @@ public class CreditCardControllerTest {
             }
             """;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Credit card not found"));
 
@@ -349,7 +354,8 @@ public class CreditCardControllerTest {
             }
             """;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.empty());
+        when(userService.getCurrentUser(eq("john@example.com")))
+            .thenThrow(new IllegalArgumentException("User not found"));
 
         mockMvc.perform(put("/api/credit-cards/{id}", creditCardId)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -373,7 +379,7 @@ public class CreditCardControllerTest {
             }
             """;
 
-        when(creditCardService.findUserByUsername(eq("john@example.com"))).thenReturn(Optional.of(testUser));
+        when(userService.getCurrentUser(eq("john@example.com"))).thenReturn(testUser);
         when(creditCardService.updateCreditCard(eq(creditCardId), any(), eq(testUser)))
             .thenThrow(new IllegalArgumentException("Bank not found"));
 

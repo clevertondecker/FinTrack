@@ -60,11 +60,11 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public Map<Category, BigDecimal> getExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShareForItem = calculateUserShareForItem(item, user);
+                BigDecimal userShareForItem = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShareForItem.compareTo(BigDecimal.ZERO) > 0) {
                     expensesMap.merge(resolveCategory(item), userShareForItem, BigDecimal::add);
                 }
@@ -74,47 +74,9 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         return expensesMap;
     }
 
-    /**
-     * Calculates the amount a specific user is responsible for in a specific invoice item.
-     * Uses the exact same logic as InvoiceCalculationService.calculateUserShareForItem to ensure consistency.
-     *
-     * @param item the invoice item to calculate for. Must not be null.
-     * @param user the user to calculate for. Must not be null.
-     * @return the amount the user is responsible for. Never null.
-     */
-    private BigDecimal calculateUserShareForItem(final InvoiceItem item, final User user) {
-        for (ItemShare share : item.getShares()) {
-            if (user.equals(share.getUser())) {
-                return share.getAmount();
-            }
-        }
-        
-        // If item has no shares, check if user is the card owner
-        if (item.getShares().isEmpty()) {
-            User cardOwner = item.getInvoice().getCreditCard().getOwner();
-            if (cardOwner.equals(user)) {
-                return item.getAmount();
-            }
-            // User is not the card owner and item has no shares, so they owe nothing
-            return BigDecimal.ZERO;
-        }
-        
-        // Item is shared but user has no share
-        // Only the card owner should receive the unshared amount
-        User cardOwner = item.getInvoice().getCreditCard().getOwner();
-        if (cardOwner.equals(user)) {
-            return item.getUnsharedAmount();
-        }
-        
-        // User is not the card owner and has no share, so they owe nothing
-        return BigDecimal.ZERO;
-    }
-
     @Override
     public BigDecimal getTotalExpenses(final User user, final YearMonth month) {
-        // Use the same calculation method as InvoiceCalculationService for consistency
-        // This ensures the total matches what's shown in the invoice list
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         BigDecimal total = BigDecimal.ZERO;
         
         for (Invoice invoice : invoices) {
@@ -128,12 +90,9 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public Map<Category, BigDecimal> getTotalExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
 
         for (Invoice invoice : invoices) {
-            if (!isOwnedBy(invoice, user)) {
-                continue;
-            }
             for (InvoiceItem item : invoice.getItems()) {
                 expensesMap.merge(resolveCategory(item), item.getAmount(), BigDecimal::add);
             }
@@ -144,13 +103,10 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public BigDecimal getGrandTotalExpenses(final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         BigDecimal total = BigDecimal.ZERO;
 
         for (Invoice invoice : invoices) {
-            if (!isOwnedBy(invoice, user)) {
-                continue;
-            }
             total = total.add(invoice.getTotalAmount());
         }
 
@@ -163,12 +119,9 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
 
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
 
         for (Invoice invoice : invoices) {
-            if (!isOwnedBy(invoice, user)) {
-                continue;
-            }
             for (InvoiceItem item : invoice.getItems()) {
                 if (matchesCategory(resolveCategory(item), targetCategory)) {
                     details.add(new ExpenseDetailResponse(
@@ -187,11 +140,11 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             final User user, final YearMonth month, final Category category) {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShareForItem = calculateUserShareForItem(item, user);
+                BigDecimal userShareForItem = invoiceCalculationService.calculateUserShareForItem(item, user);
 
                 if (userShareForItem.compareTo(BigDecimal.ZERO) > 0
                         && matchesCategory(resolveCategory(item), targetCategory)) {
@@ -227,7 +180,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public Map<YearMonth, Map<Category, BigDecimal>> getExpensesByMonthAndCategory(
             final User user, final YearMonth from, final YearMonth to) {
         Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
-        List<Invoice> invoices = invoiceRepository.findByMonthBetween(from, to);
+        List<Invoice> invoices = invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, user);
 
         for (Invoice invoice : invoices) {
             Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
@@ -235,7 +188,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
                 continue;
             }
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) > 0) {
                     Category category = resolveCategory(item);
                     monthMap.merge(category, userShare, BigDecimal::add);
@@ -250,12 +203,9 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public Map<YearMonth, Map<Category, BigDecimal>> getTotalExpensesByMonthAndCategory(
             final User user, final YearMonth from, final YearMonth to) {
         Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
-        List<Invoice> invoices = invoiceRepository.findByMonthBetween(from, to);
+        List<Invoice> invoices = invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, user);
 
         for (Invoice invoice : invoices) {
-            if (!isOwnedBy(invoice, user)) {
-                continue;
-            }
             Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
             if (monthMap == null) {
                 continue;
@@ -270,12 +220,12 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public List<TopExpenseEntry> getTopExpenses(final User user, final YearMonth month, final int limit) {
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         List<TopExpenseEntry> entries = new ArrayList<>();
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) > 0) {
                     entries.add(toTopExpenseEntry(item, invoice.getId(), userShare));
                 }
@@ -288,13 +238,10 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public List<TopExpenseEntry> getTotalTopExpenses(
             final User user, final YearMonth month, final int limit) {
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         List<TopExpenseEntry> entries = new ArrayList<>();
 
         for (Invoice invoice : invoices) {
-            if (!isOwnedBy(invoice, user)) {
-                continue;
-            }
             for (InvoiceItem item : invoice.getItems()) {
                 entries.add(toTopExpenseEntry(item, invoice.getId(), item.getAmount()));
             }
@@ -322,13 +269,6 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
      */
     private Category resolveCategory(final InvoiceItem item) {
         return item.getCategory() != null ? item.getCategory() : UNCATEGORIZED_CATEGORY;
-    }
-
-    /**
-     * Checks if an invoice belongs to (is owned by) the given user.
-     */
-    private boolean isOwnedBy(final Invoice invoice, final User user) {
-        return invoice.getCreditCard().getOwner().equals(user);
     }
 
     /**
@@ -381,13 +321,13 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public List<CardExpenseEntry> getExpensesByCard(final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         Map<Long, CardAggregation> cardMap = new HashMap<>();
 
         for (Invoice invoice : invoices) {
             CreditCard card = invoice.getCreditCard();
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
                     continue;
                 }
@@ -414,7 +354,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public List<RecurrenceExpenseEntry> getExpensesByRecurrence(
             final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonth(month);
+        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
         BigDecimal installmentTotal = BigDecimal.ZERO;
         BigDecimal singleTotal = BigDecimal.ZERO;
         int installmentCount = 0;
@@ -422,7 +362,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
-                BigDecimal userShare = calculateUserShareForItem(item, user);
+                BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
                     continue;
                 }

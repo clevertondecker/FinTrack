@@ -34,23 +34,31 @@ export const resolveGroupStatus = (group: Invoice[]): string => {
   return worst;
 };
 
+/**
+ * Derives a grouping key for an invoice: uses invoiceMonth if available,
+ * otherwise falls back to the year-month portion of dueDate.
+ */
+const getMonthKey = (inv: Invoice): string => {
+  if (inv.invoiceMonth) return inv.invoiceMonth;
+  const due = new Date(inv.dueDate);
+  const y = due.getFullYear();
+  const m = String(due.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+};
+
 export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
   const grouped = new Map<string, Invoice[]>();
-  const standalone: Invoice[] = [];
 
   invoiceList.forEach(inv => {
-    if (inv.importGroupId) {
-      const list = grouped.get(inv.importGroupId) || [];
-      list.push(inv);
-      grouped.set(inv.importGroupId, list);
-    } else {
-      standalone.push(inv);
-    }
+    const key = getMonthKey(inv);
+    const list = grouped.get(key) || [];
+    list.push(inv);
+    grouped.set(key, list);
   });
 
-  const consolidated: Invoice[] = [...standalone];
+  const consolidated: Invoice[] = [];
 
-  grouped.forEach((group, groupId) => {
+  grouped.forEach((group) => {
     if (group.length === 1) {
       consolidated.push(group[0]);
       return;
@@ -79,6 +87,7 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       creditCardId: group[0].creditCardId,
       creditCardName: cardNames,
       dueDate: group[0].dueDate,
+      invoiceMonth: group[0].invoiceMonth,
       totalAmount,
       paidAmount,
       status: worstStatus,
@@ -86,7 +95,7 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       updatedAt: group[0].updatedAt,
       userShare: userShare !== totalAmount ? userShare : undefined,
       contactShares: mergedShares.length > 0 ? mergedShares : undefined,
-      importGroupId: groupId,
+      importGroupId: group[0].importGroupId,
       _consolidatedCards: group,
     });
   });
