@@ -148,12 +148,10 @@ public class ItemShareController extends BaseController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         User user = resolveUser(userDetails);
-
-        // Get the invoice item
         InvoiceItem item = invoiceService.getInvoiceItem(invoiceId, itemId, user);
 
-        // Remove shares
         expenseSharingService.removeShares(item);
+        expenseSharingService.propagateSharesToProjections(item);
 
         return ResponseEntity.ok(Map.of(
             "message", "Item shares removed successfully",

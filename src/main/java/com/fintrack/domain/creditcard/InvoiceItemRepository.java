@@ -165,4 +165,15 @@ public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> 
         + "AND i.month = :month")
     List<InvoiceItem> findItemsByOwnerAndMonthYearMonth(@Param("owner") User owner,
                                                        @Param("month") YearMonth month);
-} 
+
+    /**
+     * Finds all projected items derived from a given source item.
+     * Explicit JPQL so Hibernate always matches {@code projected = true} and {@code sourceItemId}.
+     *
+     * @param sourceItemId the ID of the original item. Must not be null.
+     * @return projected items referencing the source, ordered by installment. Never null, may be empty.
+     */
+    @Query("SELECT ii FROM InvoiceItem ii WHERE ii.sourceItemId = :sourceItemId AND ii.projected = true "
+            + "ORDER BY ii.installments ASC")
+    List<InvoiceItem> findBySourceItemIdAndProjectedTrue(@Param("sourceItemId") Long sourceItemId);
+}

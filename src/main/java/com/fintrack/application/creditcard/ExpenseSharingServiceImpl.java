@@ -4,11 +4,14 @@ import com.fintrack.application.contact.TrustedContactService;
 import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.ExpenseSharingService;
 import com.fintrack.domain.creditcard.InvoiceItem;
+import com.fintrack.domain.creditcard.InvoiceItemRepository;
 import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.creditcard.ItemShareRepository;
 import com.fintrack.domain.user.User;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.dto.creditcard.CreateItemShareRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,47 +34,48 @@ import java.util.stream.Collectors;
 @Transactional
 public class ExpenseSharingServiceImpl implements ExpenseSharingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ExpenseSharingServiceImpl.class);
+
+    /** Scale for share line amounts (same as {@link #createSharesFromRequest}). */
+    private static final int SHARE_AMOUNT_SCALE = 2;
+
     private final ItemShareRepository itemShareRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
     private final UserRepository userRepository;
     private final TrustedContactService trustedContactService;
 
     public ExpenseSharingServiceImpl(final ItemShareRepository itemShareRepository,
+                                     final InvoiceItemRepository invoiceItemRepository,
                                      final UserRepository userRepository,
                                      final TrustedContactService trustedContactService) {
         this.itemShareRepository = itemShareRepository;
+        this.invoiceItemRepository = invoiceItemRepository;
         this.userRepository = userRepository;
         this.trustedContactService = trustedContactService;
     }
 
     @Override
-
     public void shareItem(final InvoiceItem item, final Map<User, BigDecimal> shares) {
+        replaceUserSharesOnItem(item, shares);
+    }
+
+    @Override
+    public void updateShares(final InvoiceItem item, final Map<User, BigDecimal> newShares) {
+        replaceUserSharesOnItem(item, newShares);
+    }
+
+    /**
+     * Replaces all shares on the item with a new user-only split and propagates to projected installments.
+     */
+    private void replaceUserSharesOnItem(final InvoiceItem item, final Map<User, BigDecimal> shares) {
         validateShares(shares);
-        
-        // Remove existing shares
         removeShares(item);
-        
-        // Create shares with rounding adjustment to ensure a sum equals item amount
         List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, shares, false);
         for (ItemShare share : shareList) {
             item.addShare(share);
             itemShareRepository.save(share);
         }
-    }
-
-    @Override
-    public void updateShares(final InvoiceItem item, final Map<User, BigDecimal> newShares) {
-        validateShares(newShares);
-        
-        // Remove existing shares
-        removeShares(item);
-        
-        // Create shares with rounding adjustment to ensure a sum equals item amount
-        List<ItemShare> shareList = createSharesWithRoundingAdjustment(item, newShares, false);
-        for (ItemShare share : shareList) {
-            item.addShare(share);
-            itemShareRepository.save(share);
-        }
+        propagateSharesToProjections(item);
     }
 
     @Override
@@ -98,8 +103,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     @Override
-    public List<ItemShare> getSharesForItem(InvoiceItem item) {
-        // Use the repository method to ensure shares are loaded from the database
+    public List<ItemShare> getSharesForItem(final InvoiceItem item) {
         return itemShareRepository.findByInvoiceItem(item);
     }
 
@@ -120,8 +124,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
 
     }
 
-    // Extracted method to calculate total percentage and validate individual percentages.
-    private BigDecimal getTotalPercentage(Map<User, BigDecimal> shares) {
+    private BigDecimal getTotalPercentage(final Map<User, BigDecimal> shares) {
         BigDecimal totalPercentage = BigDecimal.ZERO;
         for (BigDecimal percentage : shares.values()) {
             if (percentage == null) {
@@ -211,6 +214,9 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             item.addShare(share);
             created.add(itemShareRepository.save(share));
         }
+
+        propagateSharesToProjections(item);
+
         return created;
     }
 
@@ -243,6 +249,7 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
             ItemShare savedShare = itemShareRepository.save(share);
             createdShares.add(savedShare);
         }
+        propagateSharesToProjections(item);
         return createdShares;
     }
 
@@ -475,20 +482,90 @@ public class ExpenseSharingServiceImpl implements ExpenseSharingService {
     }
 
     /**
+     * Replicates the share split of an installment source item onto every projected copy
+     * (future invoice lines with the same {@code sourceItemId}). No-op if the item is not
+     * multi-installment, has no id, or has no projections. Uses DB-loaded templates so the
+     * split matches what was just persisted; amounts are recomputed from each line's total.
+     *
+     * @param sourceItem the imported/current installment line. Must not be null.
+     */
+    public void propagateSharesToProjections(final InvoiceItem sourceItem) {
+        if (sourceItem.getId() == null || sourceItem.getTotalInstallments() <= 1) {
+            return;
+        }
+
+        List<InvoiceItem> projectedItems =
+                invoiceItemRepository.findBySourceItemIdAndProjectedTrue(sourceItem.getId());
+        if (projectedItems.isEmpty()) {
+            return;
+        }
+
+        List<ItemShare> templates = loadShareTemplatesOrdered(sourceItem);
+        for (InvoiceItem projected : projectedItems) {
+            replicateTemplatesOntoProjectedItem(projected, templates);
+        }
+
+        logger.info(
+                "Propagated {} template shares onto {} projected items (source item id={})",
+                templates.size(), projectedItems.size(), sourceItem.getId());
+    }
+
+    /**
+     * Loads persisted shares for the item with user/contact initialized; stable order by id.
+     */
+    private List<ItemShare> loadShareTemplatesOrdered(final InvoiceItem sourceItem) {
+        List<ItemShare> list = itemShareRepository.findByInvoiceItem(sourceItem);
+        list.sort(Comparator.comparing(ItemShare::getId, Comparator.nullsFirst(Long::compareTo)));
+        return list;
+    }
+
+    /**
+     * Clears existing shares on the projected line, then creates shares matching the templates
+     * with amounts derived from {@code projected.getAmount()} (last template absorbs rounding).
+     */
+    private void replicateTemplatesOntoProjectedItem(
+            final InvoiceItem projected, final List<ItemShare> templates) {
+        removeShares(projected);
+        if (templates.isEmpty()) {
+            return;
+        }
+
+        BigDecimal lineTotal = projected.getAmount();
+        BigDecimal accumulated = BigDecimal.ZERO;
+        for (int i = 0; i < templates.size(); i++) {
+            ItemShare template = templates.get(i);
+            boolean isLast = (i == templates.size() - 1);
+            BigDecimal amount = isLast
+                    ? lineTotal.subtract(accumulated).setScale(SHARE_AMOUNT_SCALE, RoundingMode.HALF_UP)
+                    : lineTotal.multiply(template.getPercentage())
+                            .setScale(SHARE_AMOUNT_SCALE, RoundingMode.HALF_UP);
+            accumulated = accumulated.add(amount);
+
+            ItemShare copy = copyShareTemplateToLine(template, projected, amount);
+            projected.addShare(copy);
+            itemShareRepository.save(copy);
+        }
+    }
+
+    private static ItemShare copyShareTemplateToLine(
+            final ItemShare template, final InvoiceItem targetLine, final BigDecimal amount) {
+        if (template.getUser() != null) {
+            return ItemShare.of(
+                    template.getUser(), targetLine,
+                    template.getPercentage(), amount, template.isResponsible());
+        }
+        return ItemShare.forContact(
+                template.getTrustedContact(), targetLine,
+                template.getPercentage(), amount, template.isResponsible());
+    }
+
+    /**
      * Recreates an {@link ItemShare} with a new amount, preserving the participant type
      * (user or contact) and payment information from the original share.
      */
-    private ItemShare recreateShareWithAmount(ItemShare original, InvoiceItem item, BigDecimal newAmount) {
-        ItemShare updated;
-        if (original.isContactShare()) {
-            updated = ItemShare.forContact(
-                    original.getTrustedContact(), item,
-                    original.getPercentage(), newAmount, original.isResponsible());
-        } else {
-            updated = ItemShare.of(
-                    original.getUser(), item,
-                    original.getPercentage(), newAmount, original.isResponsible());
-        }
+    private ItemShare recreateShareWithAmount(
+            final ItemShare original, final InvoiceItem item, final BigDecimal newAmount) {
+        ItemShare updated = copyShareTemplateToLine(original, item, newAmount);
         if (original.isPaid()) {
             updated.markAsPaid(original.getPaymentMethod(), original.getPaidAt());
         }
