@@ -71,6 +71,16 @@ public class PdfInvoiceParser {
     private static final Pattern IOF_PATTERN = Pattern.compile(
         "^IOF\\s+DESPESA\\s+NO\\s+EXTERIOR\\s+([\\d.,]+)$"
     );
+
+    /**
+     * Pattern for transactions with dual amounts (BRL and USD).
+     * Santander format: Date Description BRL_Amount USD_Amount
+     * Example: "03/05 UDEMY SUBSCRIPTION 346,86 65,47"
+     * Groups: 1=Date, 2=Description, 3=BRL_Amount, 4=USD_Amount
+     */
+    private static final Pattern DUAL_CURRENCY_PATTERN = Pattern.compile(
+        "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+([\\d.,]+)\\s+([\\d.,]+)$"
+    );
     
     // Padrão para itens normais (apenas valor em reais)
     private static final Pattern SANTANDER_ITEM_PATTERN = Pattern.compile(
@@ -444,6 +454,10 @@ public class PdfInvoiceParser {
         if (item != null) {
             return item;
         }
+        item = tryParseDualCurrency(line);
+        if (item != null) {
+            return item;
+        }
         return tryParseStandard(line);
     }
 
@@ -506,6 +520,29 @@ public class PdfInvoiceParser {
             logger.warn("Error processing parceled item: {}", line, e);
         }
         return null;
+    }
+
+    private ParsedInvoiceItem tryParseDualCurrency(String line) {
+        Matcher m = DUAL_CURRENCY_PATTERN.matcher(line);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            BigDecimal brlAmount = parseBrazilianAmount(m.group(3));
+            BigDecimal usdAmount = parseBrazilianAmount(m.group(4));
+            // BRL amount is always larger than USD (exchange rate > 1)
+            if (brlAmount.compareTo(BigDecimal.ZERO) > 0
+                    && usdAmount.compareTo(BigDecimal.ZERO) > 0
+                    && brlAmount.compareTo(usdAmount) > 0) {
+                LocalDate date = parseDate(m.group(1));
+                String description = m.group(2).trim();
+                return new ParsedInvoiceItem(description, brlAmount, date, null, 1, 1, 0.85);
+            }
+            return null;
+        } catch (Exception e) {
+            logger.warn("Error processing dual-currency item: {}", line, e);
+            return null;
+        }
     }
 
     private ParsedInvoiceItem tryParseStandard(String line) {
