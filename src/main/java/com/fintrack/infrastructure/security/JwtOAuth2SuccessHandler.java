@@ -1,9 +1,7 @@
 package com.fintrack.infrastructure.security;
 
+import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.AuthProvider;
-import com.fintrack.domain.user.Role;
-import com.fintrack.domain.user.User;
-import com.fintrack.domain.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -16,7 +14,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Set;
 
 /**
  * Handles successful OAuth2 authentication by creating/updating user and generating JWT token.
@@ -39,16 +36,16 @@ public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     /** The JWT utility. */
     private final JwtUtil jwtUtil;
-    /** The user repository. */
-    private final UserRepository userRepository;
+    /** The user service. */
+    private final UserService userService;
     /** The redirect URI. */
     private final String redirectUri;
 
     public JwtOAuth2SuccessHandler(JwtUtil jwtUtil,
-                                   UserRepository userRepository,
+                                   UserService userService,
                                    @Value("${app.oauth2.redirect-uri}") String redirectUri) {
         this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
+        this.userService = userService;
         this.redirectUri = redirectUri;
     }
 
@@ -128,17 +125,13 @@ public class JwtOAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     /**
-     * Finds an existing user or creates new one for OAuth2 authentication.
+     * Finds an existing user or creates new one for OAuth2 authentication,
+     * migrating any trusted_contact shares to the user account on first login.
      *
      * @param name  the user's name from OAuth2 provider
      * @param email the user's email from OAuth2 provider
      */
     private void findOrCreateOAuthUser(String name, String email) {
-        userRepository.findByEmail(com.fintrack.domain.user.Email.of(email))
-            .orElseGet(() -> {
-                logger.info("Creating new OAuth2 user: {}", email);
-                User newUser = User.createOAuth2User(name, email, Set.of(Role.USER), AuthProvider.GOOGLE);
-                return userRepository.save(newUser);
-            });
+        userService.findOrCreateOAuthUser(name, email, AuthProvider.GOOGLE);
     }
 } 

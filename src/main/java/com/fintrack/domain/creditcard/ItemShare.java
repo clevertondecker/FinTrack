@@ -353,6 +353,20 @@ public class ItemShare {
     }
 
     /**
+     * Migrates this share from a trusted contact to a registered user.
+     * Clears the trusted contact reference and sets the user. Called when a trusted
+     * contact registers as a system user with the same email.
+     *
+     * @param newUser the registered user to assign this share to. Must not be null.
+     */
+    public void assignToUser(User newUser) {
+        Validate.notNull(newUser, "User must not be null.");
+        this.user = newUser;
+        this.trustedContact = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * Gets the invoice item this share belongs to.
      *
      * @return the invoice item. Never null.

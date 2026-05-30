@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import com.fintrack.domain.creditcard.ItemShareRepository;
 import com.fintrack.domain.user.UserRepository;
 import com.fintrack.domain.user.UserConnection;
 import com.fintrack.infrastructure.persistence.contact.TrustedContactJpaRepository;
@@ -58,6 +59,9 @@ public class UserServiceTest {
     @Mock
     private CreditCardJpaRepository creditCardRepository;
 
+    @Mock
+    private ItemShareRepository itemShareRepository;
+
     private UserService userService;
 
     private static final String VALID_NAME = "John Doe";
@@ -69,7 +73,7 @@ public class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, passwordService, userConnectionRepository,
-            trustedContactRepository, creditCardRepository);
+            trustedContactRepository, creditCardRepository, itemShareRepository);
     }
 
     @Nested
@@ -81,7 +85,7 @@ public class UserServiceTest {
         void shouldCreateServiceWithValidDependencies() {
             UserService service = new UserService(
                 userRepository, passwordService, userConnectionRepository,
-                trustedContactRepository, creditCardRepository);
+                trustedContactRepository, creditCardRepository, itemShareRepository);
 
             assertThat(service).isNotNull();
         }
@@ -91,7 +95,7 @@ public class UserServiceTest {
         void shouldThrowExceptionWhenUserRepositoryIsNull() {
             assertThatThrownBy(() ->
               new UserService(null, passwordService, userConnectionRepository,
-                  trustedContactRepository, creditCardRepository))
+                  trustedContactRepository, creditCardRepository, itemShareRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The userRepository cannot be null");
         }
@@ -101,7 +105,7 @@ public class UserServiceTest {
         void shouldThrowExceptionWhenPasswordServiceIsNull() {
             assertThatThrownBy(() ->
               new UserService(userRepository, null, userConnectionRepository,
-                  trustedContactRepository, creditCardRepository))
+                  trustedContactRepository, creditCardRepository, itemShareRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The passwordService cannot be null");
         }
@@ -111,7 +115,7 @@ public class UserServiceTest {
         void shouldThrowExceptionWhenUserConnectionRepositoryIsNull() {
             assertThatThrownBy(() ->
               new UserService(userRepository, passwordService, null,
-                  trustedContactRepository, creditCardRepository))
+                  trustedContactRepository, creditCardRepository, itemShareRepository))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("The userConnectionRepository cannot be null");
         }

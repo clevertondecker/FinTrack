@@ -6,6 +6,9 @@ import java.util.Set;
 
 import com.fintrack.domain.contact.TrustedContact;
 import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.ItemShare;
+import com.fintrack.domain.creditcard.ItemShareRepository;
+import com.fintrack.domain.user.AuthProvider;
 import com.fintrack.domain.user.Email;
 import com.fintrack.domain.user.Role;
 import com.fintrack.domain.user.User;
@@ -42,23 +45,48 @@ public class UserService {
     private final UserConnectionJpaRepository userConnectionRepository;
     private final TrustedContactJpaRepository trustedContactRepository;
     private final CreditCardJpaRepository creditCardRepository;
+    private final ItemShareRepository itemShareRepository;
 
     public UserService(final UserRepository theUserRepository,
                        final PasswordService thePasswordService,
                        final UserConnectionJpaRepository theUserConnectionRepository,
                        final TrustedContactJpaRepository theTrustedContactRepository,
-                       final CreditCardJpaRepository theCreditCardRepository) {
+                       final CreditCardJpaRepository theCreditCardRepository,
+                       final ItemShareRepository theItemShareRepository) {
         Validate.notNull(theUserRepository, "The userRepository cannot be null.");
         Validate.notNull(thePasswordService, "The passwordService cannot be null.");
         Validate.notNull(theUserConnectionRepository, "The userConnectionRepository cannot be null.");
         Validate.notNull(theTrustedContactRepository, "The trustedContactRepository cannot be null.");
         Validate.notNull(theCreditCardRepository, "The creditCardRepository cannot be null.");
+        Validate.notNull(theItemShareRepository, "The itemShareRepository cannot be null.");
 
         userRepository = theUserRepository;
         passwordService = thePasswordService;
         userConnectionRepository = theUserConnectionRepository;
         trustedContactRepository = theTrustedContactRepository;
         creditCardRepository = theCreditCardRepository;
+        itemShareRepository = theItemShareRepository;
+    }
+
+    /**
+     * Finds an existing OAuth2 user or creates a new one, migrating any trusted_contact
+     * shares to the user account when the email matches.
+     *
+     * @param name  the user's name from the OAuth2 provider
+     * @param email the user's email from the OAuth2 provider
+     * @param provider the OAuth2 provider
+     * @return the existing or newly created user. Never null.
+     */
+    @Transactional
+    public User findOrCreateOAuthUser(String name, String email, AuthProvider provider) {
+        return userRepository.findByEmail(Email.of(email))
+            .orElseGet(() -> {
+                logger.info("Creating new OAuth2 user: {}", email);
+                User newUser = User.createOAuth2User(name, email, Set.of(Role.USER), provider);
+                User saved = userRepository.save(newUser);
+                migrateContactAssignments(saved);
+                return saved;
+            });
     }
 
     /**
@@ -178,6 +206,7 @@ public class UserService {
 
         for (TrustedContact contact : matchingContacts) {
             migrateCardsFromContact(contact, newUser);
+            migrateSharesFromContact(contact, newUser);
             createBidirectionalConnection(contact.getOwner(), newUser);
         }
     }
@@ -191,6 +220,18 @@ public class UserService {
             creditCardRepository.saveAll(cards);
             logger.info("Migrated {} card(s) from contact {} to user {}",
                 cards.size(), contact.getId(), newUser.getId());
+        }
+    }
+
+    private void migrateSharesFromContact(TrustedContact contact, User newUser) {
+        List<ItemShare> shares = itemShareRepository.findByTrustedContact(contact);
+        for (ItemShare share : shares) {
+            share.assignToUser(newUser);
+        }
+        if (!shares.isEmpty()) {
+            itemShareRepository.saveAll(shares);
+            logger.info("Migrated {} item share(s) from contact {} to user {}",
+                shares.size(), contact.getId(), newUser.getId());
         }
     }
 
