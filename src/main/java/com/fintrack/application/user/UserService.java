@@ -79,14 +79,14 @@ public class UserService {
      */
     @Transactional
     public User findOrCreateOAuthUser(String name, String email, AuthProvider provider) {
-        return userRepository.findByEmail(Email.of(email))
+        User user = userRepository.findByEmail(Email.of(email))
             .orElseGet(() -> {
                 logger.info("Creating new OAuth2 user: {}", email);
                 User newUser = User.createOAuth2User(name, email, Set.of(Role.USER), provider);
-                User saved = userRepository.save(newUser);
-                migrateContactAssignments(saved);
-                return saved;
+                return userRepository.save(newUser);
             });
+        migrateContactAssignments(user);
+        return user;
     }
 
     /**

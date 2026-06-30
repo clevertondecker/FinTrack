@@ -447,4 +447,39 @@ public class UserServiceTest {
             verify(passwordService, never()).encodePassword(any());
         }
     }
+
+    @Nested
+    @DisplayName("Find Or Create OAuth User Tests")
+    class FindOrCreateOAuthUserTests {
+
+        @Test
+        @DisplayName("Should create new user and run migration when email not found")
+        void shouldCreateNewUserAndRunMigration() {
+            when(userRepository.findByEmail(Email.of(VALID_EMAIL))).thenReturn(Optional.empty());
+            User savedUser = User.createOAuth2User(VALID_NAME, VALID_EMAIL, VALID_ROLES, AuthProvider.GOOGLE);
+            when(userRepository.save(any(User.class))).thenReturn(savedUser);
+            when(trustedContactRepository.findByEmail(VALID_EMAIL)).thenReturn(List.of());
+
+            User result = userService.findOrCreateOAuthUser(VALID_NAME, VALID_EMAIL, AuthProvider.GOOGLE);
+
+            assertThat(result).isNotNull();
+            verify(userRepository).save(any(User.class));
+            verify(trustedContactRepository).findByEmail(VALID_EMAIL);
+        }
+
+        @Test
+        @DisplayName("Should return existing user and still run migration on every login")
+        void shouldRunMigrationForExistingUserOnLogin() {
+            User existingUser = User.createOAuth2User(VALID_NAME, VALID_EMAIL, VALID_ROLES, AuthProvider.GOOGLE);
+            when(userRepository.findByEmail(Email.of(VALID_EMAIL))).thenReturn(Optional.of(existingUser));
+            when(trustedContactRepository.findByEmail(VALID_EMAIL)).thenReturn(List.of());
+
+            User result = userService.findOrCreateOAuthUser(VALID_NAME, VALID_EMAIL, AuthProvider.GOOGLE);
+
+            assertThat(result).isEqualTo(existingUser);
+            verify(userRepository, never()).save(any());
+            // migration must run even for existing users so new trusted_contact shares are linked
+            verify(trustedContactRepository).findByEmail(VALID_EMAIL);
+        }
+    }
 }
