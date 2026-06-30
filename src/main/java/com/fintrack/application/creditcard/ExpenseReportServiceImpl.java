@@ -21,6 +21,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Implementation of ExpenseReportService.
@@ -57,10 +60,36 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     /** Category for items without a category. */
     private static final Category UNCATEGORIZED_CATEGORY = Category.of("Sem categoria", "#CCCCCC");
 
+    private List<Invoice> getInvoicesForUser(final User user, final YearMonth month) {
+        List<Invoice> owned = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> assigned = invoiceRepository.findByMonthAndCreditCardAssignedUser(month, user);
+        if (assigned.isEmpty()) {
+            return owned;
+        }
+        Set<Long> ownedIds = owned.stream().map(Invoice::getId).collect(Collectors.toSet());
+        return Stream.concat(
+            owned.stream(),
+            assigned.stream().filter(i -> !ownedIds.contains(i.getId()))
+        ).toList();
+    }
+
+    private List<Invoice> getInvoicesForUser(final User user, final YearMonth from, final YearMonth to) {
+        List<Invoice> owned = invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, user);
+        List<Invoice> assigned = invoiceRepository.findByMonthBetweenAndCreditCardAssignedUser(from, to, user);
+        if (assigned.isEmpty()) {
+            return owned;
+        }
+        Set<Long> ownedIds = owned.stream().map(Invoice::getId).collect(Collectors.toSet());
+        return Stream.concat(
+            owned.stream(),
+            assigned.stream().filter(i -> !ownedIds.contains(i.getId()))
+        ).toList();
+    }
+
     @Override
     public Map<Category, BigDecimal> getExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -76,7 +105,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public BigDecimal getTotalExpenses(final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         BigDecimal total = BigDecimal.ZERO;
         
         for (Invoice invoice : invoices) {
@@ -90,7 +119,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public Map<Category, BigDecimal> getTotalExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -103,7 +132,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public BigDecimal getGrandTotalExpenses(final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         BigDecimal total = BigDecimal.ZERO;
 
         for (Invoice invoice : invoices) {
@@ -119,7 +148,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
 
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -140,7 +169,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             final User user, final YearMonth month, final Category category) {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -180,7 +209,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public Map<YearMonth, Map<Category, BigDecimal>> getExpensesByMonthAndCategory(
             final User user, final YearMonth from, final YearMonth to) {
         Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
-        List<Invoice> invoices = invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, user);
+        List<Invoice> invoices = getInvoicesForUser(user, from, to);
 
         for (Invoice invoice : invoices) {
             Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
@@ -203,7 +232,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public Map<YearMonth, Map<Category, BigDecimal>> getTotalExpensesByMonthAndCategory(
             final User user, final YearMonth from, final YearMonth to) {
         Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
-        List<Invoice> invoices = invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, user);
+        List<Invoice> invoices = getInvoicesForUser(user, from, to);
 
         for (Invoice invoice : invoices) {
             Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
@@ -220,7 +249,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public List<TopExpenseEntry> getTopExpenses(final User user, final YearMonth month, final int limit) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         List<TopExpenseEntry> entries = new ArrayList<>();
 
         for (Invoice invoice : invoices) {
@@ -238,7 +267,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public List<TopExpenseEntry> getTotalTopExpenses(
             final User user, final YearMonth month, final int limit) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         List<TopExpenseEntry> entries = new ArrayList<>();
 
         for (Invoice invoice : invoices) {
@@ -321,7 +350,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     @Override
     public List<CardExpenseEntry> getExpensesByCard(final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         Map<Long, CardAggregation> cardMap = new HashMap<>();
 
         for (Invoice invoice : invoices) {
@@ -354,7 +383,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     @Override
     public List<RecurrenceExpenseEntry> getExpensesByRecurrence(
             final User user, final YearMonth month) {
-        List<Invoice> invoices = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
+        List<Invoice> invoices = getInvoicesForUser(user, month);
         BigDecimal installmentTotal = BigDecimal.ZERO;
         BigDecimal singleTotal = BigDecimal.ZERO;
         int installmentCount = 0;

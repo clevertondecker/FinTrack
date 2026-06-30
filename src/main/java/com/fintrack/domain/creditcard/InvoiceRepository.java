@@ -92,4 +92,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findByMonthAndCreditCardOwner(YearMonth month, User user);
 
     List<Invoice> findByMonthBetweenAndCreditCardOwner(YearMonth fromMonth, YearMonth toMonth, User user);
+
+    List<Invoice> findByMonthAndCreditCardAssignedUser(YearMonth month, User assignedUser);
+
+    List<Invoice> findByMonthBetweenAndCreditCardAssignedUser(
+        YearMonth fromMonth, YearMonth toMonth, User assignedUser);
 } 

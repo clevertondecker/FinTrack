@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fintrack.domain.creditcard.Bank;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
+import com.fintrack.domain.creditcard.CardType;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceCalculationService;
 import com.fintrack.domain.creditcard.InvoiceItem;
@@ -846,6 +847,241 @@ class ExpenseReportServiceImplTest {
             assertThat(foodResult.get(0).itemDescription()).isEqualTo("Food");
             assertThat(transportResult).hasSize(1);
             assertThat(transportResult.get(0).itemDescription()).isEqualTo("Transport");
+        }
+    }
+
+    @Nested
+    @DisplayName("Assigned Card User Tests")
+    class AssignedCardUserTests {
+
+        private CreditCard assignedCard;
+
+        @BeforeEach
+        void setUpAssignedCard() {
+            // otherUser is assigned to this card but cardOwner owns it
+            assignedCard = CreditCard.of(
+                "Sabrina Card", "5678", new BigDecimal("3000.00"),
+                cardOwner, testBank,
+                CardType.ADDITIONAL, null, "Sabrina",
+                otherUser
+            );
+        }
+
+        @Test
+        @DisplayName("Should return expenses for user with only assigned cards (no owned cards)")
+        void shouldReturnExpensesForAssignedCardUser() throws Exception {
+            // Given
+            Invoice assignedInvoice = Invoice.of(assignedCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(assignedInvoice, "Groceries", new BigDecimal("200.00"),
+                    foodCategory, LocalDate.of(2024, 10, 20));
+            item.addShare(ItemShare.of(otherUser, item, BigDecimal.ONE, new BigDecimal("200.00"), true));
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            assignedInvoice.addItem(item);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of(assignedInvoice));
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(otherUser, testMonth);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("200.00"));
+        }
+
+        @Test
+        @DisplayName("Should combine expenses from owned and assigned cards without duplication")
+        void shouldCombineOwnedAndAssignedCardExpenses() throws Exception {
+            // Given — cardOwner owns testCreditCard AND is assigned to another card
+            CreditCard anotherCard = CreditCard.of(
+                "Extra Card", "9999", new BigDecimal("2000.00"),
+                otherUser, testBank,
+                CardType.ADDITIONAL, null, null,
+                cardOwner
+            );
+
+            Invoice ownedInvoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 5));
+            java.lang.reflect.Field ownedIdField = Invoice.class.getDeclaredField("id");
+            ownedIdField.setAccessible(true);
+            ownedIdField.set(ownedInvoice, 10L);
+            InvoiceItem ownedItem = InvoiceItem.of(ownedInvoice, "Owned", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 10));
+            ownedInvoice.addItem(ownedItem);
+
+            Invoice assignedInvoice = Invoice.of(anotherCard, testMonth, LocalDate.of(2024, 11, 10));
+            java.lang.reflect.Field assignedIdField = Invoice.class.getDeclaredField("id");
+            assignedIdField.setAccessible(true);
+            assignedIdField.set(assignedInvoice, 20L);
+            InvoiceItem assignedItem = InvoiceItem.of(assignedInvoice, "Assigned", new BigDecimal("80.00"),
+                    transportCategory, LocalDate.of(2024, 10, 15));
+            assignedItem.addShare(ItemShare.of(cardOwner, assignedItem, BigDecimal.ONE, new BigDecimal("80.00"), true));
+            assignedInvoice.addItem(assignedItem);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            java.lang.reflect.Field transportIdField = Category.class.getDeclaredField("id");
+            transportIdField.setAccessible(true);
+            transportIdField.set(transportCategory, 2L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner))
+                    .thenReturn(List.of(ownedInvoice));
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, cardOwner))
+                    .thenReturn(List.of(assignedInvoice));
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
+
+            // Then — both cards' expenses are included
+            assertThat(result).hasSize(2);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("100.00"));
+            assertThat(result.get(transportCategory)).isEqualByComparingTo(new BigDecimal("80.00"));
+        }
+
+        @Test
+        @DisplayName("Should not duplicate invoice that appears in both owned and assigned results")
+        void shouldNotDuplicateInvoicePresentInBothQueries() throws Exception {
+            // Given — same invoice returned by both queries (edge case)
+            Invoice invoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 5));
+            InvoiceItem item = InvoiceItem.of(invoice, "Item", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 10, 10));
+            invoice.addItem(item);
+
+            java.lang.reflect.Field invoiceIdField = Invoice.class.getDeclaredField("id");
+            invoiceIdField.setAccessible(true);
+            invoiceIdField.set(invoice, 99L);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, cardOwner))
+                    .thenReturn(List.of(invoice));
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, cardOwner))
+                    .thenReturn(List.of(invoice));
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(cardOwner, testMonth);
+
+            // Then — R$100.00 once, not R$200.00
+            assertThat(result).hasSize(1);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("100.00"));
+        }
+
+        @Test
+        @DisplayName("Should return empty when assigned user has no items in month")
+        void shouldReturnEmptyWhenAssignedUserHasNoItemsInMonth() {
+            // Given
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of());
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(otherUser, testMonth);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Should return total expenses for assigned card user")
+        void shouldReturnTotalExpensesForAssignedCardUser() throws Exception {
+            // Given
+            Invoice assignedInvoice = Invoice.of(assignedCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(assignedInvoice, "Item", new BigDecimal("150.00"),
+                    foodCategory, LocalDate.of(2024, 10, 20));
+            assignedInvoice.addItem(item);
+
+            java.lang.reflect.Field invoiceIdField = Invoice.class.getDeclaredField("id");
+            invoiceIdField.setAccessible(true);
+            invoiceIdField.set(assignedInvoice, 50L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of(assignedInvoice));
+            when(invoiceCalculationService.calculateUserShare(assignedInvoice, otherUser))
+                    .thenReturn(new BigDecimal("150.00"));
+
+            // When
+            BigDecimal result = expenseReportService.getTotalExpenses(otherUser, testMonth);
+
+            // Then
+            assertThat(result).isEqualByComparingTo(new BigDecimal("150.00"));
+        }
+
+        @Test
+        @DisplayName("Should return expense details for assigned card user")
+        void shouldReturnExpenseDetailsForAssignedCardUser() throws Exception {
+            // Given
+            Invoice assignedInvoice = Invoice.of(assignedCard, testMonth, LocalDate.of(2024, 11, 10));
+            InvoiceItem item = InvoiceItem.of(assignedInvoice, "Gym", new BigDecimal("129.90"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            item.addShare(ItemShare.of(otherUser, item, BigDecimal.ONE, new BigDecimal("129.90"), true));
+            assignedInvoice.addItem(item);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of(assignedInvoice));
+
+            // When
+            List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
+                    otherUser, testMonth, foodCategory);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).itemDescription()).isEqualTo("Gym");
+            assertThat(result.get(0).amount()).isEqualByComparingTo(new BigDecimal("129.90"));
+        }
+
+        @Test
+        @DisplayName("Should return expenses across month range for assigned card user")
+        void shouldReturnExpensesAcrossMonthRangeForAssignedUser() throws Exception {
+            // Given
+            YearMonth from = YearMonth.of(2024, 10);
+            YearMonth to = YearMonth.of(2024, 11);
+
+            Invoice octInvoice = Invoice.of(assignedCard, from, LocalDate.of(2024, 10, 10));
+            InvoiceItem octItem = InvoiceItem.of(octInvoice, "Oct Item", new BigDecimal("100.00"),
+                    foodCategory, LocalDate.of(2024, 9, 15));
+            octItem.addShare(ItemShare.of(otherUser, octItem, BigDecimal.ONE, new BigDecimal("100.00"), true));
+            octInvoice.addItem(octItem);
+
+            Invoice novInvoice = Invoice.of(assignedCard, to, LocalDate.of(2024, 11, 10));
+            InvoiceItem novItem = InvoiceItem.of(novInvoice, "Nov Item", new BigDecimal("200.00"),
+                    foodCategory, LocalDate.of(2024, 10, 15));
+            novItem.addShare(ItemShare.of(otherUser, novItem, BigDecimal.ONE, new BigDecimal("200.00"), true));
+            novInvoice.addItem(novItem);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            when(invoiceRepository.findByMonthBetweenAndCreditCardOwner(from, to, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthBetweenAndCreditCardAssignedUser(from, to, otherUser))
+                    .thenReturn(List.of(octInvoice, novInvoice));
+
+            // When
+            Map<YearMonth, Map<Category, BigDecimal>> result =
+                    expenseReportService.getExpensesByMonthAndCategory(otherUser, from, to);
+
+            // Then
+            assertThat(result.get(from).get(foodCategory)).isEqualByComparingTo(new BigDecimal("100.00"));
+            assertThat(result.get(to).get(foodCategory)).isEqualByComparingTo(new BigDecimal("200.00"));
         }
     }
 

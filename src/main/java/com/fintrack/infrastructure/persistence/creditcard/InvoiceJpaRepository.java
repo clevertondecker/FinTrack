@@ -166,4 +166,22 @@ public interface InvoiceJpaRepository extends JpaRepository<Invoice, Long>, Invo
         @Param("fromMonth") YearMonth fromMonth,
         @Param("toMonth") YearMonth toMonth,
         @Param("owner") User owner);
+
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
+        + "WHERE i.month = :month AND i.creditCard.assignedUser = :assignedUser")
+    List<Invoice> findByMonthAndCreditCardAssignedUser(
+        @Param("month") YearMonth month,
+        @Param("assignedUser") User assignedUser);
+
+    @Query("SELECT DISTINCT i FROM Invoice i "
+        + "LEFT JOIN FETCH i.items ii "
+        + "LEFT JOIN FETCH ii.category "
+        + "WHERE i.month >= :fromMonth AND i.month <= :toMonth "
+        + "AND i.creditCard.assignedUser = :assignedUser")
+    List<Invoice> findByMonthBetweenAndCreditCardAssignedUser(
+        @Param("fromMonth") YearMonth fromMonth,
+        @Param("toMonth") YearMonth toMonth,
+        @Param("assignedUser") User assignedUser);
 } 
