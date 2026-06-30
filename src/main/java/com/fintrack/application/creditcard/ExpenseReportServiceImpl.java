@@ -3,6 +3,7 @@ package com.fintrack.application.creditcard;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.creditcard.ExpenseReportService;
+import com.fintrack.domain.creditcard.ExpenseSharingService;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceCalculationService;
 import com.fintrack.domain.creditcard.InvoiceItem;
@@ -37,18 +38,23 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     private final InvoiceRepository invoiceRepository;
     /** The invoice calculation service. */
     private final InvoiceCalculationService invoiceCalculationService;
+    /** The expense sharing service. */
+    private final ExpenseSharingService expenseSharingService;
 
     /**
      * Constructs a new ExpenseReportServiceImpl.
      *
      * @param invoiceRepository the invoice repository. Must not be null.
      * @param invoiceCalculationService the invoice calculation service. Must not be null.
+     * @param expenseSharingService the expense sharing service. Must not be null.
      */
     public ExpenseReportServiceImpl(
             final InvoiceRepository invoiceRepository,
-            final InvoiceCalculationService invoiceCalculationService) {
+            final InvoiceCalculationService invoiceCalculationService,
+            final ExpenseSharingService expenseSharingService) {
         this.invoiceRepository = invoiceRepository;
         this.invoiceCalculationService = invoiceCalculationService;
+        this.expenseSharingService = expenseSharingService;
     }
 
     @Override
@@ -59,6 +65,28 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
 
     /** Category for items without a category. */
     private static final Category UNCATEGORIZED_CATEGORY = Category.of("Sem categoria", "#CCCCCC");
+
+    private Set<Long> coveredInvoiceIds(final List<Invoice> invoices) {
+        return invoices.stream().map(Invoice::getId).collect(Collectors.toSet());
+    }
+
+    private List<ItemShare> getThirdPartyShares(
+            final User user, final YearMonth month, final Set<Long> coveredInvoiceIds) {
+        return expenseSharingService.getSharesForUser(user, month).stream()
+            .filter(s -> !coveredInvoiceIds.contains(s.getInvoiceItem().getInvoice().getId()))
+            .toList();
+    }
+
+    private List<ItemShare> getThirdPartySharesInRange(
+            final User user, final YearMonth from, final YearMonth to, final Set<Long> coveredIds) {
+        return expenseSharingService.getSharesForUser(user).stream()
+            .filter(s -> {
+                YearMonth m = s.getInvoiceItem().getInvoice().getMonth();
+                return m != null && !m.isBefore(from) && !m.isAfter(to)
+                    && !coveredIds.contains(s.getInvoiceItem().getInvoice().getId());
+            })
+            .toList();
+    }
 
     private List<Invoice> getInvoicesForUser(final User user, final YearMonth month) {
         List<Invoice> owned = invoiceRepository.findByMonthAndCreditCardOwner(month, user);
@@ -90,6 +118,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public Map<Category, BigDecimal> getExpensesByCategory(final User user, final YearMonth month) {
         Map<Category, BigDecimal> expensesMap = new HashMap<>();
         List<Invoice> invoices = getInvoicesForUser(user, month);
+        Set<Long> coveredIds = coveredInvoiceIds(invoices);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -100,6 +129,10 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             }
         }
 
+        for (ItemShare share : getThirdPartyShares(user, month, coveredIds)) {
+            expensesMap.merge(resolveCategory(share.getInvoiceItem()), share.getAmount(), BigDecimal::add);
+        }
+
         return expensesMap;
     }
 
@@ -107,12 +140,15 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
     public BigDecimal getTotalExpenses(final User user, final YearMonth month) {
         List<Invoice> invoices = getInvoicesForUser(user, month);
         BigDecimal total = BigDecimal.ZERO;
-        
+
         for (Invoice invoice : invoices) {
-            BigDecimal userShare = invoiceCalculationService.calculateUserShare(invoice, user);
-            total = total.add(userShare);
+            total = total.add(invoiceCalculationService.calculateUserShare(invoice, user));
         }
-        
+
+        for (ItemShare share : getThirdPartyShares(user, month, coveredInvoiceIds(invoices))) {
+            total = total.add(share.getAmount());
+        }
+
         return total;
     }
 
@@ -170,6 +206,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
         List<ExpenseDetailResponse> details = new ArrayList<>();
         Category targetCategory = category != null ? category : UNCATEGORIZED_CATEGORY;
         List<Invoice> invoices = getInvoicesForUser(user, month);
+        Set<Long> coveredIds = coveredInvoiceIds(invoices);
 
         for (Invoice invoice : invoices) {
             for (InvoiceItem item : invoice.getItems()) {
@@ -183,6 +220,16 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
                         userShareForItem, item.getPurchaseDate(), item.getInvoice().getId()
                     ));
                 }
+            }
+        }
+
+        for (ItemShare share : getThirdPartyShares(user, month, coveredIds)) {
+            InvoiceItem item = share.getInvoiceItem();
+            if (matchesCategory(resolveCategory(item), targetCategory)) {
+                details.add(new ExpenseDetailResponse(
+                    share.getId(), item.getId(), item.getDescription(),
+                    share.getAmount(), item.getPurchaseDate(), item.getInvoice().getId()
+                ));
             }
         }
 
@@ -210,6 +257,7 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             final User user, final YearMonth from, final YearMonth to) {
         Map<YearMonth, Map<Category, BigDecimal>> result = initializeMonthRange(from, to);
         List<Invoice> invoices = getInvoicesForUser(user, from, to);
+        Set<Long> coveredIds = coveredInvoiceIds(invoices);
 
         for (Invoice invoice : invoices) {
             Map<Category, BigDecimal> monthMap = result.get(invoice.getMonth());
@@ -219,9 +267,15 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
             for (InvoiceItem item : invoice.getItems()) {
                 BigDecimal userShare = invoiceCalculationService.calculateUserShareForItem(item, user);
                 if (userShare.compareTo(BigDecimal.ZERO) > 0) {
-                    Category category = resolveCategory(item);
-                    monthMap.merge(category, userShare, BigDecimal::add);
+                    monthMap.merge(resolveCategory(item), userShare, BigDecimal::add);
                 }
+            }
+        }
+
+        for (ItemShare share : getThirdPartySharesInRange(user, from, to, coveredIds)) {
+            Map<Category, BigDecimal> monthMap = result.get(share.getInvoiceItem().getInvoice().getMonth());
+            if (monthMap != null) {
+                monthMap.merge(resolveCategory(share.getInvoiceItem()), share.getAmount(), BigDecimal::add);
             }
         }
 
@@ -259,6 +313,11 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
                     entries.add(toTopExpenseEntry(item, invoice.getId(), userShare));
                 }
             }
+        }
+
+        for (ItemShare share : getThirdPartyShares(user, month, coveredInvoiceIds(invoices))) {
+            InvoiceItem item = share.getInvoiceItem();
+            entries.add(toTopExpenseEntry(item, item.getInvoice().getId(), share.getAmount()));
         }
 
         return sortAndLimit(entries, limit);
@@ -360,10 +419,15 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
                 if (userShare.compareTo(BigDecimal.ZERO) <= 0) {
                     continue;
                 }
-                CardAggregation agg = cardMap.computeIfAbsent(
-                        card.getId(), k -> new CardAggregation(card));
-                agg.add(userShare, resolveCategory(item));
+                cardMap.computeIfAbsent(card.getId(), k -> new CardAggregation(card))
+                       .add(userShare, resolveCategory(item));
             }
+        }
+
+        for (ItemShare share : getThirdPartyShares(user, month, coveredInvoiceIds(invoices))) {
+            CreditCard card = share.getInvoiceItem().getInvoice().getCreditCard();
+            cardMap.computeIfAbsent(card.getId(), k -> new CardAggregation(card))
+                   .add(share.getAmount(), resolveCategory(share.getInvoiceItem()));
         }
 
         return cardMap.values().stream()
@@ -402,6 +466,17 @@ public class ExpenseReportServiceImpl implements ExpenseReportService {
                     singleTotal = singleTotal.add(userShare);
                     singleCount++;
                 }
+            }
+        }
+
+        for (ItemShare share : getThirdPartyShares(user, month, coveredInvoiceIds(invoices))) {
+            InvoiceItem item = share.getInvoiceItem();
+            if (item.getTotalInstallments() > 1) {
+                installmentTotal = installmentTotal.add(share.getAmount());
+                installmentCount++;
+            } else {
+                singleTotal = singleTotal.add(share.getAmount());
+                singleCount++;
             }
         }
 

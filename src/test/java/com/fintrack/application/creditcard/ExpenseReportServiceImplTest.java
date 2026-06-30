@@ -25,9 +25,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fintrack.domain.creditcard.Bank;
+import com.fintrack.domain.creditcard.CardType;
 import com.fintrack.domain.creditcard.Category;
 import com.fintrack.domain.creditcard.CreditCard;
-import com.fintrack.domain.creditcard.CardType;
+import com.fintrack.domain.creditcard.ExpenseSharingService;
 import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceCalculationService;
 import com.fintrack.domain.creditcard.InvoiceItem;
@@ -50,6 +51,9 @@ class ExpenseReportServiceImplTest {
 
     @Mock
     private InvoiceCalculationService invoiceCalculationService;
+
+    @Mock
+    private ExpenseSharingService expenseSharingService;
 
     @InjectMocks
     private ExpenseReportServiceImpl expenseReportService;
@@ -82,6 +86,11 @@ class ExpenseReportServiceImplTest {
         foodCategory = Category.of("Food", "#FF0000");
         transportCategory = Category.of("Transport", "#0000FF");
 
+        lenient().when(expenseSharingService.getSharesForUser(any(User.class), any(YearMonth.class)))
+                .thenReturn(List.of());
+        lenient().when(expenseSharingService.getSharesForUser(any(User.class)))
+                .thenReturn(List.of());
+
         lenient().when(invoiceCalculationService.calculateUserShareForItem(
                 any(InvoiceItem.class), any(User.class)))
                 .thenAnswer(inv -> {
@@ -109,7 +118,7 @@ class ExpenseReportServiceImplTest {
         @DisplayName("Should create service with valid dependencies")
         void shouldCreateServiceWithValidDependencies() {
             ExpenseReportServiceImpl service = new ExpenseReportServiceImpl(
-                    invoiceRepository, invoiceCalculationService);
+                    invoiceRepository, invoiceCalculationService, expenseSharingService);
 
             assertThat(service).isNotNull();
         }
@@ -847,6 +856,156 @@ class ExpenseReportServiceImplTest {
             assertThat(foodResult.get(0).itemDescription()).isEqualTo("Food");
             assertThat(transportResult).hasSize(1);
             assertThat(transportResult.get(0).itemDescription()).isEqualTo("Transport");
+        }
+    }
+
+    @Nested
+    @DisplayName("Third-Party Share Tests")
+    class ThirdPartyShareTests {
+
+        @Test
+        @DisplayName("Should include shares from other users cards in category report")
+        void shouldIncludeThirdPartySharesInCategoryReport() throws Exception {
+            // Given — otherUser has a share on cardOwner's invoice (not assigned to otherUser)
+            Invoice thirdPartyInvoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 5));
+            java.lang.reflect.Field invIdField = Invoice.class.getDeclaredField("id");
+            invIdField.setAccessible(true);
+            invIdField.set(thirdPartyInvoice, 77L);
+
+            InvoiceItem sharedItem = InvoiceItem.of(thirdPartyInvoice, "Shared Expense",
+                    new BigDecimal("300.00"), foodCategory, LocalDate.of(2024, 10, 10));
+            ItemShare share = ItemShare.of(otherUser, sharedItem, new BigDecimal("0.50"),
+                    new BigDecimal("150.00"), true);
+            sharedItem.addShare(share);
+            thirdPartyInvoice.addItem(sharedItem);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            // otherUser owns no cards and has no assigned cards — only a share on cardOwner's invoice
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(expenseSharingService.getSharesForUser(otherUser, testMonth))
+                    .thenReturn(List.of(share));
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(otherUser, testMonth);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("150.00"));
+        }
+
+        @Test
+        @DisplayName("Should include third-party shares in total expenses")
+        void shouldIncludeThirdPartySharesInTotalExpenses() throws Exception {
+            // Given
+            Invoice thirdPartyInvoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 5));
+            java.lang.reflect.Field invIdField = Invoice.class.getDeclaredField("id");
+            invIdField.setAccessible(true);
+            invIdField.set(thirdPartyInvoice, 88L);
+
+            InvoiceItem sharedItem = InvoiceItem.of(thirdPartyInvoice, "Gym",
+                    new BigDecimal("129.90"), foodCategory, LocalDate.of(2024, 10, 10));
+            ItemShare share = ItemShare.of(otherUser, sharedItem, BigDecimal.ONE,
+                    new BigDecimal("129.90"), true);
+            sharedItem.addShare(share);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(expenseSharingService.getSharesForUser(otherUser, testMonth))
+                    .thenReturn(List.of(share));
+
+            // When
+            BigDecimal result = expenseReportService.getTotalExpenses(otherUser, testMonth);
+
+            // Then
+            assertThat(result).isEqualByComparingTo(new BigDecimal("129.90"));
+        }
+
+        @Test
+        @DisplayName("Should not duplicate share already covered by assigned invoice")
+        void shouldNotDuplicateShareAlreadyCoveredByAssignedInvoice() throws Exception {
+            // Given — otherUser is assigned to a card; the item has a share for them too
+            CreditCard assignedCard = CreditCard.of(
+                "Sabrina Card", "5678", new BigDecimal("3000.00"),
+                cardOwner, testBank, CardType.ADDITIONAL, null, null, otherUser);
+
+            Invoice assignedInvoice = Invoice.of(assignedCard, testMonth, LocalDate.of(2024, 11, 5));
+            java.lang.reflect.Field invIdField = Invoice.class.getDeclaredField("id");
+            invIdField.setAccessible(true);
+            invIdField.set(assignedInvoice, 55L);
+
+            InvoiceItem item = InvoiceItem.of(assignedInvoice, "Supermarket",
+                    new BigDecimal("200.00"), foodCategory, LocalDate.of(2024, 10, 10));
+            ItemShare share = ItemShare.of(otherUser, item, BigDecimal.ONE,
+                    new BigDecimal("200.00"), true);
+            item.addShare(share);
+            assignedInvoice.addItem(item);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of(assignedInvoice));
+            // The same share appears in getSharesForUser — must NOT be double-counted
+            when(expenseSharingService.getSharesForUser(otherUser, testMonth))
+                    .thenReturn(List.of(share));
+
+            // When
+            Map<Category, BigDecimal> result = expenseReportService.getExpensesByCategory(otherUser, testMonth);
+
+            // Then — R$200 once, not R$400
+            assertThat(result).hasSize(1);
+            assertThat(result.get(foodCategory)).isEqualByComparingTo(new BigDecimal("200.00"));
+        }
+
+        @Test
+        @DisplayName("Should include third-party shares in expense details")
+        void shouldIncludeThirdPartySharesInExpenseDetails() throws Exception {
+            // Given
+            Invoice thirdPartyInvoice = Invoice.of(testCreditCard, testMonth, LocalDate.of(2024, 11, 5));
+            java.lang.reflect.Field invIdField = Invoice.class.getDeclaredField("id");
+            invIdField.setAccessible(true);
+            invIdField.set(thirdPartyInvoice, 99L);
+
+            InvoiceItem item = InvoiceItem.of(thirdPartyInvoice, "Dinner",
+                    new BigDecimal("200.00"), foodCategory, LocalDate.of(2024, 10, 10));
+            ItemShare share = ItemShare.of(otherUser, item, new BigDecimal("0.50"),
+                    new BigDecimal("100.00"), true);
+            java.lang.reflect.Field shareIdField = ItemShare.class.getDeclaredField("id");
+            shareIdField.setAccessible(true);
+            shareIdField.set(share, 42L);
+            item.addShare(share);
+
+            java.lang.reflect.Field foodIdField = Category.class.getDeclaredField("id");
+            foodIdField.setAccessible(true);
+            foodIdField.set(foodCategory, 1L);
+
+            when(invoiceRepository.findByMonthAndCreditCardOwner(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(invoiceRepository.findByMonthAndCreditCardAssignedUser(testMonth, otherUser))
+                    .thenReturn(List.of());
+            when(expenseSharingService.getSharesForUser(otherUser, testMonth))
+                    .thenReturn(List.of(share));
+
+            // When
+            List<ExpenseDetailResponse> result = expenseReportService.getExpenseDetails(
+                    otherUser, testMonth, foodCategory);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).shareId()).isEqualTo(42L);
+            assertThat(result.get(0).itemDescription()).isEqualTo("Dinner");
+            assertThat(result.get(0).amount()).isEqualByComparingTo(new BigDecimal("100.00"));
         }
     }
 
