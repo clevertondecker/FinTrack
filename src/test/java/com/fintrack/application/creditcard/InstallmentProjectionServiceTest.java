@@ -170,6 +170,70 @@ class InstallmentProjectionServiceTest {
         }
 
         @Test
+        @DisplayName("Should remove stale projections from earlier chain when newer source is imported")
+        void shouldReplaceStaleProjectionsFromEarlierChain() {
+            // Simulates: Month A imported (1/2) → projects 2/2 into next month.
+            // Month B imported — a newer real 1/2 (different source id). Its projectInstallments
+            // should remove the stale 2/2 projection (from old source=100) and create a fresh one.
+
+            // Source item: newer real 1/2 (source id=200)
+            Invoice sourceInvoice = createInvoice(10L, YearMonth.of(2025, 6));
+            InvoiceItem sourceItem = InvoiceItem.of(
+                    sourceInvoice, "YOU GYM", new BigDecimal("129.90"),
+                    category, LocalDate.of(2025, 2, 1), 1, 2);
+            ReflectionTestUtils.setField(sourceItem, "id", 200L);
+            sourceInvoice.addItem(sourceItem);
+
+            // Next invoice already has a STALE projected 2/2 from older source (id=100)
+            Invoice nextInvoice = createInvoice(11L, YearMonth.of(2025, 7));
+            InvoiceItem staleProjection = InvoiceItem.projected(
+                    nextInvoice, "YOU GYM", new BigDecimal("129.90"),
+                    category, LocalDate.of(2025, 2, 1), 2, 2, 100L);
+            ReflectionTestUtils.setField(staleProjection, "id", 300L);
+            nextInvoice.addItem(staleProjection);
+
+            when(invoiceRepository.findByCreditCardAndMonth(
+                    creditCard, YearMonth.of(2025, 7)))
+                    .thenReturn(List.of(nextInvoice));
+
+            int count = projectionService.projectInstallments(sourceInvoice, owner);
+
+            // Stale (source=100) removed, new projection (source=200) created
+            assertEquals(1, count);
+            List<InvoiceItem> nextItems = nextInvoice.getItems();
+            assertEquals(1, nextItems.size());
+            assertEquals(200L, nextItems.get(0).getSourceItemId());
+            assertEquals(2, nextItems.get(0).getInstallments());
+        }
+
+        @Test
+        @DisplayName("Should not remove projections from same chain (idempotent re-run)")
+        void shouldNotRemoveSameChainProjections() {
+            // If the same source item runs projectInstallments twice, nothing should change
+            Invoice source = createInvoice(1L, YearMonth.of(2025, 3));
+            InvoiceItem item = createInstallmentItem(source, 50L, 1, 2);
+            source.addItem(item);
+
+            Invoice futureInvoice = createInvoice(2L, YearMonth.of(2025, 4));
+            InvoiceItem sameChainProjection = InvoiceItem.projected(
+                    futureInvoice, "ITEM 1/2", new BigDecimal("100.00"),
+                    category, LocalDate.of(2025, 1, 15), 2, 2, 50L); // SAME source
+            ReflectionTestUtils.setField(sameChainProjection, "id", 54L);
+            futureInvoice.addItem(sameChainProjection);
+
+            when(invoiceRepository.findByCreditCardAndMonth(
+                    creditCard, YearMonth.of(2025, 4)))
+                    .thenReturn(List.of(futureInvoice));
+
+            int count = projectionService.projectInstallments(source, owner);
+
+            // Already exists with same source — should not add duplicate, not remove existing
+            assertEquals(0, count);
+            assertEquals(1, futureInvoice.getItems().size());
+            assertEquals(50L, futureInvoice.getItems().get(0).getSourceItemId());
+        }
+
+        @Test
         @DisplayName("Should be idempotent — not duplicate existing projections")
         void shouldBeIdempotent() {
             Invoice source = createInvoice(1L, YearMonth.of(2025, 3));

@@ -82,6 +82,8 @@ public class InstallmentProjectionService {
                         creditCard, targetMonth,
                         computeDueDate(sourceInvoice, targetMonth));
 
+                removeStaleProjectionsFor(targetInvoice, item, targetInstallment);
+
                 if (hasProjectionForSource(
                         targetInvoice, item.getId(), targetInstallment)) {
                     continue;
@@ -161,6 +163,42 @@ public class InstallmentProjectionService {
                 .anyMatch(i -> i.isProjected()
                         && Objects.equals(i.getSourceItemId(), sourceItemId)
                         && i.getInstallments() == installment);
+    }
+
+    /**
+     * Removes projected items from a previous import chain that would become
+     * stale once a newer real import provides an updated source for this
+     * installment series. Matches on description, purchaseDate, installment
+     * number, and totalInstallments — excluding projections already sourced
+     * from {@code newSource}.
+     */
+    private void removeStaleProjectionsFor(
+            Invoice invoice, InvoiceItem newSource, int targetInstallment) {
+        List<InvoiceItem> stale = invoice.getItems().stream()
+                .filter(i -> i.isProjected()
+                        && i.getInstallments() == targetInstallment
+                        && Objects.equals(
+                                i.getTotalInstallments(),
+                                newSource.getTotalInstallments())
+                        && Objects.equals(
+                                i.getPurchaseDate(),
+                                newSource.getPurchaseDate())
+                        && Objects.equals(
+                                i.getDescription(),
+                                newSource.getDescription())
+                        && !Objects.equals(
+                                i.getSourceItemId(),
+                                newSource.getId()))
+                .toList();
+
+        for (InvoiceItem staleItem : stale) {
+            invoice.removeItem(staleItem);
+            logger.info(
+                    "Removed stale projected item {} (source {}) from invoice {}"
+                    + " — replaced by chain from item {}",
+                    staleItem.getId(), staleItem.getSourceItemId(),
+                    invoice.getId(), newSource.getId());
+        }
     }
 
     private LocalDate computeDueDate(
