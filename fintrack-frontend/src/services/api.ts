@@ -34,7 +34,7 @@ import { MarkShareAsPaidRequest } from '../types/itemShare';
 import {
   ImportInvoiceRequest,
   ImportInvoiceResponse,
-  InvoiceImportListResponse,
+  InvoiceImport,
   InvoiceImportDetailResponse,
   ManualReviewRequest,
   ManualReviewResponse,
@@ -360,9 +360,9 @@ class ApiService {
     return response.data;
   }
 
-  async getInvoiceImports(): Promise<InvoiceImportListResponse> {
-    const response = await this.api.get<InvoiceImportListResponse>('/invoice-imports');
-    return response.data;
+  async getInvoiceImports(): Promise<InvoiceImport[]> {
+    const response = await this.api.get<ImportInvoiceResponse[]>('/invoice-imports');
+    return response.data.map(({ importId, ...item }) => ({ id: importId, ...item }));
   }
 
   async getInvoiceImport(id: number): Promise<InvoiceImportDetailResponse> {

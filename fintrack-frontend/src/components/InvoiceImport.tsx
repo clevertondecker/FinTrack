@@ -54,9 +54,9 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
     try {
       setLoading(true);
       const response = await apiService.getInvoiceImports();
-      setImports(response.imports ?? []);
-    } catch (err) {
-      console.error('Error loading imports:', err);
+      setImports(response);
+    } catch {
+      console.error('Error loading imports');
       setError(t('invoiceImport.errorLoadingImports'));
     } finally {
       setLoading(false);

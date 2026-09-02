@@ -3,18 +3,24 @@ export interface ImportInvoiceRequest {
 }
 
 export interface ImportInvoiceResponse {
-  id: number;
   message: string;
-  status: string;
+  importId: number;
+  status: ImportStatus;
+  source: ImportSource;
+  originalFileName: string;
+  errorMessage?: string;
+  importedAt: string;
+  processedAt?: string;
+  totalAmount?: number;
+  bankName?: string;
+  cardLastFourDigits?: string;
 }
 
 export interface InvoiceImport {
   id: number;
-  userId: number;
   creditCardId?: number;
   source: ImportSource;
   originalFileName: string;
-  filePath: string;
   status: ImportStatus;
   importedAt: string;
   processedAt?: string;
