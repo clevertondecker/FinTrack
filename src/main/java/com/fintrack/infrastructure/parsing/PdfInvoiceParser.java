@@ -87,6 +87,11 @@ public class PdfInvoiceParser {
         "^.*?(\\d{2}/\\d{2})\\s+(.+?)\\s+(-?[\\d.,]+)$"
     );
 
+    /** Transaction authorization codes can be printed between a merchant and its amount. */
+    private static final Pattern TRAILING_AUTHORIZATION_CODE = Pattern.compile(
+        "^(.+?)\\s+\\d{5,}$"
+    );
+
     // Padrão para itens com parcelamento (formato: LIBERTY DUTY FREE 02/04 123,45)
     private static final Pattern PARCELED_ITEM_PATTERN = Pattern.compile(
         "^(.+?)\\s+(\\d{2}/\\d{2})\\s+(-?[\\d.,]+)$"
@@ -673,6 +678,9 @@ public class PdfInvoiceParser {
             return null;
         }
         try {
+            if (!hasExplicitCents(m.group(3)) || !hasExplicitCents(m.group(4))) {
+                return null;
+            }
             BigDecimal brlAmount = parseBrazilianAmount(m.group(3));
             BigDecimal usdAmount = parseBrazilianAmount(m.group(4));
             // BRL amount is always larger than USD (exchange rate > 1)
@@ -697,7 +705,7 @@ public class PdfInvoiceParser {
         }
         try {
             LocalDate date = parseDate(m.group(1));
-            String description = m.group(2).trim();
+            String description = stripTrailingAuthorizationCode(m.group(2));
             BigDecimal amount = parseBrazilianAmount(m.group(3));
 
             int installments = 1;
@@ -721,6 +729,15 @@ public class PdfInvoiceParser {
             logger.warn("Error processing standard item: {}", line, e);
             return null;
         }
+    }
+
+    private boolean hasExplicitCents(final String amount) {
+        return amount.contains(",");
+    }
+
+    private String stripTrailingAuthorizationCode(final String description) {
+        Matcher matcher = TRAILING_AUTHORIZATION_CODE.matcher(description.trim());
+        return matcher.matches() ? matcher.group(1).trim() : description.trim();
     }
 
     /**
