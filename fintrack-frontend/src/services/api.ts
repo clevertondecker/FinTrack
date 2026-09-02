@@ -397,6 +397,11 @@ class ApiService {
     return response.data;
   }
 
+  async repairInvoiceImport(importId: number): Promise<{ message: string }> {
+    const response = await this.api.post<{ message: string }>(`/invoice-imports/${importId}/repair`);
+    return response.data;
+  }
+
   async getInvoiceDeleteInfo(invoiceId: number): Promise<InvoiceDeleteInfo> {
     const response = await this.api.get<InvoiceDeleteInfo>(`/invoices/${invoiceId}/delete-info`);
     return response.data;
@@ -585,4 +590,4 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
-export default apiService; 
+export default apiService;

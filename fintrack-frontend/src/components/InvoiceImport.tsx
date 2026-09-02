@@ -119,6 +119,9 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
       && preview.detectedCards.every((c) => cardMappings.has(c.detectedLastFourDigits))
     : false;
 
+  const reconciliationBlocksConfirmation = preview?.reconciliation?.status === 'DIVERGENT'
+    || preview?.reconciliation?.status === 'REVIEW_REQUIRED';
+
   const handleConfirmImport = async () => {
     if (!preview || !allCardsMapped) return;
 
@@ -178,6 +181,17 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
   const handleManualReview = (importItem: InvoiceImportType) => {
     setSelectedImport(importItem);
     setShowManualReview(true);
+  };
+
+  const handleRepairImport = async (id: number) => {
+    try {
+      const response = await apiService.repairInvoiceImport(id);
+      setSuccess(response.message);
+      await loadImports();
+      if (onImportSuccess) onImportSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.error || t('invoiceImport.uploadError'));
+    }
   };
 
   const getStatusColor = (status: ImportStatus) => {
@@ -311,6 +325,12 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
                 <span>{formatCurrency(preview.totalAmount)}</span>
               </div>
             )}
+            {preview.reconciliation && preview.reconciliation.status !== 'NOT_APPLICABLE' && (
+              <div className={styles.detailRow} role="status">
+                <span>Validação:</span>
+                <span>{preview.reconciliation.message}</span>
+              </div>
+            )}
           </div>
 
           <div className={styles.cardSectionsContainer}>
@@ -395,7 +415,7 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
             </button>
             <button
               onClick={handleConfirmImport}
-              disabled={!allCardsMapped || confirming}
+              disabled={!allCardsMapped || reconciliationBlocksConfirmation || confirming}
               className={styles.submitButton}
             >
               {confirming
@@ -440,6 +460,14 @@ const InvoiceImport: React.FC<InvoiceImportProps> = ({ onImportSuccess }) => {
                         className={styles.reviewButton}
                       >
                         {t('invoiceImport.review')}
+                      </button>
+                    )}
+                    {importItem.status === ImportStatus.COMPLETED && (
+                      <button
+                        onClick={() => handleRepairImport(importItem.id)}
+                        className={styles.reviewButton}
+                      >
+                        Reparar
                       </button>
                     )}
                     <button

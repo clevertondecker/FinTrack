@@ -38,5 +38,17 @@ public record ImportPreviewResponse(
     List<DetectedCardMapping> detectedCards,
 
     @JsonProperty("allCardsMatched")
-    boolean allCardsMatched
-) {}
+    boolean allCardsMatched,
+
+    @JsonProperty("reconciliation")
+    ParsedInvoiceData.ImportReconciliation reconciliation
+) {
+    /** Backward-compatible constructor for previews created before reconciliation. */
+    public ImportPreviewResponse(
+            Long importId, String bankName, YearMonth invoiceMonth, LocalDate dueDate,
+            BigDecimal totalAmount, Double confidence, List<DetectedCardMapping> detectedCards,
+            boolean allCardsMatched) {
+        this(importId, bankName, invoiceMonth, dueDate, totalAmount, confidence,
+                detectedCards, allCardsMatched, ParsedInvoiceData.ImportReconciliation.notApplicable());
+    }
+}

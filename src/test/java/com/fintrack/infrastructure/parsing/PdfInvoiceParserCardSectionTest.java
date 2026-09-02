@@ -156,4 +156,44 @@ class PdfInvoiceParserCardSectionTest {
 
         assertThat(result.allItems()).hasSize(3);
     }
+
+    @Test
+    void extractInvoiceData_withDeclaredSantanderTotals_shouldReconcile() {
+        String text = """
+                Banco: Santander
+                Vencimento: 10/11/2024
+                CARTÃO FINAL 1234
+                05/10 UBER 50,00
+                VALOR TOTAL 50,00
+                CARTÃO FINAL 5678
+                06/10 NETFLIX 39,90
+                VALOR TOTAL 39,90
+                """;
+
+        ParsedInvoiceData result = parser.extractInvoiceData(text);
+
+        assertThat(result.reconciliation().status()).isEqualTo(
+                ParsedInvoiceData.ReconciliationStatus.RECONCILED);
+    }
+
+    @Test
+    void extractInvoiceData_withMissingCentsProvenByDeclaredTotal_shouldCorrectAmount() {
+        String text = """
+                Banco: Santander
+                Vencimento: 10/11/2024
+                CARTÃO FINAL 1234
+                05/10 UBER 27820
+                VALOR TOTAL 278,20
+                CARTÃO FINAL 5678
+                06/10 NETFLIX 39,90
+                VALOR TOTAL 39,90
+                """;
+
+        ParsedInvoiceData result = parser.extractInvoiceData(text);
+
+        assertThat(result.reconciliation().status()).isEqualTo(
+                ParsedInvoiceData.ReconciliationStatus.RECONCILED);
+        assertThat(result.cardSections().get(0).items().get(0).amount())
+                .isEqualByComparingTo("278.20");
+    }
 }

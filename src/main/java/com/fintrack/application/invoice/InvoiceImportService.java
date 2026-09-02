@@ -1,6 +1,7 @@
 package com.fintrack.application.invoice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintrack.application.creditcard.InstallmentProjectionService;
 import com.fintrack.application.creditcard.MerchantCategorizationService;
@@ -204,7 +205,11 @@ public class InvoiceImportService {
         boolean allMatched = detectedCards.stream().allMatch(DetectedCardMapping::autoMatched);
         logger.info("Card matching: detected={}, allMatched={}", detectedCards.size(), allMatched);
 
-        importRecord.markAsPendingReview();
+        if (parsedData.reconciliation() != null && parsedData.reconciliation().blocksConfirmation()) {
+            importRecord.markForManualReview();
+        } else {
+            importRecord.markAsPendingReview();
+        }
         invoiceImportRepository.save(importRecord);
 
         return new ImportPreviewResponse(
@@ -215,7 +220,8 @@ public class InvoiceImportService {
                 parsedData.totalAmount(),
                 parsedData.confidence(),
                 detectedCards,
-                allMatched
+                allMatched,
+                parsedData.reconciliation()
         );
     }
 
@@ -238,10 +244,13 @@ public class InvoiceImportService {
 
         if (importRecord.getStatus() != ImportStatus.PENDING_REVIEW) {
             throw new IllegalStateException(
-                    "Import is not in PENDING_REVIEW status. Current: " + importRecord.getStatus());
+                "Import is not in PENDING_REVIEW status. Current: " + importRecord.getStatus());
         }
 
         ParsedInvoiceData parsedData = deserializeParsedData(importRecord);
+        if (parsedData.reconciliation() != null && parsedData.reconciliation().blocksConfirmation()) {
+            throw new IllegalStateException("Import totals require manual review before confirmation.");
+        }
 
         Map<String, List<ParsedInvoiceData.ParsedInvoiceItem>> itemsByCard =
                 cardAutoMatchService.buildItemsByCardMap(parsedData);
@@ -294,6 +303,8 @@ public class InvoiceImportService {
             createdInvoiceIds.add(invoice.getId());
             totalItems += cardItems.size();
 
+            cleanStaleProjectionsForSameDigits(creditCard, invoiceMonth, user);
+
             int projected = installmentProjectionService
                     .projectInstallments(invoice, creditCard.getOwner());
             if (projected > 0) {
@@ -302,6 +313,8 @@ public class InvoiceImportService {
                         projected, mapping.detectedLastFourDigits(), importId);
             }
         }
+
+        createConsolidatedStatementIfReconciled(groupId, createdInvoiceIds, parsedData);
 
         importRecord.markAsCompletedWithoutInvoiceReference();
         importRecord.setCreatedInvoiceIds(createdInvoiceIds.toString());
@@ -316,6 +329,121 @@ public class InvoiceImportService {
                 createdInvoiceIds,
                 totalItems
         );
+    }
+
+    /**
+     * Reprocesses a completed multi-card import after a parser correction.
+     * The operation is intentionally conservative: every old item must map to
+     * exactly one persisted item before any amount is changed.
+     */
+    public void repairCompletedImport(final Long importId, final User user) throws IOException {
+        InvoiceImport importRecord = invoiceImportRepository.findByIdAndUser(importId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Import not found."));
+        if (importRecord.getStatus() != ImportStatus.COMPLETED) {
+            throw new IllegalStateException("Only completed imports can be repaired.");
+        }
+        ParsedInvoiceData previous = deserializeParsedData(importRecord);
+        ParsedInvoiceData corrected = parseFile(importRecord);
+        if (corrected.reconciliation() == null || corrected.reconciliation().blocksConfirmation()) {
+            throw new IllegalStateException("The repaired import is not reconciled.");
+        }
+
+        List<Long> invoiceIds = readCreatedInvoiceIds(importRecord);
+        verifyRepairShape(previous, corrected, invoiceIds);
+        for (int index = 0; index < invoiceIds.size(); index++) {
+            repairInvoiceItems(invoiceIds.get(index), previous.cardSections().get(index).items(),
+                    corrected.cardSections().get(index).items());
+        }
+        Invoice leader = invoiceRepository.findById(invoiceIds.get(0))
+                .orElseThrow(() -> new IllegalStateException("Statement leader invoice was not found."));
+        leader.setStatementTotalAmount(corrected.totalAmount());
+        invoiceRepository.save(leader);
+        updateImportWithParsedData(importRecord, corrected);
+        invoiceImportRepository.save(importRecord);
+        logger.info("Repaired reconciled import id={}", importId);
+    }
+
+    private List<Long> readCreatedInvoiceIds(final InvoiceImport importRecord) {
+        try {
+            List<Long> ids = objectMapper.readValue(importRecord.getCreatedInvoiceIds(),
+                    new TypeReference<List<Long>>() { });
+            if (ids.isEmpty()) {
+                throw new IllegalStateException("Import has no created invoices.");
+            }
+            return ids;
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Import invoice references are invalid.");
+        }
+    }
+
+    private void verifyRepairShape(final ParsedInvoiceData previous,
+            final ParsedInvoiceData corrected, final List<Long> invoiceIds) {
+        if (previous.cardSections() == null || corrected.cardSections() == null
+                || previous.cardSections().size() != corrected.cardSections().size()
+                || invoiceIds.size() != corrected.cardSections().size()) {
+            throw new IllegalStateException("Import structure changed; repair was not applied.");
+        }
+        for (int index = 0; index < previous.cardSections().size(); index++) {
+            ParsedInvoiceData.ParsedCardSection oldSection = previous.cardSections().get(index);
+            ParsedInvoiceData.ParsedCardSection newSection = corrected.cardSections().get(index);
+            if (!oldSection.cardLastFourDigits().equals(newSection.cardLastFourDigits())
+                    || oldSection.items().size() != newSection.items().size()) {
+                throw new IllegalStateException("Import item structure changed; repair was not applied.");
+            }
+        }
+    }
+
+    private void repairInvoiceItems(final Long invoiceId,
+            final List<ParsedInvoiceData.ParsedInvoiceItem> oldItems,
+            final List<ParsedInvoiceData.ParsedInvoiceItem> newItems) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new IllegalStateException("Imported invoice was not found."));
+        for (int index = 0; index < oldItems.size(); index++) {
+            ParsedInvoiceData.ParsedInvoiceItem oldItem = oldItems.get(index);
+            ParsedInvoiceData.ParsedInvoiceItem newItem = newItems.get(index);
+            if (!sameItemIdentity(oldItem, newItem)) {
+                throw new IllegalStateException("Import item identity changed; repair was not applied.");
+            }
+            if (oldItem.amount().compareTo(newItem.amount()) == 0) {
+                continue;
+            }
+            List<InvoiceItem> matches = invoice.getItems().stream()
+                    .filter(item -> !item.isProjected())
+                    .filter(item -> item.getDescription().equals(oldItem.description()))
+                    .filter(item -> item.getPurchaseDate().equals(oldItem.purchaseDate()))
+                    .filter(item -> item.getInstallments().equals(oldItem.installments()))
+                    .filter(item -> item.getTotalInstallments().equals(oldItem.totalInstallments()))
+                    .filter(item -> item.getAmount().compareTo(oldItem.amount()) == 0)
+                    .toList();
+            if (matches.size() != 1) {
+                throw new IllegalStateException("Import item cannot be uniquely repaired.");
+            }
+            matches.get(0).correctAmount(newItem.amount());
+        }
+        invoiceRepository.save(invoice);
+        invoiceRepository.updateTotalAmount(invoiceId);
+    }
+
+    private boolean sameItemIdentity(final ParsedInvoiceData.ParsedInvoiceItem first,
+            final ParsedInvoiceData.ParsedInvoiceItem second) {
+        return first.description().equals(second.description())
+                && first.purchaseDate().equals(second.purchaseDate())
+                && first.installments().equals(second.installments())
+                && first.totalInstallments().equals(second.totalInstallments());
+    }
+
+    private void createConsolidatedStatementIfReconciled(final String groupId,
+            final List<Long> createdInvoiceIds, final ParsedInvoiceData parsedData) {
+        if (groupId == null || createdInvoiceIds.isEmpty() || parsedData.totalAmount() == null
+                || parsedData.reconciliation() == null
+                || parsedData.reconciliation().status()
+                    != ParsedInvoiceData.ReconciliationStatus.RECONCILED) {
+            return;
+        }
+        Invoice statementLeader = invoiceRepository.findById(createdInvoiceIds.get(0))
+                .orElseThrow(() -> new IllegalStateException("Created statement invoice was not found."));
+        statementLeader.setStatementTotalAmount(parsedData.totalAmount());
+        invoiceRepository.save(statementLeader);
     }
 
     /**
@@ -454,6 +582,36 @@ public class InvoiceImportService {
      */
     private boolean requiresManualReview(Double confidence) {
         return confidence == null || confidence < MANUAL_REVIEW_CONFIDENCE_THRESHOLD;
+    }
+
+    /**
+     * Removes projected items from invoices of other cards that share the same
+     * lastFourDigits as the imported card. This prevents stale duplicate projections
+     * that arise when a card was renamed by creating a new record instead of editing
+     * the existing one — leaving both records active with identical lastFourDigits.
+     */
+    private void cleanStaleProjectionsForSameDigits(
+            CreditCard importedCard, YearMonth month, User user) {
+        List<CreditCard> sameDigitsCards = creditCardRepository
+                .findByOwnerAndLastFourDigitsAndActiveTrue(user, importedCard.getLastFourDigits());
+
+        for (CreditCard other : sameDigitsCards) {
+            if (other.getId().equals(importedCard.getId())) {
+                continue;
+            }
+            List<Invoice> otherInvoices = invoiceRepository.findByCreditCardAndMonth(other, month);
+            for (Invoice otherInvoice : otherInvoices) {
+                int removed = installmentProjectionService.removeProjectedItems(otherInvoice);
+                if (removed > 0) {
+                    logger.info(
+                        "Removed {} stale projected items from invoice {} "
+                        + "(card {} digits {}, orphaned after import to card {})",
+                        removed, otherInvoice.getId(),
+                        other.getId(), other.getLastFourDigits(),
+                        importedCard.getId());
+                }
+            }
+        }
     }
 
     /**
@@ -610,6 +768,8 @@ public class InvoiceImportService {
                 categorized, importRecord.getId());
         
         Invoice saved = invoiceRepository.save(invoice);
+
+        cleanStaleProjectionsForSameDigits(creditCard, invoiceMonth, owner);
 
         int projected = installmentProjectionService
                 .projectInstallments(saved, owner);
@@ -1158,4 +1318,3 @@ public class InvoiceImportService {
         return status.getDisplayName();
     }
 }
-

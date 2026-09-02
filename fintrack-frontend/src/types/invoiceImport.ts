@@ -99,6 +99,15 @@ export interface DetectedCardMapping {
   candidateCardIds: number[];
   items: ParsedInvoiceItem[];
   subtotal: number;
+  declaredTotal?: number;
+}
+
+export type ReconciliationStatus = 'RECONCILED' | 'DIVERGENT' | 'REVIEW_REQUIRED' | 'NOT_APPLICABLE';
+
+export interface ImportReconciliation {
+  status: ReconciliationStatus;
+  message: string;
+  difference?: number;
 }
 
 export interface ImportPreviewResponse {
@@ -110,6 +119,7 @@ export interface ImportPreviewResponse {
   confidence?: number;
   detectedCards: DetectedCardMapping[];
   allCardsMatched: boolean;
+  reconciliation?: ImportReconciliation;
 }
 
 export interface CardMapping {
@@ -126,4 +136,4 @@ export interface ConfirmImportResponse {
   importId: number;
   createdInvoiceIds: number[];
   itemsImported: number;
-} 
+}

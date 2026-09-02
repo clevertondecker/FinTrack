@@ -12,6 +12,8 @@ import com.fintrack.application.invoice.InvoiceImportService;
 import com.fintrack.application.user.UserService;
 import com.fintrack.domain.user.User;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/invoice-imports")
-@CrossOrigin(origins = "*")
+@Validated
 public class InvoiceImportController {
 
     private static final Logger logger = LoggerFactory.getLogger(InvoiceImportController.class);
@@ -129,7 +131,7 @@ public class InvoiceImportController {
      */
     @PostMapping("/{importId}/confirm")
     public ResponseEntity<?> confirmImport(
-            @PathVariable Long importId,
+            @PathVariable @Positive Long importId,
             @Valid @RequestBody ConfirmImportRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -154,6 +156,27 @@ public class InvoiceImportController {
             logger.error("Unexpected error confirming import importId={}: {}", importId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage(), "type", e.getClass().getSimpleName()));
+        }
+    }
+
+    /** Repairs a completed import only when the corrected source PDF reconciles. */
+    @PostMapping("/{importId}/repair")
+    public ResponseEntity<Map<String, String>> repairCompletedImport(
+            @PathVariable @Positive Long importId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        requireAuthentication(userDetails);
+        try {
+            User user = userService.getCurrentUser(userDetails.getUsername());
+            invoiceImportService.repairCompletedImport(importId, user);
+            return ResponseEntity.ok(Map.of("message", "Import repaired successfully."));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            logger.warn("Import repair was rejected: importId={}", importId);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Import cannot be repaired safely."));
+        } catch (IOException ex) {
+            logger.error("Unable to read source file for import repair: importId={}", importId);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to repair the import."));
         }
     }
 
@@ -250,4 +273,4 @@ public class InvoiceImportController {
             invoiceImportService.getUserImportsByStatus(user, ImportStatus.MANUAL_REVIEW);
         return ResponseEntity.ok(imports);
     }
-} 
+}

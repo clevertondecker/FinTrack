@@ -697,7 +697,10 @@ export function useInvoiceData(): UseInvoiceDataReturn {
     setPayError(null);
     try {
       const cards = invoiceToPay._consolidatedCards;
-      if (cards && cards.length > 1) {
+      const statementLeader = cards?.find(card => card.statementTotalAmount != null);
+      if (statementLeader) {
+        await apiService.payInvoice(statementLeader.id, { amount });
+      } else if (cards && cards.length > 1) {
         const totalRemaining = cards.reduce((s, c) => s + (c.totalAmount || 0) - (c.paidAmount || 0), 0);
         for (const card of cards) {
           const cardRemaining = (card.totalAmount || 0) - (card.paidAmount || 0);

@@ -18,6 +18,8 @@ export interface Invoice {
   userShare?: number | null;
   contactShares?: ContactShareSummary[];
   importGroupId?: string | null;
+  statementTotalAmount?: number | null;
+  statementPaidAmount?: number | null;
   _consolidatedCards?: Invoice[];
 }
 

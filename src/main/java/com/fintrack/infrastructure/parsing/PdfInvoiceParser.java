@@ -111,6 +111,11 @@ public class PdfInvoiceParser {
         "^@?\\s*(.+?)\\s+-\\s+\\d{4}\\s+[Xx]{4}\\s+[Xx]{4}\\s+(\\d{4})$"
     );
 
+    /** Total printed at the end of a Santander card section. */
+    private static final Pattern SECTION_TOTAL_PATTERN = Pattern.compile(
+        "^VALOR\\s+TOTAL\\s+(-?[\\d.,]+)(?:\\s+.*)?$", Pattern.CASE_INSENSITIVE
+    );
+
     private static final List<String> IGNORE_KEYWORDS = List.of(
         "tarifa", "juros", "saldo", "autorização", "parcela", "CET", "multas",
         "fatura", "total", "rotativo", "saque", "remuneratórios", "cancelar",
@@ -131,6 +136,9 @@ public class PdfInvoiceParser {
 
         try (PDDocument document = PDDocument.load(new File(filePath))) {
             PDFTextStripper stripper = new PDFTextStripper();
+            // Santander statements are position based. Reading in visual order
+            // preserves punctuation in monetary values split across glyphs.
+            stripper.setSortByPosition(true);
             String text = stripper.getText(document);
 
             logger.debug("Extracted text from PDF: {}", text.substring(0, Math.min(500, text.length())));
@@ -180,6 +188,9 @@ public class PdfInvoiceParser {
             }
         }
 
+        ParsedInvoiceData.ImportReconciliation reconciliation =
+                reconcileCardSections(bankName, cardSections);
+
         double confidence = calculateConfidence(text, totalAmount, dueDate, items);
 
         return new ParsedInvoiceData(
@@ -191,7 +202,8 @@ public class PdfInvoiceParser {
             bankName,
             invoiceMonth,
             confidence,
-            cardSections
+            cardSections,
+            reconciliation
         );
     }
 
@@ -243,13 +255,99 @@ public class PdfInvoiceParser {
             String digits = entry.getKey();
             List<ParsedInvoiceItem> items =
                     extractItemsFromLines(entry.getValue().toArray(new String[0]));
+            BigDecimal declaredTotal = extractDeclaredSectionTotal(entry.getValue());
+            items = normalizeMissingCentsWhenProven(items, declaredTotal);
             BigDecimal subtotal = items.stream()
                     .map(ParsedInvoiceItem::amount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             sections.add(new ParsedCardSection(
-                    digits, sectionDisplayNames.get(digits), items, subtotal));
+                    digits, sectionDisplayNames.get(digits), items, subtotal, declaredTotal));
         }
         return sections;
+    }
+
+    private BigDecimal extractDeclaredSectionTotal(final List<String> lines) {
+        BigDecimal declaredTotal = null;
+        for (String line : lines) {
+            Matcher matcher = SECTION_TOTAL_PATTERN.matcher(line.trim());
+            if (matcher.matches()) {
+                declaredTotal = parseBrazilianAmount(matcher.group(1));
+            }
+        }
+        return declaredTotal;
+    }
+
+    /**
+     * PDF text extraction can occasionally omit the decimal separator of one
+     * monetary glyph sequence. A value is converted from cents only when that
+     * single conversion makes the parsed subtotal exactly match the total
+     * printed by the bank for the same card section. This avoids guessing.
+     */
+    private List<ParsedInvoiceItem> normalizeMissingCentsWhenProven(
+            final List<ParsedInvoiceItem> items, final BigDecimal declaredTotal) {
+        if (declaredTotal == null || items.isEmpty()) {
+            return items;
+        }
+        BigDecimal subtotal = items.stream().map(ParsedInvoiceItem::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (subtotal.compareTo(declaredTotal) == 0) {
+            return items;
+        }
+
+        for (int index = 0; index < items.size(); index++) {
+            ParsedInvoiceItem item = items.get(index);
+            BigDecimal amount = item.amount();
+            if (amount.scale() > 0 || amount.abs().compareTo(new BigDecimal("100")) < 0) {
+                continue;
+            }
+            BigDecimal centsAmount = amount.movePointLeft(2);
+            BigDecimal candidateTotal = subtotal.subtract(amount).add(centsAmount);
+            if (candidateTotal.compareTo(declaredTotal) == 0) {
+                List<ParsedInvoiceItem> corrected = new ArrayList<>(items);
+                corrected.set(index, new ParsedInvoiceItem(
+                        item.description(), centsAmount, item.purchaseDate(), item.category(),
+                        item.installments(), item.totalInstallments(), item.confidence()));
+                logger.warn("Corrected a malformed monetary token using the declared card total");
+                return corrected;
+            }
+        }
+        return items;
+    }
+
+    /**
+     * Card subtotals are intentionally not compared with the final amount to
+     * pay: a consolidated statement can contain prior balance, payments and
+     * credits. Only a printed card-section total is a safe reconciliation key.
+     */
+    private ParsedInvoiceData.ImportReconciliation reconcileCardSections(
+            final String bankName, final List<ParsedCardSection> sections) {
+        if (sections == null || sections.size() < 2) {
+            return ParsedInvoiceData.ImportReconciliation.notApplicable();
+        }
+
+        BigDecimal largestDifference = BigDecimal.ZERO;
+        boolean hasDeclaredTotals = false;
+        for (ParsedCardSection section : sections) {
+            if (section.declaredTotal() == null) {
+                continue;
+            }
+            hasDeclaredTotals = true;
+            BigDecimal difference = section.subtotal().subtract(section.declaredTotal()).abs();
+            if (difference.compareTo(largestDifference) > 0) {
+                largestDifference = difference;
+            }
+        }
+
+        if (hasDeclaredTotals && largestDifference.compareTo(new BigDecimal("0.01")) <= 0) {
+            return ParsedInvoiceData.ImportReconciliation.reconciled();
+        }
+        if (hasDeclaredTotals) {
+            return ParsedInvoiceData.ImportReconciliation.divergent(largestDifference);
+        }
+        if ("Santander".equalsIgnoreCase(bankName)) {
+            return ParsedInvoiceData.ImportReconciliation.reviewRequired();
+        }
+        return ParsedInvoiceData.ImportReconciliation.notApplicable();
     }
 
     /**
@@ -618,4 +716,4 @@ public class PdfInvoiceParser {
 
         return Math.min(confidence, 1.0);
     }
-} 
+}

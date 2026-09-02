@@ -41,18 +41,32 @@ public record ParsedInvoiceData(
     Double confidence,
 
     @JsonProperty("cardSections")
-    List<ParsedCardSection> cardSections
+    List<ParsedCardSection> cardSections,
+
+    @JsonProperty("reconciliation")
+    ImportReconciliation reconciliation
 ) {
 
     /**
      * Backward-compatible constructor without cardSections.
      */
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public ParsedInvoiceData(
             String creditCardName, String cardNumber, LocalDate dueDate,
             BigDecimal totalAmount, List<ParsedInvoiceItem> items,
             String bankName, YearMonth invoiceMonth, Double confidence) {
         this(creditCardName, cardNumber, dueDate, totalAmount, items,
-             bankName, invoiceMonth, confidence, List.of());
+             bankName, invoiceMonth, confidence, List.of(), ImportReconciliation.notApplicable());
+    }
+
+    /** Backward-compatible constructor for callers that provide card sections. */
+    public ParsedInvoiceData(
+            String creditCardName, String cardNumber, LocalDate dueDate,
+            BigDecimal totalAmount, List<ParsedInvoiceItem> items,
+            String bankName, YearMonth invoiceMonth, Double confidence,
+            List<ParsedCardSection> cardSections) {
+        this(creditCardName, cardNumber, dueDate, totalAmount, items,
+             bankName, invoiceMonth, confidence, cardSections, ImportReconciliation.notApplicable());
     }
 
     /**
@@ -115,6 +129,61 @@ public record ParsedInvoiceData(
         List<ParsedInvoiceItem> items,
 
         @JsonProperty("subtotal")
-        BigDecimal subtotal
-    ) {}
-} 
+        BigDecimal subtotal,
+
+        @JsonProperty("declaredTotal")
+        BigDecimal declaredTotal
+    ) {
+        public ParsedCardSection(
+                String cardLastFourDigits, String cardDisplayName,
+                List<ParsedInvoiceItem> items, BigDecimal subtotal) {
+            this(cardLastFourDigits, cardDisplayName, items, subtotal, null);
+        }
+    }
+
+    /**
+     * Result of validating the totals declared in a bank statement against
+     * the transactions extracted for each card section.
+     */
+    public record ImportReconciliation(
+        @JsonProperty("status") ReconciliationStatus status,
+        @JsonProperty("message") String message,
+        @JsonProperty("difference") BigDecimal difference
+    ) {
+        public static ImportReconciliation reconciled() {
+            return new ImportReconciliation(ReconciliationStatus.RECONCILED,
+                "Statement totals reconciled.", BigDecimal.ZERO);
+        }
+
+        public static ImportReconciliation divergent(final BigDecimal difference) {
+            return new ImportReconciliation(ReconciliationStatus.DIVERGENT,
+                "One or more card totals do not match the statement.", difference);
+        }
+
+        public static ImportReconciliation reviewRequired() {
+            return new ImportReconciliation(ReconciliationStatus.REVIEW_REQUIRED,
+                "The statement does not contain enough totals to validate the import.", null);
+        }
+
+        public static ImportReconciliation notApplicable() {
+            return new ImportReconciliation(ReconciliationStatus.NOT_APPLICABLE,
+                "Reconciliation is not available for this statement format.", null);
+        }
+
+        public boolean blocksConfirmation() {
+            return status == ReconciliationStatus.DIVERGENT
+                || status == ReconciliationStatus.REVIEW_REQUIRED;
+        }
+    }
+
+    public enum ReconciliationStatus {
+        /** Parsed values match the totals printed by the statement. */
+        RECONCILED,
+        /** Parsed values conflict with the totals printed by the statement. */
+        DIVERGENT,
+        /** The parser cannot prove that this statement is safe to import. */
+        REVIEW_REQUIRED,
+        /** This bank format does not provide card-level reconciliation totals. */
+        NOT_APPLICABLE
+    }
+}

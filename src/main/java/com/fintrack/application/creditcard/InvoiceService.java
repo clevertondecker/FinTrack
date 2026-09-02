@@ -383,7 +383,9 @@ public class InvoiceService {
             invoice.getUpdatedAt(),
             invoice.getTotalAmount(),
             List.of(),
-            invoice.getImportGroupId()
+            invoice.getImportGroupId(),
+            invoice.getStatementTotalAmount(),
+            invoice.getStatementPaidAmount()
         );
     }
 
@@ -431,7 +433,9 @@ public class InvoiceService {
             invoice.getUpdatedAt(),
             userShare,
             contactShares,
-            invoice.getImportGroupId()
+            invoice.getImportGroupId(),
+            invoice.getStatementTotalAmount(),
+            invoice.getStatementPaidAmount()
         );
     }
 
@@ -522,16 +526,26 @@ public class InvoiceService {
      */
     public InvoicePaymentResponse payInvoice(Long invoiceId, InvoicePaymentRequest request, User user) {
         Invoice invoice = getInvoice(invoiceId, user);
-        invoice.recordPayment(request.amount());
+        if (invoice.getStatementTotalAmount() != null) {
+            invoice.recordStatementPayment(request.amount());
+        } else {
+            invoice.recordPayment(request.amount());
+        }
         Invoice saved = invoiceRepository.save(invoice);
+        BigDecimal totalAmount = saved.getStatementTotalAmount() != null
+                ? saved.getStatementTotalAmount() : saved.getTotalAmount();
+        BigDecimal paidAmount = saved.getStatementTotalAmount() != null
+                ? saved.getStatementPaidAmount() : saved.getPaidAmount();
+        String status = paidAmount.compareTo(totalAmount) >= 0 ? "PAID"
+                : paidAmount.compareTo(BigDecimal.ZERO) > 0 ? "PARTIAL" : "OPEN";
         return new InvoicePaymentResponse(
             saved.getId(),
             saved.getCreditCard().getId(),
             saved.getCreditCard().getName(),
             saved.getDueDate(),
-            saved.getTotalAmount(),
-            saved.getPaidAmount(),
-            saved.getStatus().name(),
+            totalAmount,
+            paidAmount,
+            status,
             saved.getUpdatedAt(),
             "Invoice payment registered successfully"
         );

@@ -331,6 +331,12 @@ public class InvoiceItem {
         return amount;
     }
 
+    /** Corrects an amount parsed from a bank document while preserving metadata and shares. */
+    public void correctAmount(final BigDecimal correctedAmount) {
+        Validate.notNull(correctedAmount, "Corrected amount must not be null.");
+        amount = correctedAmount;
+    }
+
     /**
      * Gets the item's category.
      *
@@ -465,4 +471,4 @@ public class InvoiceItem {
             + ", createdAt=" + createdAt
             + '}';
     }
-} 
+}

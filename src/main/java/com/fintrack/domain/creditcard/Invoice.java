@@ -85,6 +85,14 @@ public class Invoice {
     @Column(name = "import_group_id", length = 80)
     private String importGroupId;
 
+    /** Final amount due for a consolidated bank statement; stored on its leader invoice only. */
+    @Column(name = "statement_total_amount", precision = 15, scale = 2)
+    private BigDecimal statementTotalAmount;
+
+    /** Payments recorded against the consolidated statement. */
+    @Column(name = "statement_paid_amount", precision = 15, scale = 2)
+    private BigDecimal statementPaidAmount;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -327,6 +335,36 @@ public class Invoice {
 
     public void setImportGroupId(String importGroupId) {
         this.importGroupId = importGroupId;
+    }
+
+    /** Configures this invoice as the leader for a consolidated bank statement. */
+    public void setStatementTotalAmount(final BigDecimal amount) {
+        Validate.notNull(amount, "Statement total amount must not be null.");
+        Validate.isTrue(amount.compareTo(BigDecimal.ZERO) >= 0,
+                "Statement total amount must not be negative.");
+        statementTotalAmount = amount;
+        statementPaidAmount = BigDecimal.ZERO;
+    }
+
+    /** Records a payment for the bank statement without changing card-level history. */
+    public void recordStatementPayment(final BigDecimal amount) {
+        Validate.notNull(amount, "Statement payment amount must not be null.");
+        Validate.isTrue(amount.compareTo(BigDecimal.ZERO) > 0,
+                "Statement payment amount must be positive.");
+        Validate.isTrue(statementTotalAmount != null, "Invoice is not a statement leader.");
+        BigDecimal paid = statementPaidAmount == null ? BigDecimal.ZERO : statementPaidAmount;
+        Validate.isTrue(paid.add(amount).compareTo(statementTotalAmount) <= 0,
+                "Statement payment amount cannot exceed the remaining balance.");
+        statementPaidAmount = paid.add(amount);
+        updatedAt = LocalDateTime.now();
+    }
+
+    public BigDecimal getStatementTotalAmount() {
+        return statementTotalAmount;
+    }
+
+    public BigDecimal getStatementPaidAmount() {
+        return statementPaidAmount;
     }
 
     @Override

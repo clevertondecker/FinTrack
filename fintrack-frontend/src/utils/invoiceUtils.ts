@@ -64,10 +64,16 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       return;
     }
 
-    const totalAmount = group.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-    const paidAmount = group.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
-    const userShare = group.reduce((sum, inv) => sum + (inv.userShare ?? inv.totalAmount ?? 0), 0);
-    const worstStatus = resolveGroupStatus(group);
+    const statementLeader = group.find(inv => inv.statementTotalAmount != null);
+    const totalAmount = statementLeader?.statementTotalAmount
+      ?? group.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+    const paidAmount = statementLeader?.statementPaidAmount
+      ?? group.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
+    const userShare = statementLeader ? undefined
+      : group.reduce((sum, inv) => sum + (inv.userShare ?? inv.totalAmount ?? 0), 0);
+    const worstStatus = statementLeader
+      ? (paidAmount >= totalAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN')
+      : resolveGroupStatus(group);
     const cardNames = group.map(inv => inv.creditCardName).join(' + ');
 
     const mergedShares: ContactShareSummary[] = [];
@@ -93,9 +99,11 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       status: worstStatus,
       createdAt: group[0].createdAt,
       updatedAt: group[0].updatedAt,
-      userShare: userShare !== totalAmount ? userShare : undefined,
-      contactShares: mergedShares.length > 0 ? mergedShares : undefined,
+      userShare: userShare !== undefined && userShare !== totalAmount ? userShare : undefined,
+      contactShares: statementLeader ? undefined : (mergedShares.length > 0 ? mergedShares : undefined),
       importGroupId: group[0].importGroupId,
+      statementTotalAmount: statementLeader?.statementTotalAmount,
+      statementPaidAmount: statementLeader?.statementPaidAmount,
       _consolidatedCards: group,
     });
   });
@@ -237,4 +245,4 @@ export const formatDate = (dateString: string): string => {
   } catch (error) {
     return dateString;
   }
-}; 
+};
