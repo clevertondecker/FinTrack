@@ -88,6 +88,17 @@ class PdfInvoiceParserLineParsingTest {
     }
 
     @Test
+    void parseLine_withShortAuthorizationCodeBeforeAmount_shouldIgnoreTheCode() {
+        String text = invoiceWith("31/07 LOJAS AMERICANAS 228 53,96");
+
+        List<ParsedInvoiceItem> items = parser.extractInvoiceData(text).items();
+
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).amount()).isEqualByComparingTo("53.96");
+        assertThat(items.get(0).description()).isEqualTo("LOJAS AMERICANAS");
+    }
+
+    @Test
     void parseLine_withLargeAmountItem_shouldParseNormally() {
         String text = invoiceWith("01/05 MP *PICHAUINFORMATICA 6035,28");
 

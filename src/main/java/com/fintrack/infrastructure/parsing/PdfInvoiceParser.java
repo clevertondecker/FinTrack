@@ -89,7 +89,7 @@ public class PdfInvoiceParser {
 
     /** Transaction authorization codes can be printed between a merchant and its amount. */
     private static final Pattern TRAILING_AUTHORIZATION_CODE = Pattern.compile(
-        "^(.+?)\\s+\\d{5,}$"
+        "^(.+?)\\s+\\d{3,}$"
     );
 
     // Padrão para itens com parcelamento (formato: LIBERTY DUTY FREE 02/04 123,45)
