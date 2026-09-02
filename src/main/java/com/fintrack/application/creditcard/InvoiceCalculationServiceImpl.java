@@ -6,6 +6,7 @@ import com.fintrack.domain.creditcard.Invoice;
 import com.fintrack.domain.creditcard.InvoiceItem;
 import com.fintrack.domain.creditcard.ItemShare;
 import com.fintrack.domain.creditcard.ParticipantShare;
+import com.fintrack.domain.creditcard.CreditCard;
 import com.fintrack.domain.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -136,6 +137,8 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
                     nameByEmail.putIfAbsent(email, name);
                 }
             }
+
+            addCardAssigneeUnsharedAmount(item, owner, totalsByEmail, nameByEmail);
         }
 
         List<ParticipantShare> result = new ArrayList<>();
@@ -154,25 +157,65 @@ public class InvoiceCalculationServiceImpl implements InvoiceCalculationService 
                 return share.getAmount();
             }
         }
-        
-        // If an item has no shares, check if a user is the card owner
-        if (item.getShares().isEmpty()) {
-            User cardOwner = item.getInvoice().getCreditCard().getOwner();
-            if (cardOwner.equals(user)) {
-            return item.getAmount();
-            }
-            // The User is not the card owner and the item has no shares, so they owe nothing
+
+        BigDecimal unsharedAmount = item.getUnsharedAmount();
+        CreditCard card = item.getInvoice().getCreditCard();
+        User assignedUser = card.getAssignedUser();
+
+        // An assigned system user is responsible for every portion that was not
+        // explicitly divided. A trusted contact is accounted for in the participant
+        // summary, so neither the owner nor another system user receives that amount.
+        if (assignedUser != null) {
+            return assignedUser.equals(user) ? unsharedAmount : BigDecimal.ZERO;
+        }
+        if (hasValidAssignedContact(card)) {
             return BigDecimal.ZERO;
         }
-        
-        // Item is shared, but user has no share
-        // Only the card owner should receive the unshared amount
-        User cardOwner = item.getInvoice().getCreditCard().getOwner();
-        if (cardOwner.equals(user)) {
-        return item.getUnsharedAmount();
-        }
-        
-        // User is not the card owner and has no share, so they owe nothing
-        return BigDecimal.ZERO;
+
+        return card.getOwner().equals(user) ? unsharedAmount : BigDecimal.ZERO;
     }
-} 
+
+    /**
+     * Adds the portion not explicitly shared to the card assignee. The assignee is
+     * resolved from the persisted card configuration rather than from invoice text.
+     */
+    private void addCardAssigneeUnsharedAmount(
+            final InvoiceItem item,
+            final User owner,
+            final Map<String, BigDecimal> totalsByEmail,
+            final Map<String, String> nameByEmail) {
+        BigDecimal unsharedAmount = item.getUnsharedAmount();
+        if (unsharedAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+
+        CreditCard card = item.getInvoice().getCreditCard();
+        TrustedContact contact = card.getAssignedContact();
+        if (hasValidAssignedContact(card) && contact.getOwner().equals(owner)) {
+            addParticipantAmount(totalsByEmail, nameByEmail,
+                contact.getEmail(), contact.getName(), unsharedAmount);
+            return;
+        }
+
+        User assignedUser = card.getAssignedUser();
+        if (assignedUser != null && !assignedUser.getId().equals(owner.getId())) {
+            addParticipantAmount(totalsByEmail, nameByEmail,
+                assignedUser.getEmail().getEmail(), assignedUser.getName(), unsharedAmount);
+        }
+    }
+
+    private void addParticipantAmount(
+            final Map<String, BigDecimal> totalsByEmail,
+            final Map<String, String> nameByEmail,
+            final String email,
+            final String name,
+            final BigDecimal amount) {
+        totalsByEmail.merge(email, amount, BigDecimal::add);
+        nameByEmail.putIfAbsent(email, name);
+    }
+
+    private boolean hasValidAssignedContact(final CreditCard card) {
+        TrustedContact contact = card.getAssignedContact();
+        return contact != null && contact.getOwner().equals(card.getOwner());
+    }
+}

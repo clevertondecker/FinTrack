@@ -101,7 +101,7 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       createdAt: group[0].createdAt,
       updatedAt: group[0].updatedAt,
       userShare: userShare !== undefined && userShare !== totalAmount ? userShare : undefined,
-      contactShares: statementLeader ? undefined : (mergedShares.length > 0 ? mergedShares : undefined),
+      contactShares: mergedShares.length > 0 ? mergedShares : undefined,
       importGroupId: group[0].importGroupId,
       statementTotalAmount: statementLeader?.statementTotalAmount,
       statementPaidAmount: statementLeader?.statementPaidAmount,

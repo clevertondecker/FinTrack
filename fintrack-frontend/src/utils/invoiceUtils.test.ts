@@ -16,13 +16,26 @@ const invoice = (overrides: Partial<Invoice>): Invoice => ({
 
 it('keeps the user share when consolidating a bank statement total', () => {
   const consolidated = consolidateInvoices([
-    invoice({ id: 1, totalAmount: 100, userShare: 40, statementTotalAmount: 150 }),
-    invoice({ id: 2, creditCardId: 2, totalAmount: 50, userShare: 20 }),
+    invoice({
+      id: 1,
+      totalAmount: 100,
+      userShare: 40,
+      statementTotalAmount: 150,
+      contactShares: [{ contactName: 'Sabrina', contactEmail: 'sabrina@example.com', totalAmount: 60 }],
+    }),
+    invoice({
+      id: 2,
+      creditCardId: 2,
+      totalAmount: 50,
+      userShare: 20,
+      contactShares: [{ contactName: 'Sabrina', contactEmail: 'sabrina@example.com', totalAmount: 30 }],
+    }),
   ]);
 
   expect(consolidated).toHaveLength(1);
   expect(consolidated[0]).toMatchObject({
     totalAmount: 150,
     userShare: 60,
+    contactShares: [{ contactName: 'Sabrina', contactEmail: 'sabrina@example.com', totalAmount: 90 }],
   });
 });

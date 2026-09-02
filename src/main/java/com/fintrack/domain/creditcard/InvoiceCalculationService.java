@@ -47,7 +47,8 @@ public interface InvoiceCalculationService {
     BigDecimal calculateTotalSharedAmount(Invoice invoice);
 
     /**
-     * Calculates the amount that is not shared (belongs to the card owner) for a specific invoice.
+     * Calculates the amount that is not explicitly shared for a specific invoice.
+     * That amount belongs to the card assignee when configured; otherwise, it belongs to the card owner.
      *
      * @param invoice the invoice to calculate for. Must not be null.
      * @return the amount not shared. Never null.
@@ -78,13 +79,13 @@ public interface InvoiceCalculationService {
     /**
      * Calculates the amount a specific user is responsible for in a single invoice item.
      * If the user has an explicit share, returns that amount.
-     * If the item has no shares and the user is the card owner, returns the full amount.
-     * If the item has shares but the user has none, returns the unshared amount for the card owner,
-     * or zero for other users.
+     * Any amount not explicitly shared is assigned to the card's assigned system user when configured,
+     * otherwise to the card owner. An assigned trusted contact is represented in the participant summary,
+     * so no system user receives that amount.
      *
      * @param item the invoice item to calculate for. Must not be null.
      * @param user the user to calculate for. Must not be null.
      * @return the amount the user is responsible for. Never null.
      */
     BigDecimal calculateUserShareForItem(InvoiceItem item, User user);
-} 
+}

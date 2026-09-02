@@ -228,6 +228,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
               <span className="meta-label">{t('invoices.myShare')}</span>
               <span className="meta-value">{formatCurrency(getInvoiceUserAmount(invoice))}</span>
             </div>
+            {(invoice.contactShares || []).map(share => (
+              <div key={share.contactEmail} className="featured-meta-item">
+                <span className="meta-label">{share.contactName}</span>
+                <span className="meta-value">{formatCurrency(share.totalAmount)}</span>
+              </div>
+            ))}
             <div className="featured-meta-item">
               <span className="meta-label">{t('invoices.paidAmountLabel')}</span>
               <span className="meta-value">{formatCurrency(getInvoiceUserPaid(invoice))}</span>

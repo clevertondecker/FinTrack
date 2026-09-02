@@ -118,6 +118,84 @@ class InvoiceCalculationServiceImplTest {
     }
 
     @Nested
+    @DisplayName("Card assignee allocation")
+    class CardAssigneeAllocation {
+
+        @Test
+        @DisplayName("Should assign an unshared charge and credit to the assigned contact")
+        void shouldAssignUnsharedEntriesToAssignedContact() throws Exception {
+            // Arrange
+            TrustedContact contact = createContact(owner, "Sabrina", "sabrina@example.com");
+            setId(contact, TrustedContact.class, 10L);
+            creditCard.updateAssignedContact(contact);
+
+            Invoice invoice = createInvoice();
+            invoice.addItem(createItem(invoice, "Purchase", new BigDecimal("200.00")));
+            invoice.addItem(createItem(invoice, "Refund", new BigDecimal("-50.00")));
+
+            // Act
+            List<ParticipantShare> result = service.calculateOtherParticipantShares(invoice, owner);
+
+            // Assert
+            assertThat(result).singleElement().satisfies(summary -> {
+                assertThat(summary.name()).isEqualTo("Sabrina");
+                assertThat(summary.email()).isEqualTo("sabrina@example.com");
+                assertThat(summary.totalAmount()).isEqualByComparingTo(new BigDecimal("150.00"));
+            });
+            assertThat(service.calculateUserShare(invoice, owner))
+                .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("Should preserve explicit splits and only assign the remaining amount to the contact")
+        void shouldPreserveExplicitSplitsForAssignedContactCard() throws Exception {
+            // Arrange
+            TrustedContact contact = createContact(owner, "Sabrina", "sabrina@example.com");
+            setId(contact, TrustedContact.class, 10L);
+            creditCard.updateAssignedContact(contact);
+
+            Invoice invoice = createInvoice();
+            InvoiceItem item = createItem(invoice, "Shared purchase", new BigDecimal("200.00"));
+            invoice.addItem(item);
+            item.addShare(ItemShare.of(otherUser, item,
+                new BigDecimal("0.50"), new BigDecimal("100.00"), false));
+
+            // Act
+            List<ParticipantShare> result = service.calculateOtherParticipantShares(invoice, owner);
+
+            // Assert
+            assertThat(result).extracting(ParticipantShare::email)
+                .containsExactlyInAnyOrder("bob@example.com", "sabrina@example.com");
+            assertThat(result).filteredOn(summary -> summary.email().equals("bob@example.com"))
+                .singleElement()
+                .extracting(ParticipantShare::totalAmount)
+                .isEqualTo(new BigDecimal("100.00"));
+            assertThat(result).filteredOn(summary -> summary.email().equals("sabrina@example.com"))
+                .singleElement()
+                .extracting(ParticipantShare::totalAmount)
+                .isEqualTo(new BigDecimal("100.00"));
+            assertThat(service.calculateUserShareForItem(item, owner))
+                .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("Should assign an unshared entry to the assigned system user")
+        void shouldAssignUnsharedEntryToAssignedSystemUser() {
+            // Arrange
+            creditCard.updateAssignedUser(otherUser);
+            Invoice invoice = createInvoice();
+            InvoiceItem item = createItem(invoice, "Purchase", new BigDecimal("200.00"));
+            invoice.addItem(item);
+
+            // Assert
+            assertThat(service.calculateUserShareForItem(item, owner))
+                .isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(service.calculateUserShareForItem(item, otherUser))
+                .isEqualByComparingTo(new BigDecimal("200.00"));
+        }
+    }
+
+    @Nested
     @DisplayName("Trusted contact share filtering")
     class TrustedContactShareFiltering {
 
