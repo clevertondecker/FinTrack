@@ -69,8 +69,9 @@ export const consolidateInvoices = (invoiceList: Invoice[]): Invoice[] => {
       ?? group.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
     const paidAmount = statementLeader?.statementPaidAmount
       ?? group.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
-    const userShare = statementLeader ? undefined
-      : group.reduce((sum, inv) => sum + (inv.userShare ?? inv.totalAmount ?? 0), 0);
+    // The statement total is the amount declared by the bank, while the user's share
+    // remains the sum of the user's portions across every card in the monthly group.
+    const userShare = group.reduce((sum, inv) => sum + (inv.userShare ?? inv.totalAmount ?? 0), 0);
     const worstStatus = statementLeader
       ? (paidAmount >= totalAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN')
       : resolveGroupStatus(group);

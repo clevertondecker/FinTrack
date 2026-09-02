@@ -216,13 +216,17 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
         <div className="featured-amount-section">
           <div className="featured-amount">
             <span className="featured-amount-label">{t('invoices.totalAmountLabel')}</span>
-            <span className="featured-amount-value">{formatInvoiceAmount(invoice)}</span>
+            <span className="featured-amount-value">{formatCurrency(invoice.totalAmount)}</span>
           </div>
 
           <div className="featured-meta">
             <div className="featured-meta-item">
               <span className="meta-label">{t('invoices.dueDateLabel')}</span>
               <span className="meta-value">{formatDate(invoice.dueDate)}</span>
+            </div>
+            <div className="featured-meta-item">
+              <span className="meta-label">{t('invoices.myShare')}</span>
+              <span className="meta-value">{formatCurrency(getInvoiceUserAmount(invoice))}</span>
             </div>
             <div className="featured-meta-item">
               <span className="meta-label">{t('invoices.paidAmountLabel')}</span>
