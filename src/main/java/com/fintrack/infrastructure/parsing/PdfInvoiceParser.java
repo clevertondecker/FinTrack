@@ -135,19 +135,64 @@ public class PdfInvoiceParser {
         logger.info("Starting PDF parsing for file: {}", filePath);
 
         try (PDDocument document = PDDocument.load(new File(filePath))) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            // Santander statements are position based. Reading in visual order
-            // preserves punctuation in monetary values split across glyphs.
-            stripper.setSortByPosition(true);
-            String text = stripper.getText(document);
+            ParsedInvoiceData documentOrder = extractInvoiceData(extractDocumentOrderText(document));
+            ParsedInvoiceData visualOrder = extractInvoiceData(extractVisualOrderText(document));
 
-            logger.debug("Extracted text from PDF: {}", text.substring(0, Math.min(500, text.length())));
-
-            return extractInvoiceData(text);
+            logger.debug("PDF text extracted: pages={}", document.getNumberOfPages());
+            return selectMostReliableExtraction(documentOrder, visualOrder);
         } catch (IOException e) {
             logger.error("Error parsing PDF file: {}", filePath, e);
             throw e;
         }
+    }
+
+    private String extractDocumentOrderText(final PDDocument document) throws IOException {
+        return new PDFTextStripper().getText(document);
+    }
+
+    private String extractVisualOrderText(final PDDocument document) throws IOException {
+        PDFTextStripper stripper = new PDFTextStripper();
+        stripper.setSortByPosition(true);
+        return stripper.getText(document);
+    }
+
+    /**
+     * Selects the extraction that preserves the most card sections. Santander PDFs
+     * can use two columns, where visual sorting merges headers from different cards.
+     */
+    ParsedInvoiceData selectMostReliableExtraction(final ParsedInvoiceData documentOrder,
+            final ParsedInvoiceData visualOrder) {
+        int documentSections = nonEmptySectionCount(documentOrder);
+        int visualSections = nonEmptySectionCount(visualOrder);
+        if (visualSections > documentSections) {
+            return visualOrder;
+        }
+        if (visualSections < documentSections) {
+            return documentOrder;
+        }
+        return reconciliationRank(visualOrder) > reconciliationRank(documentOrder)
+                ? visualOrder : documentOrder;
+    }
+
+    private int nonEmptySectionCount(final ParsedInvoiceData data) {
+        if (data.cardSections() == null) {
+            return 0;
+        }
+        return (int) data.cardSections().stream()
+                .filter(section -> section.items() != null && !section.items().isEmpty())
+                .count();
+    }
+
+    private int reconciliationRank(final ParsedInvoiceData data) {
+        if (data.reconciliation() == null || data.reconciliation().status() == null) {
+            return 0;
+        }
+        return switch (data.reconciliation().status()) {
+            case RECONCILED -> 3;
+            case NOT_APPLICABLE -> 2;
+            case REVIEW_REQUIRED -> 1;
+            case DIVERGENT -> 0;
+        };
     }
 
     /**
@@ -341,11 +386,13 @@ public class PdfInvoiceParser {
         if (hasDeclaredTotals && largestDifference.compareTo(new BigDecimal("0.01")) <= 0) {
             return ParsedInvoiceData.ImportReconciliation.reconciled();
         }
+        if ("Santander".equalsIgnoreCase(bankName)) {
+            // Santander's per-card amount can include payments, credits and previous
+            // balance. It is not a transaction subtotal and must not reject an import.
+            return ParsedInvoiceData.ImportReconciliation.notApplicable();
+        }
         if (hasDeclaredTotals) {
             return ParsedInvoiceData.ImportReconciliation.divergent(largestDifference);
-        }
-        if ("Santander".equalsIgnoreCase(bankName)) {
-            return ParsedInvoiceData.ImportReconciliation.reviewRequired();
         }
         return ParsedInvoiceData.ImportReconciliation.notApplicable();
     }

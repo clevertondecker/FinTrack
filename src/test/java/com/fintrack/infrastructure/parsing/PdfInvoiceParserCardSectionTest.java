@@ -196,4 +196,54 @@ class PdfInvoiceParserCardSectionTest {
         assertThat(result.cardSections().get(0).items().get(0).amount())
                 .isEqualByComparingTo("278.20");
     }
+
+    @Test
+    void selectMostReliableExtraction_shouldPreserveMoreCardSectionsBeforeReconciliation() {
+        ParsedInvoiceData documentOrder = parser.extractInvoiceData("""
+                Banco: Santander
+                CARTÃO FINAL 1111
+                01/08 ONE 10,00
+                CARTÃO FINAL 2222
+                02/08 TWO 20,00
+                CARTÃO FINAL 3333
+                03/08 THREE 30,00
+                CARTÃO FINAL 4444
+                04/08 FOUR 40,00
+                """);
+        ParsedInvoiceData visualOrder = parser.extractInvoiceData("""
+                Banco: Santander
+                CARTÃO FINAL 1111
+                01/08 ONE 10,00
+                VALOR TOTAL 10,00
+                CARTÃO FINAL 2222
+                02/08 TWO 20,00
+                VALOR TOTAL 20,00
+                CARTÃO FINAL 3333
+                03/08 THREE 30,00
+                VALOR TOTAL 30,00
+                """);
+
+        ParsedInvoiceData selected = parser.selectMostReliableExtraction(documentOrder, visualOrder);
+
+        assertThat(selected).isSameAs(documentOrder);
+        assertThat(selected.cardSections()).hasSize(4);
+    }
+
+    @Test
+    void extractInvoiceData_withSantanderCardBalanceDifferentFromItems_shouldNotBlockImport() {
+        String text = """
+                Banco: Santander
+                CARTÃO FINAL 1234
+                01/08 ONE 10,00
+                VALOR TOTAL 20,00
+                CARTÃO FINAL 5678
+                02/08 TWO 30,00
+                VALOR TOTAL 40,00
+                """;
+
+        ParsedInvoiceData result = parser.extractInvoiceData(text);
+
+        assertThat(result.reconciliation().status()).isEqualTo(
+                ParsedInvoiceData.ReconciliationStatus.NOT_APPLICABLE);
+    }
 }
