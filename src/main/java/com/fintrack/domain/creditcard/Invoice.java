@@ -93,6 +93,10 @@ public class Invoice {
     @Column(name = "statement_paid_amount", precision = 15, scale = 2)
     private BigDecimal statementPaidAmount;
 
+    /** Card amount printed by the bank statement, kept separate from imported item totals. */
+    @Column(name = "bank_declared_total_amount", precision = 15, scale = 2)
+    private BigDecimal bankDeclaredTotalAmount;
+
     /**
      * Protected constructor for JPA only.
      */
@@ -342,8 +346,11 @@ public class Invoice {
         Validate.notNull(amount, "Statement total amount must not be null.");
         Validate.isTrue(amount.compareTo(BigDecimal.ZERO) >= 0,
                 "Statement total amount must not be negative.");
+        BigDecimal paid = statementPaidAmount == null ? BigDecimal.ZERO : statementPaidAmount;
+        Validate.isTrue(paid.compareTo(amount) <= 0,
+                "Statement total amount cannot be lower than the amount already paid.");
         statementTotalAmount = amount;
-        statementPaidAmount = BigDecimal.ZERO;
+        statementPaidAmount = paid;
     }
 
     /** Records a payment for the bank statement without changing card-level history. */
@@ -365,6 +372,18 @@ public class Invoice {
 
     public BigDecimal getStatementPaidAmount() {
         return statementPaidAmount;
+    }
+
+    /** Stores a card balance declared in the source bank statement. */
+    public void setBankDeclaredTotalAmount(final BigDecimal amount) {
+        Validate.notNull(amount, "Bank declared total amount must not be null.");
+        Validate.isTrue(amount.compareTo(BigDecimal.ZERO) >= 0,
+                "Bank declared total amount must not be negative.");
+        bankDeclaredTotalAmount = amount;
+    }
+
+    public BigDecimal getBankDeclaredTotalAmount() {
+        return bankDeclaredTotalAmount;
     }
 
     @Override

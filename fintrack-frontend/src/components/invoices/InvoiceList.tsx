@@ -147,7 +147,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
             {cards.map(sub => (
               <div key={sub.id} className="breakdown-row">
                 <span className="breakdown-card-name">{sub.creditCardName}</span>
-                <span className="breakdown-amount">{formatCurrency(sub.totalAmount || 0)}</span>
+                <span className="breakdown-amount">
+                  {formatCurrency(sub.bankDeclaredTotalAmount ?? sub.totalAmount ?? 0)}
+                </span>
                 <button
                   onClick={() => handleViewDetails(sub)}
                   className="breakdown-detail-btn"

@@ -25,7 +25,8 @@ public record InvoiceResponse(
     List<ContactShareSummary> contactShares,
     String importGroupId,
     BigDecimal statementTotalAmount,
-    BigDecimal statementPaidAmount
+    BigDecimal statementPaidAmount,
+    BigDecimal bankDeclaredTotalAmount
 ) {
     /** Backward-compatible constructor for clients without consolidated statement data. */
     public InvoiceResponse(Long id, Long creditCardId, String creditCardName, LocalDate dueDate,
@@ -33,6 +34,7 @@ public record InvoiceResponse(
             LocalDateTime createdAt, LocalDateTime updatedAt, BigDecimal userShare,
             List<ContactShareSummary> contactShares, String importGroupId) {
         this(id, creditCardId, creditCardName, dueDate, invoiceMonth, totalAmount, paidAmount,
-                status, createdAt, updatedAt, userShare, contactShares, importGroupId, null, null);
+                status, createdAt, updatedAt, userShare, contactShares, importGroupId,
+                null, null, null);
     }
 }

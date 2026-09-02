@@ -86,6 +86,19 @@ class InvoiceTest {
     class PaymentTests {
 
         @Test
+        @DisplayName("Should preserve statement payments when updating the statement total")
+        void shouldPreserveStatementPaymentsWhenUpdatingStatementTotal() {
+            Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
+                    LocalDate.of(2024, 2, 10));
+
+            invoice.setStatementTotalAmount(new BigDecimal("100.00"));
+            invoice.recordStatementPayment(new BigDecimal("40.00"));
+            invoice.setStatementTotalAmount(new BigDecimal("100.00"));
+
+            assertEquals(new BigDecimal("40.00"), invoice.getStatementPaidAmount());
+        }
+
+        @Test
         @DisplayName("Should record payment successfully")
         void shouldRecordPaymentSuccessfully() {
             Invoice invoice = Invoice.of(testCreditCard, YearMonth.of(2024, 1),
@@ -661,4 +674,4 @@ class InvoiceTest {
             throw new RuntimeException("Failed to set invoice ID for testing", e);
         }
     }
-} 
+}

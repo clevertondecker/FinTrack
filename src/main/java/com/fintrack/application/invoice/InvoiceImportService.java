@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -293,6 +294,7 @@ public class InvoiceImportService {
                 invoice.setImportGroupId(groupId);
             }
             addItemsToInvoice(invoice, cardItems, globalSignatures);
+            applyBankDeclaredCardTotal(invoice, mapping.detectedLastFourDigits(), parsedData);
 
             int categorized = merchantCategorizationService.applyRulesToItems(
                     invoice.getItems(), creditCard.getOwner());
@@ -314,7 +316,7 @@ public class InvoiceImportService {
             }
         }
 
-        createConsolidatedStatementIfReconciled(groupId, createdInvoiceIds, parsedData);
+        createConsolidatedStatementIfValidated(groupId, createdInvoiceIds, parsedData);
 
         importRecord.markAsCompletedWithoutInvoiceReference();
         importRecord.setCreatedInvoiceIds(createdInvoiceIds.toString());
@@ -354,6 +356,7 @@ public class InvoiceImportService {
             repairInvoiceItems(invoiceIds.get(index), previous.cardSections().get(index).items(),
                     corrected.cardSections().get(index).items());
         }
+        applyBankDeclaredCardTotals(invoiceIds, corrected);
         Invoice leader = invoiceRepository.findById(invoiceIds.get(0))
                 .orElseThrow(() -> new IllegalStateException("Statement leader invoice was not found."));
         leader.setStatementTotalAmount(corrected.totalAmount());
@@ -432,18 +435,43 @@ public class InvoiceImportService {
                 && first.totalInstallments().equals(second.totalInstallments());
     }
 
-    private void createConsolidatedStatementIfReconciled(final String groupId,
+    private void createConsolidatedStatementIfValidated(final String groupId,
             final List<Long> createdInvoiceIds, final ParsedInvoiceData parsedData) {
         if (groupId == null || createdInvoiceIds.isEmpty() || parsedData.totalAmount() == null
                 || parsedData.reconciliation() == null
-                || parsedData.reconciliation().status()
-                    != ParsedInvoiceData.ReconciliationStatus.RECONCILED) {
+                || parsedData.reconciliation().blocksConfirmation()) {
             return;
         }
         Invoice statementLeader = invoiceRepository.findById(createdInvoiceIds.get(0))
                 .orElseThrow(() -> new IllegalStateException("Created statement invoice was not found."));
         statementLeader.setStatementTotalAmount(parsedData.totalAmount());
         invoiceRepository.save(statementLeader);
+    }
+
+    private void applyBankDeclaredCardTotals(final List<Long> invoiceIds,
+            final ParsedInvoiceData parsedData) {
+        if (parsedData.cardSections() == null || parsedData.cardSections().isEmpty()) {
+            return;
+        }
+        for (Long invoiceId : invoiceIds) {
+            Invoice invoice = invoiceRepository.findById(invoiceId)
+                    .orElseThrow(() -> new IllegalStateException("Imported invoice was not found."));
+            applyBankDeclaredCardTotal(invoice, invoice.getCreditCard().getLastFourDigits(), parsedData);
+            invoiceRepository.save(invoice);
+        }
+    }
+
+    private void applyBankDeclaredCardTotal(final Invoice invoice, final String cardLastFourDigits,
+            final ParsedInvoiceData parsedData) {
+        if (parsedData.cardSections() == null) {
+            return;
+        }
+        parsedData.cardSections().stream()
+                .filter(section -> cardLastFourDigits.equals(section.cardLastFourDigits()))
+                .map(ParsedInvoiceData.ParsedCardSection::declaredTotal)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .ifPresent(invoice::setBankDeclaredTotalAmount);
     }
 
     /**

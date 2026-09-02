@@ -101,11 +101,11 @@ class InvoiceImportPreviewConfirmTest {
                         new ParsedCardSection("1234", "CARTÃO FINAL 1234",
                                 List.of(new ParsedInvoiceItem("UBER", new BigDecimal("50.00"),
                                         LocalDate.of(2024, 10, 5), null, 1, 1, 0.9)),
-                                new BigDecimal("50.00")),
+                                new BigDecimal("50.00"), new BigDecimal("50.00")),
                         new ParsedCardSection("5678", "CARTÃO FINAL 5678",
                                 List.of(new ParsedInvoiceItem("AMAZON", new BigDecimal("100.00"),
                                         LocalDate.of(2024, 10, 7), null, 1, 1, 0.9)),
-                                new BigDecimal("100.00"))
+                                new BigDecimal("100.00"), new BigDecimal("100.00"))
                 ));
 
         when(pdfInvoiceParser.parsePdf(anyString())).thenReturn(parsedData);
@@ -202,11 +202,11 @@ class InvoiceImportPreviewConfirmTest {
                         new ParsedCardSection("1234", "CARTÃO FINAL 1234",
                                 List.of(new ParsedInvoiceItem("UBER", new BigDecimal("50.00"),
                                         LocalDate.of(2024, 10, 5), null, 1, 1, 0.9)),
-                                new BigDecimal("50.00")),
+                                new BigDecimal("50.00"), new BigDecimal("50.00")),
                         new ParsedCardSection("5678", "CARTÃO FINAL 5678",
                                 List.of(new ParsedInvoiceItem("AMAZON", new BigDecimal("100.00"),
                                         LocalDate.of(2024, 10, 7), null, 1, 1, 0.9)),
-                                new BigDecimal("100.00"))
+                                new BigDecimal("100.00"), new BigDecimal("100.00"))
                 ));
 
         when(invoiceImportRepository.findByIdAndUser(10L, testUser))
@@ -232,11 +232,13 @@ class InvoiceImportPreviewConfirmTest {
                 .thenReturn(List.of());
         when(invoiceRepository.findByCreditCardAndMonth(card5678, YearMonth.of(2024, 11)))
                 .thenReturn(List.of());
+        when(invoiceRepository.findById(100L)).thenReturn(Optional.of(invoice1));
         when(invoiceRepository.save(any(Invoice.class)))
                 .thenReturn(invoice1)
                 .thenReturn(invoice1)
                 .thenReturn(invoice2)
-                .thenReturn(invoice2);
+                .thenReturn(invoice2)
+                .thenReturn(invoice1);
         when(invoiceImportRepository.save(any(InvoiceImport.class))).thenReturn(importRecord);
 
         ConfirmImportRequest request = new ConfirmImportRequest(List.of(
@@ -250,6 +252,9 @@ class InvoiceImportPreviewConfirmTest {
         assertThat(response.createdInvoiceIds()).hasSize(2);
         assertThat(response.itemsImported()).isEqualTo(2);
         assertThat(response.message()).contains("successfully");
+        assertThat(invoice1.getBankDeclaredTotalAmount()).isEqualByComparingTo("50.00");
+        assertThat(invoice2.getBankDeclaredTotalAmount()).isEqualByComparingTo("100.00");
+        assertThat(invoice1.getStatementTotalAmount()).isEqualByComparingTo("150.00");
     }
 
     @Test

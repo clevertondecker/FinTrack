@@ -20,6 +20,7 @@ export interface Invoice {
   importGroupId?: string | null;
   statementTotalAmount?: number | null;
   statementPaidAmount?: number | null;
+  bankDeclaredTotalAmount?: number | null;
   _consolidatedCards?: Invoice[];
 }
 

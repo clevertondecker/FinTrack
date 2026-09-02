@@ -385,7 +385,8 @@ public class InvoiceService {
             List.of(),
             invoice.getImportGroupId(),
             invoice.getStatementTotalAmount(),
-            invoice.getStatementPaidAmount()
+            invoice.getStatementPaidAmount(),
+            invoice.getBankDeclaredTotalAmount()
         );
     }
 
@@ -435,7 +436,8 @@ public class InvoiceService {
             contactShares,
             invoice.getImportGroupId(),
             invoice.getStatementTotalAmount(),
-            invoice.getStatementPaidAmount()
+            invoice.getStatementPaidAmount(),
+            invoice.getBankDeclaredTotalAmount()
         );
     }
 
