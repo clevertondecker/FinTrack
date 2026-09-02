@@ -130,6 +130,21 @@ class InvoiceImportServiceTest {
     }
 
     @Test
+    void repairIdentity_WithTrailingNumericToken_ShouldMatchPreviousMerchantName() {
+        ParsedInvoiceData.ParsedInvoiceItem previous = new ParsedInvoiceData.ParsedInvoiceItem(
+                "LOJAS AMERICANAS", new BigDecimal("228.00"), LocalDate.of(2026, 7, 31),
+                null, 1, 1, 0.9);
+        ParsedInvoiceData.ParsedInvoiceItem corrected = new ParsedInvoiceData.ParsedInvoiceItem(
+                "LOJAS AMERICANAS 228", new BigDecimal("53.96"), LocalDate.of(2026, 7, 31),
+                null, 1, 1, 0.9);
+
+        Boolean matches = ReflectionTestUtils.invokeMethod(invoiceImportService, "sameItemIdentity",
+                previous, corrected);
+
+        assertThat(matches).isTrue();
+    }
+
+    @Test
     void importInvoice_WithInvalidCreditCard_ShouldThrowException() {
         // Given
         when(creditCardRepository.findById(1L)).thenReturn(Optional.empty());
@@ -897,4 +912,4 @@ class InvoiceImportServiceTest {
         method.setAccessible(true);
         return (Map<String, Integer>) method.invoke(invoiceImportService, invoice);
     }
-} 
+}

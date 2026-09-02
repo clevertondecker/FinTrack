@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.fintrack.domain.creditcard.InvoiceItem.of;
@@ -91,6 +92,10 @@ public class InvoiceImportService {
     /** Pattern to strip installment suffix like " 01/02" from descriptions. */
     private static final Pattern INSTALLMENT_SUFFIX_PATTERN =
         Pattern.compile("\\s+\\d{1,2}/\\d{1,2}$");
+
+    /** Numeric tokens emitted between a merchant name and a monetary amount by Santander PDFs. */
+    private static final Pattern REPAIR_AUTHORIZATION_CODE_SUFFIX =
+        Pattern.compile("^(.+?)\\s+\\d{3,}$");
 
     /** The invoice import repository. */
     private final InvoiceImportJpaRepository invoiceImportRepository;
@@ -429,10 +434,24 @@ public class InvoiceImportService {
 
     private boolean sameItemIdentity(final ParsedInvoiceData.ParsedInvoiceItem first,
             final ParsedInvoiceData.ParsedInvoiceItem second) {
-        return first.description().equals(second.description())
+        return sameRepairDescription(first.description(), second.description())
                 && first.purchaseDate().equals(second.purchaseDate())
                 && first.installments().equals(second.installments())
                 && first.totalInstallments().equals(second.totalInstallments());
+    }
+
+    /**
+     * Allows a repaired PDF to retain an ambiguous numeric token without changing the
+     * persisted merchant name. This exception is limited to the repair flow, which also
+     * requires section order, item count, date, and installment metadata to match.
+     */
+    private boolean sameRepairDescription(final String previousDescription,
+            final String correctedDescription) {
+        if (previousDescription.equals(correctedDescription)) {
+            return true;
+        }
+        Matcher matcher = REPAIR_AUTHORIZATION_CODE_SUFFIX.matcher(correctedDescription);
+        return matcher.matches() && previousDescription.equals(matcher.group(1));
     }
 
     private void createConsolidatedStatementIfValidated(final String groupId,

@@ -77,25 +77,25 @@ class PdfInvoiceParserLineParsingTest {
     }
 
     @Test
-    void parseLine_withAuthorizationCodeBeforeAmount_shouldIgnoreTheCode() {
+    void parseLine_withNumericTokenBeforeAmount_shouldUseTheMonetaryAmount() {
         String text = invoiceWith("14/08 ZP*GUILHERM 27820 95,90");
 
         List<ParsedInvoiceItem> items = parser.extractInvoiceData(text).items();
 
         assertThat(items).hasSize(1);
         assertThat(items.get(0).amount()).isEqualByComparingTo("95.90");
-        assertThat(items.get(0).description()).isEqualTo("ZP*GUILHERM");
+        assertThat(items.get(0).description()).isEqualTo("ZP*GUILHERM 27820");
     }
 
     @Test
-    void parseLine_withShortAuthorizationCodeBeforeAmount_shouldIgnoreTheCode() {
+    void parseLine_withShortNumericTokenBeforeAmount_shouldPreserveTheDescription() {
         String text = invoiceWith("31/07 LOJAS AMERICANAS 228 53,96");
 
         List<ParsedInvoiceItem> items = parser.extractInvoiceData(text).items();
 
         assertThat(items).hasSize(1);
         assertThat(items.get(0).amount()).isEqualByComparingTo("53.96");
-        assertThat(items.get(0).description()).isEqualTo("LOJAS AMERICANAS");
+        assertThat(items.get(0).description()).isEqualTo("LOJAS AMERICANAS 228");
     }
 
     @Test
